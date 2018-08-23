@@ -218,7 +218,7 @@ int main(int argc, char **argv) {
             std::sort(tmp.begin(), tmp.end());
             int32_t ec = tmp[0];
             std::vector<int32_t> v = ecs[ec];            
-            for (size_t k = 1; k < v.size(); k++) {
+            for (size_t k = 1; k < tmp.size(); k++) {
               if (tmp[k] != ec) {
                 ec = tmp[k];
                 v = intersect(v, ecs[ec]);
