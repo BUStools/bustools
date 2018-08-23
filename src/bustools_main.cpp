@@ -184,23 +184,24 @@ int main(int argc, char **argv) {
             if (rc == 0) {
               break;
             }
-            std::cout << rc << std::endl;
             b.insert(b.end(), p, p+rc);
           }
         }
         delete[] p; p = nullptr;
-        std::cout << "Read in " << b.size() << " number of busrecords" << std::endl;
+        std::cerr << "Read in " << b.size() << " number of busrecords" << std::endl;
         std::sort(b.begin(), b.end(), [&](const BUSData& a, const BUSData &b) 
                                         {if (a.barcode == b.barcode) {
                                            return a.UMI < b.UMI; }
                                          else { 
                                            return a.barcode < b.barcode;
                                          }});
-        std::cout << "All sorted" << std::endl;
+        std::cerr << "All sorted" << std::endl;
 
         size_t n = b.size();
         std::vector<int32_t> tmp;
         tmp.resize(1000);
+        size_t num_barcode_umis = 0;
+        size_t num_barcode_umi_badreads = 0;
         for (size_t i = 0; i < n; ) {
           size_t j = i+1;
           for (; j < n; j++) {
@@ -208,6 +209,7 @@ int main(int argc, char **argv) {
               break;
             }
           }
+          num_barcode_umis += 1;
           // b[i,j) have same barcode and UMI and is maximal
           size_t dz = j - i;          
           if (dz > 1) {
@@ -228,6 +230,7 @@ int main(int argc, char **argv) {
               }
             }
             if (v.empty()) {
+              num_barcode_umi_badreads += dz;
               std::cout << binaryToString(b[i].barcode, 16) << "\t" << binaryToString(b[i].UMI,10);
               for (size_t k = i; k < j; k++) {
                 std::cout << "\t" << b[k].ec;
@@ -238,7 +241,8 @@ int main(int argc, char **argv) {
           i = j;
         }
 
-
+        std::cerr << "Number of barcode-UMI combos " << num_barcode_umis << std::endl;
+        std::cerr << "Number of bad barcode-UMI reads " << num_barcode_umi_badreads << std::endl;
         // todo read 
       } else {
         Bustools_Usage();
