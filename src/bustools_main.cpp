@@ -424,17 +424,36 @@ int main(int argc, char **argv) {
         delete[] p; p = nullptr;
         std::cerr << "Read in " << b.size() << " number of busrecords" << std::endl;
         std::sort(b.begin(), b.end(), [&](const BUSData& a, const BUSData &b) 
-                                        {if (a.barcode == b.barcode) {
-                                           return a.UMI < b.UMI; }
-                                         else { 
+                                        {
+                                          if (a.barcode == b.barcode) {
+                                          if (a.UMI == b.UMI) {
+                                            return a.ec < b.ec;
+                                          } else {
+                                           return a.UMI < b.UMI;
+                                          } 
+                                         } else { 
                                            return a.barcode < b.barcode;
                                          }});
         std::cerr << "All sorted" << std::endl;
 
         std::ofstream busf_out;
         busf_out.open(opt.output , std::ios::out | std::ios::binary);
-        for (const auto &br : b) {          
-          busf_out.write((char*)(&br), sizeof(br));
+        size_t n = b.size();
+        for (size_t i = 0; i < n; ) {
+          size_t j = i+1;
+          uint32_t c = b[i].count;
+          auto ec = b[i].ec;          
+          for (; j < n; j++) {
+            if (b[i].barcode != b[j].barcode || b[i].UMI != b[j].UMI || b[i].ec != b[j].ec) {
+              break;
+            }
+            c += b[j].count;
+          }
+          // merge identical things
+          b[i].count = c;
+          busf_out.write((char*)(&(b[i])), sizeof(b[i]));
+          // increment
+          i = j;
         }
         busf_out.close();    
       } else {
@@ -464,7 +483,7 @@ int main(int argc, char **argv) {
             }
             nr += rc;
             for (size_t i = 0; i < rc; i++) {
-              of << binaryToString(p[i].barcode, 16) << "\t" << binaryToString(p[i].UMI,10) << "\t" << p[i].ec << "\n";        
+              of << binaryToString(p[i].barcode, 16) << "\t" << binaryToString(p[i].UMI,10) << "\t" << p[i].ec << "\t" << p[i].count << "\n";        
             }
           }
         }
