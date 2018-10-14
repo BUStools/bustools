@@ -12,7 +12,7 @@ std::string binaryToString(uint64_t x, size_t len) {
   std::string s(len, 'N');
   for (size_t i = 0; i < len; i++) {
     char c = 'N';
-    switch((x >> (2*i))& 0x03) {
+    switch((x >> (2*(len-i))) & 0x03ULL) {
       case 0x00: c = 'A'; break;
       case 0x01: c = 'C'; break;
       case 0x02: c = 'G'; break;

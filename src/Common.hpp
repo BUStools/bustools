@@ -14,6 +14,7 @@
 struct Bustools_opt {
   int threads;
   std::string ecf;
+  std::string output;
   std::vector<std::string> files;
 
   Bustools_opt() : threads(1) {}
