@@ -302,6 +302,8 @@ std::vector<std::vector<int32_t>> readEC(const std::string &fn) {
 
 int main(int argc, char **argv) {
 
+  uint32_t bclen = 0;
+  uint32_t umilen = 0;
   if (argc < 2) {
     // Print error message, function?
     Bustools_Usage();
@@ -328,6 +330,8 @@ int main(int argc, char **argv) {
         BUSData* p = new BUSData[N];
         for (const auto& infn : opt.files) { 
           std::ifstream inf(infn.c_str(), std::ios::binary);
+          inf.read((char*)(&bclen), sizeof(bclen));
+          inf.read((char*)(&umilen), sizeof(umilen));
           int rc = 1;
           while (true) {
             inf.read((char*)p, N*sizeof(BUSData));
@@ -382,7 +386,7 @@ int main(int argc, char **argv) {
             }
             if (v.empty()) {
               num_barcode_umi_badreads += dz;
-              std::cout << binaryToString(b[i].barcode, 16) << "\t" << binaryToString(b[i].UMI,10);
+              std::cout << binaryToString(b[i].barcode, bclen) << "\t" << binaryToString(b[i].UMI,umilen);
               for (size_t k = i; k < j; k++) {
                 std::cout << "\t" << b[k].ec;
               }
@@ -411,6 +415,9 @@ int main(int argc, char **argv) {
         BUSData* p = new BUSData[N];
         for (const auto& infn : opt.files) { 
           std::ifstream inf(infn.c_str(), std::ios::binary);
+          inf.read((char*)(&bclen), sizeof(bclen));
+          inf.read((char*)(&umilen), sizeof(umilen));
+
           int rc = 1;
           while (true) {
             inf.read((char*)p, N*sizeof(BUSData));
@@ -438,6 +445,8 @@ int main(int argc, char **argv) {
 
         std::ofstream busf_out;
         busf_out.open(opt.output , std::ios::out | std::ios::binary);
+        busf_out.write((char*)(&bclen), sizeof(bclen));
+        busf_out.write((char*)(&umilen), sizeof(umilen));
         size_t n = b.size();
         for (size_t i = 0; i < n; ) {
           size_t j = i+1;
@@ -474,6 +483,9 @@ int main(int argc, char **argv) {
         of.open(opt.output);        
         for (const auto& infn : opt.files) { 
           std::ifstream inf(infn.c_str(), std::ios::binary);
+          inf.read((char*)(&bclen), sizeof(bclen));
+          inf.read((char*)(&umilen), sizeof(umilen));
+
           int rc = 1;
           while (true) {
             inf.read((char*)p, N*sizeof(BUSData));
@@ -483,7 +495,7 @@ int main(int argc, char **argv) {
             }
             nr += rc;
             for (size_t i = 0; i < rc; i++) {
-              of << binaryToString(p[i].barcode, 16) << "\t" << binaryToString(p[i].UMI,10) << "\t" << p[i].ec << "\t" << p[i].count << "\n";        
+              of << binaryToString(p[i].barcode, bclen) << "\t" << binaryToString(p[i].UMI,umilen) << "\t" << p[i].ec << "\t" << p[i].count << "\n";        
             }
           }
         }
