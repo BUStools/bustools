@@ -55,3 +55,39 @@ uint64_t stringToBinary(const char* s, const size_t len, uint32_t &flag) {
   }
   return r;
 }
+
+
+bool parseHeader(std::ifstream &inf, BUSHeader &header) {
+  char magic[4];  
+  inf.read((char*)(&magic[0]), 4);
+  if (std::strcmp(&magic[0], "BUS\0") != 0) {
+    return false;
+  }
+  inf.read((char*)(&header.version), sizeof(header.version));
+  if (header.version != BUSFORMAT_VERSION) {
+    return false;
+  }
+  inf.read((char*)(&header.bclen), sizeof(header.bclen));
+  inf.read((char*)(&header.umilen), sizeof(header.umilen));
+  uint32_t tlen = 0;
+  inf.read((char*)(&tlen), sizeof(tlen));
+  char* t = new char[tlen+1];
+  inf.read(t, tlen);
+  t[tlen] = '\0';
+  header.text.assign(t);
+  delete[] t;
+
+  return true;
+}
+
+bool writeHeader(std::ofstream &outf, const BUSHeader &header) {
+  outf.write("BUS\0", 4);
+  outf.write((char*)(&header.version), sizeof(header.version));
+  outf.write((char*)(&header.bclen), sizeof(header.bclen));
+  outf.write((char*)(&header.umilen), sizeof(header.umilen));
+  uint32_t tlen = header.text.size();
+  outf.write((char*)(&tlen), sizeof(tlen));
+  outf.write((char*)header.text.c_str(), tlen);
+
+  return true;
+}

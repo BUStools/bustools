@@ -4,6 +4,9 @@
 #include <string>
 #include <vector>
 #include <stdint.h>
+#include <fstream>
+
+const uint32_t BUSFORMAT_VERSION = 1;
 
 struct BUSTranscript {
   std::string name;
@@ -16,6 +19,10 @@ struct BUSHeader {
   std::string text;
   std::vector<BUSTranscript> transcripts;
   std::vector<std::vector<int32_t>> ecs;
+  uint32_t version;
+  uint32_t bclen;
+  uint32_t umilen;
+  BUSHeader() : version(0), bclen(0), umilen(0) {}
 };
 
 struct BUSData {
@@ -28,6 +35,9 @@ struct BUSData {
   BUSData() : barcode(0), UMI(0), ec(-1), count(0), flags(0) {}
 };
 
+
+bool parseHeader(std::ifstream &inf, BUSHeader &header);
+bool writeHeader(std::ofstream &outf, const BUSHeader &header);
 uint64_t stringToBinary(const std::string &s, uint32_t &flag);
 uint64_t stringToBinary(const char* s, const size_t len, uint32_t &flag);
 std::string binaryToString(uint64_t x, size_t len);
