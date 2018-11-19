@@ -30,7 +30,7 @@ Running bustools <CMD> without arguments prints usage information for <CMD>
 
 ### Sorting
 
-Raw BUS output from pseudoalignment programs tends to be unsorted, to make downstream processing easier we can sort the file using `bustools sort`
+Raw BUS output from pseudoalignment programs may be unsorted. To simply and accelerate downstream processing BUS files can be sorted using `bustools sort`
 
 ~~~
 > bustools sort 
@@ -41,7 +41,7 @@ Options:
 -o, --output          File for sorted output
 ~~~
 
-Thiw will create a new BUS file where the BUS records are sorted by barcode first, UMI second, and equivalence class third.
+This will create a new BUS file where the BUS records are sorted by barcode first, UMI second, and equivalence class third.
 
 ### Text
 
