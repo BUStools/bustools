@@ -1,7 +1,7 @@
 #include "BUSData.h"
 
 
-
+#include <cstring>
 #include <iostream>
 
 uint64_t stringToBinary(const std::string &s, uint32_t &flag) {
