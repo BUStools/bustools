@@ -13,11 +13,11 @@ P Melsted, V Ntranos, L Pachter, [The Barcode, UMI, Set format and BUStools](htt
 
 __bustools__ works with __BUS__ files which can be generated efficiently from raw sequencing data, e.g. using [__kallisto__](http://pachterlab.github.io/kallisto).
 
-## Installaion
+## Installation
 
 Make a build directory and move there:
 
-mkdir build
+`mkdir build`
 
 cd build
 
