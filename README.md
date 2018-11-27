@@ -15,23 +15,31 @@ __bustools__ works with __BUS__ files which can be generated efficiently from ra
 
 ## Installation
 
+Download bustools with
+
+`git clone https://github.com/BUStools/bustools.git`
+
+Move to the bustools directory
+
+`cd bustools`
+
 Make a build directory and move there:
 
 `mkdir build`
 
-cd build
+`cd build`
 
 Run cmake:
 
-cmake ..
+`cmake ..`
 
 Build the code:
 
-make
+`make`
 
 The bustools executable is now located in build/src. To install bustools into the cmake install prefix path type:
 
-make install
+`make install`
 
 ## Usage
 
