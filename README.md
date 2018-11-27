@@ -13,6 +13,27 @@ P Melsted, V Ntranos, L Pachter, [The Barcode, UMI, Set format and BUStools](htt
 
 __bustools__ works with __BUS__ files which can be generated efficiently from raw sequencing data, e.g. using [__kallisto__](http://pachterlab.github.io/kallisto).
 
+## Installaion
+
+Make a build directory and move there:
+
+mkdir build
+
+cd build
+
+Run cmake:
+
+cmake ..
+
+Build the code:
+
+make
+
+The bustools executable is now located in build/src. To install bustools into the cmake install prefix path type:
+
+make install
+
+## Usage
 
 To see a list of available commands type `bustools` in the terminal
 
