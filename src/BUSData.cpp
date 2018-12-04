@@ -1,7 +1,7 @@
 #include "BUSData.h"
 
 
-
+#include <sstream>
 #include <iostream>
 
 uint64_t stringToBinary(const std::string &s, uint32_t &flag) {
@@ -76,6 +76,66 @@ bool parseHeader(std::ifstream &inf, BUSHeader &header) {
   t[tlen] = '\0';
   header.text.assign(t);
   delete[] t;
+
+  return true;
+}
+
+
+
+bool parseECs(const std::string &filename, BUSHeader &header) {
+  auto &ecs = header.ecs; 
+  std::ifstream inf(filename.c_str());
+  std::string line, t;
+  line.reserve(10000);
+  
+  std::vector<int32_t> c;
+  
+  int i = 0;
+  while (std::getline(inf, line)) {       
+    c.clear();
+    int ec = -1;
+    if (line.size() == 0) {
+      continue;
+    }
+    std::stringstream ss(line);
+    ss >> ec;
+    assert(ec == i);
+    while (std::getline(ss, t, ',')) {
+      c.push_back(std::stoi(t));
+    }
+
+    ecs.push_back(std::move(c));
+    i++;
+  }
+
+  return true;
+}
+
+bool writeECs(const std::string &filename, const BUSHeader &header) {
+  std::ofstream outf;
+  outf.open(filename.c_str(), std::ios::out);
+
+  if (!outf.is_open()) {
+    return false;
+  }
+
+  
+  size_t n = header.ecs.size();
+  for (size_t ec = 0; ec < n; ec++) {
+    const auto& v = header.ecs[ec];
+    outf << ec << "\t";
+    bool first = true;
+    for (auto x : v) {
+      if (!first) {
+        outf << ",";
+      } else {
+        first = false;
+      }
+      outf << x;
+    }
+    outf << "\n";
+  }
+  outf.close();
 
   return true;
 }

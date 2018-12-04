@@ -4,20 +4,48 @@
 
 #include <iostream>
 #include <fstream>
-#include <sstream>
 #include <thread>
 #include <atomic>
+#include <unordered_map>
+#include <functional>
 
 #include "Common.hpp"
 #include "BUSData.h"
 
+int my_mkdir(const char *path, mode_t mode) {
+  #ifdef _WIN64
+  return mkdir(path);
+  #else
+  return mkdir(path,mode);
+  #endif
+}
 
-bool checkFileExists(std::string fn) {
+bool checkFileExists(const std::string &fn) {
   struct stat stFileInfo;
   auto intStat = stat(fn.c_str(), &stFileInfo);
   return intStat == 0;
 }
 
+bool checkDirectoryExists(const std::string &fn) {
+  struct stat stFileInfo;
+  auto intStat = stat(fn.c_str(), &stFileInfo);
+  return intStat == 0 && S_ISDIR(stFileInfo.st_mode);
+}
+
+
+struct SortedVectorHasher {
+  size_t operator()(const std::vector<int32_t>& v) const {
+    uint64_t r = 0;
+    int i=0;
+    for (auto x : v) {
+      uint64_t t = std::hash<int32_t>{}(x);
+      t = (x>>i) | (x<<(64-i));
+      r = r ^ t;
+      i = (i+1)%64;
+    }
+    return r;
+  }
+};
 
 
 
@@ -50,6 +78,30 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt& opt) {
   }
 
   // all other arguments are fast[a/q] files to be read
+  while (optind < argc) opt.files.push_back(argv[optind++]);
+}
+
+void parse_ProgramOptions_merge(int argc, char **argv, Bustools_opt& opt) {
+   const char* opt_string = "o:";
+
+  static struct option long_options[] = {
+    {"output",          required_argument,  0, 'o'},
+    {0,                 0,                  0,  0 }
+  };
+
+  int option_index = 0, c;
+
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
+
+    switch (c) {
+    case 'o':
+      opt.output = optarg;
+      break;
+    default:
+      break;
+    }
+  }
+
   while (optind < argc) opt.files.push_back(argv[optind++]);
 }
 
@@ -120,8 +172,60 @@ bool check_ProgramOptions_sort(Bustools_opt& opt) {
 }
 
 
-bool check_ProgramOptions_dump(Bustools_opt& opt) {
+bool check_ProgramOptions_merge(Bustools_opt& opt) {
+  bool ret = true;
+  
+  if (opt.output.empty()) {
+    std::cerr << "Error missing output directory" << std::endl;
+    ret = false;
+  } 
 
+  if (opt.files.size() == 0) {
+    std::cerr << "Error: Missing BUS input directories" << std::endl;
+    ret = false;
+  } else {
+    for (const auto& it : opt.files) {
+      if (!checkDirectoryExists(it)) {
+        std::cerr << "Error: directory " << it << " does not exist or is not a directory" << std::endl;
+        ret = false;
+      }
+    }
+    if (ret) {
+      // check for output.bus and matrix.ec in each of the directories
+      for (const auto &it : opt.files) {
+        if (!checkFileExists(it + "/output.bus")) {
+          std::cerr << "Error: file " << it << "/output.bus not found" << std::endl;
+        }
+
+        if (!checkFileExists(it + "/matrix.ec")) {
+          std::cerr << "Error: file " << it << "/matrix.ec not found" << std::endl;
+        }
+      }
+    }
+
+    // check if output directory exists or if we can create it
+    struct stat stFileInfo;
+    auto intStat = stat(opt.output.c_str(), &stFileInfo);
+    if (intStat == 0) {
+      // file/dir exits
+      if (!S_ISDIR(stFileInfo.st_mode)) {
+        std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
+        ret = false;
+      } 
+    } else {
+      // create directory
+      if (my_mkdir(opt.output.c_str(), 0777) == -1) {
+        std::cerr << "Error: could not create directory " << opt.output << std::endl;
+        ret = false;
+      }
+    }
+  }
+
+  return ret;
+
+}
+
+bool check_ProgramOptions_dump(Bustools_opt& opt) {
   bool ret = true;
 
   if (opt.output.empty()) {
@@ -166,6 +270,14 @@ void Bustools_sort_Usage() {
   << std::endl;
 }
 
+void Bustools_merge_Usage() {
+  std::cout << "Usage: bustools merge [options] directories" << std::endl << std::endl
+  << "Options: " << std::endl
+  << "-t, --threads         Number of threads to use" << std::endl
+  << "-o, --output          Directory for merged output" << std::endl
+  << std::endl;
+}
+
 void Bustools_dump_Usage() {
   std::cout << "Usage: bustools text [options] bus-files" << std::endl << std::endl
   << "Options: " << std::endl
@@ -193,34 +305,8 @@ std::vector<int32_t> intersect(std::vector<int32_t> &u, std::vector<int32_t> &v)
   }
   return std::move(res);
 }
-std::vector<std::vector<int32_t>> readEC(const std::string &fn) {
-  std::vector<std::vector<int32_t>> ecs;  
-  std::ifstream inf(fn.c_str());
-  std::string line, t;
-  line.reserve(10000);
-  
 
-  std::vector<int32_t> c;
-  
-  int i = 0;
-  while (std::getline(inf, line)) {       
-    c.clear();
-    int ec = -1;
-    if (line.size() == 0) {
-      continue;
-    }
-    std::stringstream ss(line);
-    ss >> ec;
-    assert(ec == i);
-    while (std::getline(ss, t, ',')) {
-      c.push_back(std::stoi(t));
-    }
 
-    ecs.push_back(std::move(c));
-    i++;
-  }
-  return ecs;
-}
 
 
 
@@ -305,6 +391,104 @@ int main(int argc, char **argv) {
         Bustools_sort_Usage();
         exit(1);
       }
+    } else if (cmd == "merge") {
+      if (disp_help) {
+        Bustools_merge_Usage();
+        exit(0);
+      }
+      parse_ProgramOptions_merge(argc-1, argv+1, opt);
+      if (check_ProgramOptions_merge(opt)) {
+        // first parse all headers
+        std::vector<BUSHeader> vh;
+        // TODO: check for compatible headers, version numbers umi and bclen
+
+        for (const auto& infn : opt.files) {
+          std::ifstream inf((infn + "/output.bus").c_str(), std::ios::binary);
+          BUSHeader h;
+          parseHeader(inf, h);
+          inf.close();
+          
+          parseECs(infn + "/matrix.ec", h);
+          vh.push_back(std::move(h));
+        }
+
+        // create master ec
+        BUSHeader oh;
+        oh.version = BUSFORMAT_VERSION;
+        oh.text = "Merged files from BUStools";
+        //TODO: parse the transcripts file, check that they are identical and merge.
+        oh.bclen = vh[0].bclen;
+        oh.umilen = vh[0].umilen;
+        std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
+        std::vector<std::vector<int32_t>> ectrans;        
+        std::vector<int32_t> ctrans;
+        
+        oh.ecs = vh[0].ecs; // copy operator
+
+        for (int32_t ec = 0; ec < oh.ecs.size(); ec++) {
+          ctrans.push_back(ec);
+          const auto &v = oh.ecs[ec];
+          ecmapinv.insert({v, ec});
+        }
+        ectrans.push_back(std::move(ctrans));
+        
+        for (int i = 1; i < opt.files.size(); i++) {
+          ctrans.clear();
+          // merge the rest of the ecs
+          int j = -1;
+          for (const auto &v : vh[i].ecs) {
+            j++;
+            int32_t ec = -1;
+            auto it = ecmapinv.find(v);
+            if (it != ecmapinv.end()) {
+              ec = it->second;              
+            } else {
+              ec = ecmapinv.size();
+              oh.ecs.push_back(v); // copy
+              ecmapinv.insert({v,ec});
+            }
+            ctrans.push_back(ec);
+          }
+          ectrans.push_back(ctrans);
+        }
+
+        // now create a single output file
+        writeECs(opt.output + "/matrix.ec", oh);
+        std::ofstream outf(opt.output + "/output.bus");
+        writeHeader(outf, oh);
+
+
+        size_t N = 100000;
+        BUSData* p = new BUSData[N];
+        size_t nr = 0;
+        for (int i = 0; i < opt.files.size(); i++) {
+          // open busfile and parse header
+          BUSHeader h;
+          const auto &ctrans = ectrans[i];
+          std::ifstream inf((opt.files[i] + "/output.bus").c_str(), std::ios::binary);
+          parseHeader(inf, h);
+          // now read all records and translate the ecs
+          while (true) {
+            inf.read((char*)p, N*sizeof(BUSData));
+            size_t rc = inf.gcount() / sizeof(BUSData);
+            if (rc == 0) {
+              break;
+            }
+            nr += rc;
+            for (size_t i = 0; i < rc; i++) {
+              auto &b = p[i];
+              b.ec = ctrans[b.ec]; // modify the ec              
+            }
+            outf.write((char*)p, rc*sizeof(BUSData));
+          }
+          inf.close();
+        }
+        outf.close();
+      } else {
+        Bustools_merge_Usage();
+        exit(1);
+      }
+
     } else if (cmd == "dump" || cmd == "text") {
       if (disp_help) {
         Bustools_dump_Usage();

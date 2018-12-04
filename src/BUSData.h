@@ -38,6 +38,11 @@ struct BUSData {
 
 bool parseHeader(std::ifstream &inf, BUSHeader &header);
 bool writeHeader(std::ofstream &outf, const BUSHeader &header);
+
+
+bool parseECs(const std::string &filename, BUSHeader &header);
+bool writeECs(const std::string &filename, const BUSHeader &header);
+
 uint64_t stringToBinary(const std::string &s, uint32_t &flag);
 uint64_t stringToBinary(const char* s, const size_t len, uint32_t &flag);
 std::string binaryToString(uint64_t x, size_t len);
