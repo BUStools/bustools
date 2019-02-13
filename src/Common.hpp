@@ -15,7 +15,11 @@ struct Bustools_opt {
   int threads;
   std::string ecf;
   std::string output;
+  std::string whitelist;  
   std::vector<std::string> files;
+
+  int ec_d;
+  int ec_dmin;
 
   Bustools_opt() : threads(1) {}
 };

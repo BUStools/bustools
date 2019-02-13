@@ -7,6 +7,7 @@
 #include <thread>
 #include <atomic>
 #include <unordered_map>
+#include <unordered_set>
 #include <functional>
 
 #include "Common.hpp"
@@ -46,6 +47,8 @@ struct SortedVectorHasher {
     return r;
   }
 };
+
+
 
 
 
@@ -126,6 +129,40 @@ void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt& opt) {
       break;
     }
   }
+
+  // all other arguments are fast[a/q] files to be read
+  while (optind < argc) opt.files.push_back(argv[optind++]);
+}
+
+void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt& opt) {
+
+  const char* opt_string = "o:w:";
+
+  static struct option long_options[] = {
+    {"output",          required_argument,  0, 'o'},
+    {"whitelist",       required_argument,  0, 'w'},
+    {0,                 0,                  0,  0 }
+  };
+
+  int option_index = 0, c;
+
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
+
+    switch (c) {
+    case 'o':
+      opt.output = optarg;
+      break;
+    case 'w':
+      opt.whitelist = optarg;
+      break;
+    default:
+      break;
+    }
+  }
+
+  //hard code options for now
+  opt.ec_d = 1;
+  opt.ec_dmin = 3;
 
   // all other arguments are fast[a/q] files to be read
   while (optind < argc) opt.files.push_back(argv[optind++]);
@@ -249,13 +286,49 @@ bool check_ProgramOptions_dump(Bustools_opt& opt) {
   return ret;
 }
 
+bool check_ProgramOptions_correct(Bustools_opt& opt) {
+  bool ret = true;
+
+  if (opt.output.empty()) {
+    std::cerr << "Error: Missing output file" << std::endl;
+    ret = false;
+  } 
+
+
+  if (opt.files.size() == 0) {
+    std::cerr << "Error: Missing BUS input files" << std::endl;
+    ret = false;
+  } else {
+    for (const auto& it : opt.files) {  
+      if (!checkFileExists(it)) {
+        std::cerr << "Error: File not found, " << it << std::endl;
+        ret = false;
+      }
+    }
+  }
+
+  if (opt.whitelist.size() == 0) {
+    std::cerr << "Error: Missing whitelist file" << std::endl;
+    ret = false;
+  } else {
+    if (!checkFileExists(opt.whitelist)) {
+      std::cerr << "Error: File not foundm " << opt.whitelist << std::endl;
+      ret = false;
+    }
+  }
+
+  return ret;
+}
 
 
 void Bustools_Usage() {
   std::cout << "Usage: bustools <CMD> [arguments] .." << std::endl << std::endl
   << "Where <CMD> can be one of: " << std::endl << std::endl
   << "sort            Sort bus file by barcodes and UMI" << std::endl
-  << "text            Output as tab separated text file" << std::endl << std::endl
+  << "text            Output as tab separated text file" << std::endl 
+  << "merge           Merge bus files from same experiment" << std::endl
+  << "correct         Error correct bus files" << std::endl
+  << std::endl
   << "Running bustools <CMD> without arguments prints usage information for <CMD>"
   << std::endl << std::endl;
 }
@@ -282,6 +355,15 @@ void Bustools_dump_Usage() {
   std::cout << "Usage: bustools text [options] bus-files" << std::endl << std::endl
   << "Options: " << std::endl
   << "-o, --output          File for text output" << std::endl
+  << std::endl;
+}
+
+void Bustools_correct_Usage() {
+  std::cout << "Usage: bustools correct [options] bus-files" << std::endl << std::endl
+  << "Options: " << std::endl
+  << "-o, --output          File for corrected bus output" << std::endl
+  << "-w, --whitelist       File of whitelisted barcodes to correct to" << std::endl
+  << "-c, --cells           Expected number of cells" << std::endl
   << std::endl;
 }
 
@@ -525,6 +607,133 @@ int main(int argc, char **argv) {
         delete[] p; p = nullptr;
         of.close();
         std::cerr << "Read in " << nr << " number of busrecords" << std::endl;
+      } else {
+        Bustools_dump_Usage();
+        exit(1);
+      }
+    } else if (cmd == "correct") {      
+      if (disp_help) {
+        Bustools_correct_Usage();
+        exit(0);        
+      }
+      parse_ProgramOptions_correct(argc-1, argv+1, opt);
+      if (check_ProgramOptions_correct(opt)) { //Program options are valid
+        
+        uint32_t bclen = 0; 
+        uint32_t wc_bclen = 0;
+        uint32_t umilen = 0;
+        BUSHeader h;
+        size_t nr = 0;
+        size_t N = 100000;
+        BUSData* p = new BUSData[N];
+        char magic[4];      
+        uint32_t version = 0;
+
+        std::ifstream wf(opt.whitelist, std::ios::in);
+        std::string line;
+        line.reserve(100);
+        std::unordered_set<uint64_t> wbc;
+        wbc.reserve(100000);
+        uint32_t f = 0;
+        while(std::getline(wf, line)) {
+          if (wc_bclen == 0) {
+            wc_bclen = line.size();
+          }
+          uint64_t bc = stringToBinary(line, f);
+          wbc.insert(bc);          
+        }
+        wf.close();
+
+        std::cerr << "Found " << wbc.size() << " barcodes in the whitelist" << std::endl;
+
+        std::unordered_map<uint64_t, uint64_t> correct;
+        // whitelisted barcodes correct to themselves
+        for (uint64_t b : wbc) {
+          correct.insert({b,b});
+        }
+        // include hamming distance 1 to all codewords
+        std::vector<uint64_t> bad_y;
+        for (auto x : wbc) {
+          // insert all hamming distance one
+          size_t sh = bclen-1;          
+
+          for (size_t i = 0; i < bclen; ++i) {
+            for (uint64_t d = 1; d <= 3; d++) {
+              uint64_t y = x ^ (d << (2*sh));
+              if (correct.find(y) != correct.end()) {
+                bad_y.push_back(y);
+              } else {
+                correct.insert({y,x});
+              }
+            }                
+            sh--;
+          }
+        }
+
+        // paranoia about error correcting
+        int removed_ys = 0;
+        for (auto y : bad_y) {
+          if (wbc.find(y) == wbc.end()) {
+            if (correct.erase(y)>0) { // duplicates are fine
+              removed_ys++;
+            }
+          }
+        }
+
+        std::cerr << "Number of hamming dist 1 barcodes = " << correct.size() << std::endl;
+        
+        // reopen busfiles and correct barcodes
+        std::ofstream busf_out;
+        busf_out.open(opt.output , std::ios::out | std::ios::binary);        
+        writeHeader(busf_out, h);
+        nr = 0;
+        size_t cc = 0;
+        BUSData bd;
+        for (const auto& infn : opt.files) { 
+          std::ifstream inf(infn.c_str(), std::ios::binary);
+          parseHeader(inf, h);
+          if (bclen == 0) {
+            bclen = h.bclen;
+
+            if (bclen != wc_bclen) { 
+              std::cerr << "Error: barcode length and whitelist length differ, barcodes = " << bclen << ", whitelist = " << wc_bclen << std::endl
+                        << "       check that your whitelist matches the technology used" << std::endl;
+
+              exit(1);
+            }
+          }
+          if (umilen == 0) {
+            umilen = h.umilen;
+          }
+
+
+          int rc = 0;
+          while (true) {
+            inf.read((char*)p, N*sizeof(BUSData));
+            size_t rc = inf.gcount() / sizeof(BUSData);
+            if (rc == 0) {
+              break;
+            }
+            nr +=rc;
+
+            for (size_t i = 0; i < rc; i++) {
+              bd = p[i];
+              auto it = correct.find(bd.barcode);
+              if (it != correct.end()) {
+                if (bd.barcode != it->second) {
+                  bd.barcode = it->second;
+                }
+                bd.count = 1;
+                cc++;
+                busf_out.write((char*) &bd, sizeof(bd));
+              }
+            }
+          }
+        }
+
+        std::cerr << "Processed " << nr << " bus records, rescued " << cc << " records" << std::endl;
+        busf_out.close();
+        delete[] p; p = nullptr;
       } else {
         Bustools_dump_Usage();
         exit(1);
