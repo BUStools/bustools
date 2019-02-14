@@ -19,7 +19,7 @@ Download bustools with
 
 `git clone https://github.com/BUStools/bustools.git`
 
-Move to the bustools directory
+Navigate to the bustools directory
 
 `cd bustools`
 
