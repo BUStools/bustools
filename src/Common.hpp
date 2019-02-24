@@ -8,7 +8,7 @@
 #include <string>
 
 
-#define BUSTOOLS_VERSION "0.1"
+#define BUSTOOLS_VERSION "0.39.0"
 
 
 struct Bustools_opt {
@@ -20,6 +20,14 @@ struct Bustools_opt {
 
   int ec_d;
   int ec_dmin;
+
+  std::string count_genes;
+  std::string count_ecs;
+  std::string count_txp;
+  bool count_collapse = false;
+
+  bool stream_in = false;
+  bool stream_out = false;
 
   Bustools_opt() : threads(1) {}
 };

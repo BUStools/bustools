@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include <stdint.h>
 #include <fstream>
 
@@ -36,12 +37,14 @@ struct BUSData {
 };
 
 
-bool parseHeader(std::ifstream &inf, BUSHeader &header);
-bool writeHeader(std::ofstream &outf, const BUSHeader &header);
+bool parseHeader(std::istream &inf, BUSHeader &header);
+bool writeHeader(std::ostream &outf, const BUSHeader &header);
 
 
 bool parseECs(const std::string &filename, BUSHeader &header);
 bool writeECs(const std::string &filename, const BUSHeader &header);
+bool parseGenes(const std::string &filename, const std::unordered_map<std::string, int32_t> &txnames, std::vector<int32_t> &genemap, std::unordered_map<std::string, int32_t> &genenames);
+bool parseTranscripts(const std::string &filename, std::unordered_map<std::string, int32_t> &txnames);
 
 uint64_t stringToBinary(const std::string &s, uint32_t &flag);
 uint64_t stringToBinary(const char* s, const size_t len, uint32_t &flag);

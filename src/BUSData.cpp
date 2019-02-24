@@ -1,6 +1,6 @@
 #include "BUSData.h"
 
-
+#include <unordered_map>
 #include <sstream>
 #include <iostream>
 
@@ -70,7 +70,7 @@ uint64_t stringToBinary(const char* s, const size_t len, uint32_t &flag) {
 }
 
 
-bool parseHeader(std::ifstream &inf, BUSHeader &header) {
+bool parseHeader(std::istream &inf, BUSHeader &header) {
   char magic[4];  
   inf.read((char*)(&magic[0]), 4);
   if (std::strcmp(&magic[0], "BUS\0") != 0) {
@@ -153,7 +153,48 @@ bool writeECs(const std::string &filename, const BUSHeader &header) {
   return true;
 }
 
-bool writeHeader(std::ofstream &outf, const BUSHeader &header) {
+bool parseTranscripts(const std::string &filename, std::unordered_map<std::string, int32_t> &txnames) {
+  std::ifstream inf(filename.c_str());
+
+  int i = 0;
+  std::string txp;
+  while (inf >> txp) {
+    txnames.insert({txp, i});
+    i++;
+  }
+  return true;
+}
+
+bool parseGenes(const std::string &filename, const std::unordered_map<std::string, int32_t> &txnames, std::vector<int32_t> &genemap, std::unordered_map<std::string, int32_t> &genenames) {
+  std::ifstream inf(filename.c_str());
+
+  std::string line, t;
+  line.reserve(10000);
+
+  int i = 0;
+  while (std::getline(inf,line)) {
+    std::stringstream ss(line);
+    std::string txp, gene;
+    ss >> txp >> gene;
+    auto it = txnames.find(txp);
+    if (it != txnames.end()) {
+      auto i = it->second;
+      auto git = genenames.find(gene);
+      auto gi = -1;
+      if (git == genenames.end()) {
+        gi = genenames.size();
+        genenames.insert({gene,gi});
+      } else {
+        gi = git->second;
+      }
+      genemap[i] = gi;
+    }
+  }
+
+  return true;
+}
+
+bool writeHeader(std::ostream &outf, const BUSHeader &header) {
   outf.write("BUS\0", 4);
   outf.write((char*)(&header.version), sizeof(header.version));
   outf.write((char*)(&header.bclen), sizeof(header.bclen));

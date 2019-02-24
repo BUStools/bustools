@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <functional>
+#include <sstream>
 
 #include "Common.hpp"
 #include "BUSData.h"
@@ -54,12 +55,12 @@ struct SortedVectorHasher {
 
 void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt& opt) {
 
-  const char* opt_string = "t:o:";
+  const char* opt_string = "t:o:p";
 
   static struct option long_options[] = {
-
     {"threads",         required_argument,  0, 't'},
     {"output",          required_argument,  0, 'o'},
+    {"pipe",            no_argument, 0, 'p'},
     {0,                 0,                  0,  0 }
   };
 
@@ -75,6 +76,9 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt& opt) {
     case 'o':
       opt.output = optarg;
       break;
+    case 'p':
+      opt.stream_out = true;
+      break;
     default:
       break;
     }
@@ -82,6 +86,10 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt& opt) {
 
   // all other arguments are fast[a/q] files to be read
   while (optind < argc) opt.files.push_back(argv[optind++]);
+  
+  if (opt.files.size() == 1 && opt.files[0] == "-") {
+    opt.stream_in = true;
+  }
 }
 
 void parse_ProgramOptions_merge(int argc, char **argv, Bustools_opt& opt) {
@@ -108,12 +116,15 @@ void parse_ProgramOptions_merge(int argc, char **argv, Bustools_opt& opt) {
   while (optind < argc) opt.files.push_back(argv[optind++]);
 }
 
-void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt& opt) {
-
-  const char* opt_string = "o:";
-
+void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
+  const char* opt_string = "o:g:e:t:";
+  int gene_flag = 0;
   static struct option long_options[] = {
     {"output",          required_argument,  0, 'o'},
+    {"genemap",          required_argument,  0, 'g'},
+    {"ecmap",          required_argument,  0, 'e'},
+    {"txnames",          required_argument,  0, 't'},
+    {"genecounts", no_argument, &gene_flag, 1},
     {0,                 0,                  0,  0 }
   };
 
@@ -125,6 +136,50 @@ void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt& opt) {
     case 'o':
       opt.output = optarg;
       break;
+    case 'g':
+      opt.count_genes = optarg;
+      break;
+    case 't':
+      opt.count_txp = optarg;
+      break;
+    case 'e':
+      opt.count_ecs = optarg;
+      break;
+    default:
+      break;
+    }
+  }
+  if (gene_flag) {
+    opt.count_collapse = true;
+  }
+
+  while (optind < argc) opt.files.push_back(argv[optind++]);
+
+  if (opt.files.size() == 1 && opt.files[0] == "-") {
+    opt.stream_in = true;
+  }
+}
+
+void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt& opt) {
+
+  const char* opt_string = "o:p";
+
+  static struct option long_options[] = {
+    {"output",          required_argument,  0, 'o'},
+    {"pipe",            no_argument, 0, 'p'},
+    {0,                 0,                  0,  0 }
+  };
+
+  int option_index = 0, c;
+
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
+
+    switch (c) {
+    case 'o':
+      opt.output = optarg;
+      break;
+    case 'p':
+      opt.stream_out = true;
     default:
       break;
     }
@@ -132,15 +187,19 @@ void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt& opt) {
 
   // all other arguments are fast[a/q] files to be read
   while (optind < argc) opt.files.push_back(argv[optind++]);
+
+  if (opt.files.size() == 1 && opt.files[0] == "-") {
+    opt.stream_in = true;
+  }
 }
 
 void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt& opt) {
 
-  const char* opt_string = "o:w:";
-
+  const char* opt_string = "o:w:p";
   static struct option long_options[] = {
     {"output",          required_argument,  0, 'o'},
     {"whitelist",       required_argument,  0, 'w'},
+    {"pipe",            no_argument, 0, 'p'},
     {0,                 0,                  0,  0 }
   };
 
@@ -155,10 +214,14 @@ void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt& opt) {
     case 'w':
       opt.whitelist = optarg;
       break;
+    case 'p':
+      opt.stream_out = true;
+      break;
     default:
       break;
     }
   }
+
 
   //hard code options for now
   opt.ec_d = 1;
@@ -166,6 +229,10 @@ void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt& opt) {
 
   // all other arguments are fast[a/q] files to be read
   while (optind < argc) opt.files.push_back(argv[optind++]);
+
+  if (opt.files.size() == 1 && opt.files[0] == "-") {
+    opt.stream_in = true;
+  }
 }
 
 
@@ -177,17 +244,15 @@ bool check_ProgramOptions_sort(Bustools_opt& opt) {
   size_t max_threads = std::thread::hardware_concurrency();
 
   if (opt.threads <= 0) {
-
     std::cerr << "Error: Number of threads cannot be less than or equal to 0" << std::endl;
     ret = false;
   } else if (opt.threads > max_threads) {
-
     std::cerr << "Warning: Number of threads cannot be greater than or equal to " << max_threads 
     << ". Setting number of threads to " << max_threads << std::endl;
     opt.threads = max_threads;
   }
 
-  if (opt.output.empty()) {
+  if (!opt.stream_out && opt.output.empty()) {
     std::cerr << "Error missing output file" << std::endl;
     ret = false;
   } 
@@ -196,7 +261,7 @@ bool check_ProgramOptions_sort(Bustools_opt& opt) {
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input files" << std::endl;
     ret = false;
-  } else {
+  } else if (!opt.stream_in) {
     for (const auto& it : opt.files) {  
       if (!checkFileExists(it)) {
         std::cerr << "Error: File not found, " << it << std::endl;
@@ -265,7 +330,7 @@ bool check_ProgramOptions_merge(Bustools_opt& opt) {
 bool check_ProgramOptions_dump(Bustools_opt& opt) {
   bool ret = true;
 
-  if (opt.output.empty()) {
+  if (!opt.stream_out && opt.output.empty()) {
     std::cerr << "Error missing output file" << std::endl;
     ret = false;
   } 
@@ -274,7 +339,7 @@ bool check_ProgramOptions_dump(Bustools_opt& opt) {
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input files" << std::endl;
     ret = false;
-  } else {
+  } else if (!opt.stream_in) {    
     for (const auto& it : opt.files) {  
       if (!checkFileExists(it)) {
         std::cerr << "Error: File not found, " << it << std::endl;
@@ -289,6 +354,42 @@ bool check_ProgramOptions_dump(Bustools_opt& opt) {
 bool check_ProgramOptions_correct(Bustools_opt& opt) {
   bool ret = true;
 
+  if (!opt.stream_out && opt.output.empty()) {
+    std::cerr << "Error: Missing output file" << std::endl;
+    ret = false;
+  } 
+
+
+  if (opt.files.size() == 0) {
+    std::cerr << "Error: Missing BUS input files" << std::endl;
+    ret = false;
+  } else {
+    if (!opt.stream_in) {
+      for (const auto& it : opt.files) {  
+        if (!checkFileExists(it)) {
+          std::cerr << "Error: File not found, " << it << std::endl;
+          ret = false;
+        }
+      }
+    }
+  }
+
+  if (opt.whitelist.size() == 0) {
+    std::cerr << "Error: Missing whitelist file" << std::endl;
+    ret = false;
+  } else {
+    if (!checkFileExists(opt.whitelist)) {
+      std::cerr << "Error: File not found " << opt.whitelist << std::endl;
+      ret = false;
+    }
+  }
+
+  return ret;
+}
+
+bool check_ProgramOptions_count(Bustools_opt& opt) {
+  bool ret = true;
+
   if (opt.output.empty()) {
     std::cerr << "Error: Missing output file" << std::endl;
     ret = false;
@@ -299,20 +400,39 @@ bool check_ProgramOptions_correct(Bustools_opt& opt) {
     std::cerr << "Error: Missing BUS input files" << std::endl;
     ret = false;
   } else {
-    for (const auto& it : opt.files) {  
-      if (!checkFileExists(it)) {
-        std::cerr << "Error: File not found, " << it << std::endl;
-        ret = false;
+    if (!opt.stream_in) {
+      for (const auto& it : opt.files) {  
+        if (!checkFileExists(it)) {
+          std::cerr << "Error: File not found, " << it << std::endl;
+          ret = false;
+        }
       }
     }
   }
 
-  if (opt.whitelist.size() == 0) {
-    std::cerr << "Error: Missing whitelist file" << std::endl;
-    ret = false;
+  if (opt.count_genes.size() == 0) {
+    std::cerr << "Error: missing gene mapping file" << std::endl;
   } else {
-    if (!checkFileExists(opt.whitelist)) {
-      std::cerr << "Error: File not foundm " << opt.whitelist << std::endl;
+    if (!checkFileExists(opt.count_genes)) {
+      std::cerr << "Error: File not found " << opt.count_genes << std::endl;
+      ret = false;
+    }
+  }
+
+  if (opt.count_ecs.size() == 0) {
+    std::cerr << "Error: missing equialence class mapping file" << std::endl;
+  } else {
+    if (!checkFileExists(opt.count_genes)) {
+      std::cerr << "Error: File not found " << opt.count_ecs << std::endl;
+      ret = false;
+    }
+  }
+
+  if (opt.count_txp.size() == 0) {
+    std::cerr << "Error: missing transcript name file" << std::endl;
+  } else {
+    if (!checkFileExists(opt.count_genes)) {
+      std::cerr << "Error: File not found " << opt.count_txp << std::endl;
       ret = false;
     }
   }
@@ -328,6 +448,7 @@ void Bustools_Usage() {
   << "text            Output as tab separated text file" << std::endl 
   << "merge           Merge bus files from same experiment" << std::endl
   << "correct         Error correct bus files" << std::endl
+  << "count           Generate count matrices from bus file" << std::endl
   << std::endl
   << "Running bustools <CMD> without arguments prints usage information for <CMD>"
   << std::endl << std::endl;
@@ -340,6 +461,7 @@ void Bustools_sort_Usage() {
   << "Options: " << std::endl
   << "-t, --threads         Number of threads to use" << std::endl
   << "-o, --output          File for sorted output" << std::endl
+  << "-p, --pipe            Write to standard output" << std::endl
   << std::endl;
 }
 
@@ -355,6 +477,7 @@ void Bustools_dump_Usage() {
   std::cout << "Usage: bustools text [options] bus-files" << std::endl << std::endl
   << "Options: " << std::endl
   << "-o, --output          File for text output" << std::endl
+  << "-p, --pipe            Write to standard output" << std::endl
   << std::endl;
 }
 
@@ -363,10 +486,20 @@ void Bustools_correct_Usage() {
   << "Options: " << std::endl
   << "-o, --output          File for corrected bus output" << std::endl
   << "-w, --whitelist       File of whitelisted barcodes to correct to" << std::endl
-  << "-c, --cells           Expected number of cells" << std::endl
+  << "-p, --pipe            Write to standard output" << std::endl
   << std::endl;
 }
 
+void Bustools_count_Usage() {
+  std::cout << "Usage: bustools count [options] bus-files" << std::endl << std::endl
+  << "Options: " << std::endl
+  << "-o, --output          File for corrected bus output" << std::endl
+  << "-g, --genemap         File for mapping transcripts to genes" << std::endl
+  << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
+  << "-t, --txnames         File with names of transcripts" << std::endl
+  << "--genecounts          Aggregate counts to genes only" << std::endl
+  << std::endl;
+}
 
 std::vector<int32_t> intersect(std::vector<int32_t> &u, std::vector<int32_t> &v) {
   std::vector<int32_t> res;
@@ -388,6 +521,250 @@ std::vector<int32_t> intersect(std::vector<int32_t> &u, std::vector<int32_t> &v)
   return std::move(res);
 }
 
+std::vector<int32_t> union_vectors(const std::vector<std::vector<int32_t>> &v) {
+  std::vector<int32_t> u;
+  for (const auto &vv : v) {
+    for (auto t : vv) {
+      u.push_back(t);
+    }
+  }
+  
+  std::sort(u.begin(), u.end());
+  u.erase(std::unique(u.begin(), u.end()), u.end());
+  return std::move(u);
+}
+
+std::vector<int32_t> intersect_vectors(const std::vector<std::vector<int32_t>> &v) {
+  std::vector<int32_t> u;
+
+  if (!v.empty()) {
+    u = v[0]; // copy
+    for (size_t i = 1; i < v.size(); i++) {
+      auto &vv = v[i];
+      int j = 0;
+      int k = 0;
+      int l = 0;
+      int n = u.size();
+      int m = vv.size();
+      // u and v are sorted, j,k,l = 0
+      while (j < n && l < m) {
+        // invariant: u[:k] is the intersection of u[:j] and vv[:l], j <= n, l <= m
+        //            u[:j] <= u[j:], vv[:l] <= v[l:], u[j:] is sorted, v[l:] is sorted, u[:k] is sorted
+        if (u[j] < vv[l]) {
+          j++;
+        } else if (u[j] > vv[l]) {
+          l++;
+        } else {
+          // match
+          if (k < j) {
+            std::swap(u[k], u[j]);
+          }
+          k++;
+          j++;
+          l++;
+        }
+      }
+      if (k < n) {
+        u.resize(k);
+      }    
+    }
+  }
+
+  return std::move(u);
+}
+
+int32_t intersect_ecs(const std::vector<int32_t> &ecs, std::vector<int32_t> &u, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv) {
+  if (ecs.empty()) {
+    return -1;
+  }
+
+  if (ecs[0] < 0 || ecs[0] >= ecmap.size()) {
+    return -1;
+  }
+  
+  if (ecs.size() == 1) {
+    return ecs[0]; // no work
+  }
+
+  u.resize(0);
+  auto &v = ecmap[ecs[0]]; // copy
+  for (size_t i = 0; i< v.size(); i++) {
+    u.push_back(v[i]);
+  }
+
+  for (size_t i = 1; i < ecs.size(); i++) {
+    if (ecs[i] < 0 || ecs[i] >= ecmap.size()) {
+      return -1;
+    }
+    const auto &v = ecmap[ecs[i]];
+
+    int j = 0;
+    int k = 0;
+    int l = 0;
+    int n = u.size();
+    int m = v.size();
+    // u and v are sorted, j,k,l = 0
+    while (j < n && l < m) {
+      // invariant: u[:k] is the intersection of u[:j] and v[:l], j <= n, l <= m
+      //            u[:j] <= u[j:], v[:l] <= v[l:], u[j:] is sorted, v[l:] is sorted, u[:k] is sorted
+      if (u[j] < v[l]) {
+        j++;
+      } else if (u[j] > v[l]) {
+        l++;
+      } else {
+        // match
+        if (k < j) {
+          std::swap(u[k], u[j]);
+        }
+        k++;
+        j++;
+        l++;
+      }
+    }
+    if (k < n) {
+      u.resize(k);
+    }
+  }
+
+  if (u.empty()) {
+    return -1;
+  }
+  auto iit = ecmapinv.find(u);
+  if (iit == ecmapinv.end()) { 
+    // create new equivalence class
+    int32_t ec = ecmap.size();
+    ecmap.push_back(u);
+    ecmapinv.insert({u,ec});
+    return ec;
+  } else {
+    return iit->second;
+  }
+}
+
+
+void vt2gene(const std::vector<int32_t> &v, const std::vector<int32_t> &genemap, std::vector<int32_t> &glist) {
+  int lastg = -2;
+  int n = v.size();
+
+  for (int i = 0; i < n; i++) {
+    auto t = v[i];
+    auto g = genemap[t];
+
+    if (g != lastg && g != -1) {
+      glist.push_back(g);
+      lastg = g;
+    }
+  }
+
+  if (glist.size() > 1) {
+    // sort and remove duplicates
+    std::sort(glist.begin(), glist.end());
+    glist.erase(std::unique(glist.begin(), glist.end()), glist.end());
+  }
+}
+
+
+
+int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes, bool assumeIntersectionIsEmpty = true) {
+  
+  std::vector<std::vector<int32_t>> gu; // per gene transcript results
+  std::vector<int32_t> u; // final list of transcripts
+  std::vector<int32_t> glist;
+
+  int32_t lastg = -2;
+  // todo, replace by intersection of the genelist
+  for (const auto ec : ecs) {
+    auto g = ec2genes[ec];
+    if (g.size() == 1 && g[0] != lastg) {
+      glist.push_back(g[0]);
+      lastg = g[0];
+    } else if (g.size() > 1) {
+      lastg = -2;
+      for (auto &x : g) {
+        glist.push_back(x);
+      }
+    }
+  }
+  
+  if (glist.empty()) {
+    return -1;
+  }
+
+  // sort and remove unique
+  std::sort(glist.begin(), glist.end());
+  glist.erase(std::unique(glist.begin(), glist.end()), glist.end());
+
+  if (glist.size() == 1 && assumeIntersectionIsEmpty) {
+    // frequent case, single gene replace with union
+    for (auto ec : ecs) {
+      for (const auto &t : ecmap[ec]) {      
+        u.push_back(t);
+      }
+    }
+    std::sort(u.begin(), u.end());
+    u.erase(std::unique(u.begin(), u.end()), u.end());
+
+    // look up ecs based on u
+    int32_t ec = -1;
+    
+    auto it = ecmapinv.find(u);
+    if (it != ecmapinv.end()) {
+      ec = it->second;              
+    } else {
+      ec = ecmapinv.size();
+      ecmapinv.insert({u,ec});
+    }
+
+    return ec; // done
+  } else {
+    // separate per gene
+    for (auto g : glist) {
+      gu.clear();
+      
+      for (auto ec : ecs) {
+        std::vector<int32_t> tg;
+        for (const auto &t : ecmap[ec]) {
+          if (genemap[t] == g) {
+            tg.push_back(t);
+          }
+        }
+        if (!tg.empty()) {
+          gu.push_back(std::move(tg));
+        }
+      }
+      auto uu = intersect_vectors(gu);
+
+      // if gene intersection is empty, use union
+      if (uu.empty()) {
+        uu = union_vectors(gu);
+      }
+
+      for (auto t : uu) { 
+        u.push_back(t);
+      }
+    }
+    int32_t ec = -1;
+    auto it = ecmapinv.find(u);
+    if (it != ecmapinv.end()) {
+      ec = it->second;              
+    } else {
+      ec = ecmapinv.size();
+      ecmapinv.insert({u,ec});
+    }
+    return ec;
+  } 
+  
+}
+
+
+void create_ec2genes(const std::vector<std::vector<int32_t>> &ecmap, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ec2gene) {
+  std::vector<int32_t> u;
+  for (int ec = 0; ec < ecmap.size(); ec++) {
+    const auto &v = ecmap[ec];    
+    vt2gene(v, genemap, u);
+    ec2gene.push_back(std::move(u));
+  }
+}
 
 
 
@@ -419,21 +796,33 @@ int main(int argc, char **argv) {
         char magic[4];
         uint32_t version = 0;
         for (const auto& infn : opt.files) { 
-          std::ifstream inf(infn.c_str(), std::ios::binary);
-          parseHeader(inf, h);
+          std::streambuf *inbuf;
+          std::ifstream inf;
+          if (!opt.stream_in) {
+            inf.open(infn.c_str(), std::ios::binary);
+            inbuf = inf.rdbuf();
+          } else {
+            inbuf = std::cin.rdbuf();
+          }
+          std::istream in(inbuf);
+
+          parseHeader(in, h);
 
           int rc = 1;
           while (true) {
-            inf.read((char*)p, N*sizeof(BUSData));
-            size_t rc = inf.gcount() / sizeof(BUSData);
+            in.read((char*)p, N*sizeof(BUSData));
+            size_t rc = in.gcount() / sizeof(BUSData);
             if (rc == 0) {
               break;
             }
+            // todo, reserve max memory
             b.insert(b.end(), p, p+rc);
           }
         }
         delete[] p; p = nullptr;
         std::cerr << "Read in " << b.size() << " number of busrecords" << std::endl;
+
+        // todo: replace with radix sort 
         std::sort(b.begin(), b.end(), [&](const BUSData& a, const BUSData &b) 
                                         {
                                           if (a.barcode == b.barcode) {
@@ -582,30 +971,53 @@ int main(int argc, char **argv) {
         size_t nr = 0;
         size_t N = 100000;
         BUSData* p = new BUSData[N];
+
+        std::streambuf *buf = nullptr;
         std::ofstream of;
-        of.open(opt.output); 
+
+        if (!opt.stream_out) {
+          of.open(opt.output); 
+          buf = of.rdbuf();
+        } else {
+          buf = std::cout.rdbuf();
+        }
+        std::ostream o(buf);
+
+
         char magic[4];      
         uint32_t version = 0;
-        for (const auto& infn : opt.files) { 
-          std::ifstream inf(infn.c_str(), std::ios::binary);
-          parseHeader(inf, h);
+        for (const auto& infn : opt.files) {          
+          std::streambuf *inbuf;
+          std::ifstream inf;
+          if (!opt.stream_in) {
+            inf.open(infn.c_str(), std::ios::binary);
+            inbuf = inf.rdbuf();
+          } else {
+            inbuf = std::cin.rdbuf();
+          }
+          std::istream in(inbuf);
+
+
+          parseHeader(in, h);
           uint32_t bclen = h.bclen;
           uint32_t umilen = h.umilen;
           int rc = 0;
           while (true) {
-            inf.read((char*)p, N*sizeof(BUSData));
-            size_t rc = inf.gcount() / sizeof(BUSData);
+            in.read((char*)p, N*sizeof(BUSData));
+            size_t rc = in.gcount() / sizeof(BUSData);
             if (rc == 0) {
               break;
             }
             nr += rc;
             for (size_t i = 0; i < rc; i++) {
-              of << binaryToString(p[i].barcode, bclen) << "\t" << binaryToString(p[i].UMI,umilen) << "\t" << p[i].ec << "\t" << p[i].count << "\n";        
+              o << binaryToString(p[i].barcode, bclen) << "\t" << binaryToString(p[i].UMI,umilen) << "\t" << p[i].ec << "\t" << p[i].count << "\n";        
             }
           }
         }
         delete[] p; p = nullptr;
-        of.close();
+        if (!opt.stream_out) {
+          of.close();
+        }
         std::cerr << "Read in " << nr << " number of busrecords" << std::endl;
       } else {
         Bustools_dump_Usage();
@@ -682,16 +1094,40 @@ int main(int argc, char **argv) {
 
         std::cerr << "Number of hamming dist 1 barcodes = " << correct.size() << std::endl;
         
-        // reopen busfiles and correct barcodes
+        std::streambuf *buf = nullptr;
         std::ofstream busf_out;
-        busf_out.open(opt.output , std::ios::out | std::ios::binary);        
-        writeHeader(busf_out, h);
+        
+        if (!opt.stream_out) {
+          busf_out.open(opt.output , std::ios::out | std::ios::binary);
+          buf = busf_out.rdbuf();
+        } else {
+          buf = std::cout.rdbuf();
+        }
+        std::ostream bus_out(buf);
+
+        bool outheader_written = false;
+        
         nr = 0;
         size_t cc = 0;
         BUSData bd;
         for (const auto& infn : opt.files) { 
-          std::ifstream inf(infn.c_str(), std::ios::binary);
-          parseHeader(inf, h);
+
+          std::streambuf *inbuf;
+          std::ifstream inf;
+          if (!opt.stream_in) {
+            inf.open(infn.c_str(), std::ios::binary);
+            inbuf = inf.rdbuf();
+          } else {
+            inbuf = std::cin.rdbuf();
+          }
+          std::istream in(inbuf);          
+          parseHeader(in, h);
+
+          if (!outheader_written) {
+            writeHeader(bus_out, h);
+            outheader_written = true;
+          }
+
           if (bclen == 0) {
             bclen = h.bclen;
 
@@ -706,11 +1142,10 @@ int main(int argc, char **argv) {
             umilen = h.umilen;
           }
 
-
           int rc = 0;
           while (true) {
-            inf.read((char*)p, N*sizeof(BUSData));
-            size_t rc = inf.gcount() / sizeof(BUSData);
+            in.read((char*)p, N*sizeof(BUSData));
+            size_t rc = in.gcount() / sizeof(BUSData);
             if (rc == 0) {
               break;
             }
@@ -725,15 +1160,211 @@ int main(int argc, char **argv) {
                 }
                 bd.count = 1;
                 cc++;
-                busf_out.write((char*) &bd, sizeof(bd));
+                bus_out.write((char*) &bd, sizeof(bd));
               }
             }
           }
         }
 
         std::cerr << "Processed " << nr << " bus records, rescued " << cc << " records" << std::endl;
-        busf_out.close();
+        if (!opt.stream_out) {
+          busf_out.close();
+        }
+
         delete[] p; p = nullptr;
+      } else {
+        Bustools_dump_Usage();
+        exit(1);
+      }
+    } else if (cmd == "count") {
+      if (disp_help) {
+        Bustools_count_Usage();
+        exit(0);        
+      }
+      parse_ProgramOptions_count(argc-1, argv+1, opt);
+      if (check_ProgramOptions_count(opt)) { //Program options are valid
+        BUSHeader h;
+        size_t nr = 0;
+        size_t N = 100000;
+        uint32_t bclen = 0;
+        BUSData* p = new BUSData[N];
+
+        // read and parse the equivelence class files
+
+        std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
+        std::vector<std::vector<int32_t>> ecmap;
+
+        std::unordered_map<std::string, int32_t> txnames;
+        parseTranscripts(opt.count_txp, txnames);
+        std::vector<int32_t> genemap(txnames.size(), -1);
+        std::unordered_map<std::string, int32_t> genenames;
+        parseGenes(opt.count_genes, txnames, genemap, genenames);
+        parseECs(opt.count_ecs, h);
+        ecmap = std::move(h.ecs);
+        ecmapinv.reserve(ecmap.size());
+        for (int32_t ec = 0; ec < ecmap.size(); ec++) {
+          ecmapinv.insert({ecmap[ec], ec});
+        }
+        std::vector<std::vector<int32_t>> ec2genes;        
+        create_ec2genes(ecmap, genemap, ec2genes);
+
+
+        std::ofstream of;
+        std::string mtx_ofn = opt.output + ".mtx";
+        std::string barcodes_ofn = opt.output + ".barcodes.txt";
+        std::string ec_ofn = opt.output + ".ec.txt";
+        of.open(mtx_ofn); 
+
+        // write out the initial header
+        of << "%%MatrixMarket matrix coordinate real general\n%\n";
+        // number of genes
+        auto mat_header_pos = of.tellp();
+        std::string dummy_header(66, '\n');
+        for (int i = 0; i < 33; i++) {
+          dummy_header[2*i] = '%';
+        }
+        of.write(dummy_header.c_str(), dummy_header.size());
+    
+
+        size_t n_cols = 0;
+        size_t n_rows = 0;
+        size_t n_entries = 0;
+        std::vector<BUSData> v;
+        v.reserve(N);
+        uint64_t current_bc = 0xFFFFFFFFFFFFFFFFULL;
+        //temporary data
+        std::vector<int32_t> ecs;
+        ecs.reserve(100);
+        std::vector<int32_t> u;
+        u.reserve(100);
+        std::vector<int32_t> ecs_v;
+        ecs_v.reserve(N);
+        //barcodes 
+        std::vector<uint64_t> barcodes;
+        int bad_count = 0;
+        int compacted = 0;
+        int rescued = 0;
+
+        auto write_barcode_matrix = [&](const std::vector<BUSData> &v) {
+          if(v.empty()) {
+            return;
+          }
+          ecs_v.resize(0);
+          n_rows+= 1;
+          
+          barcodes.push_back(v[0].barcode);
+          double val = 0.0;
+          size_t n = v.size();
+
+          for (size_t i = 0; i < n; ) {
+            size_t j = i+1;
+            for (; j < n; j++) {
+              if (v[i].UMI != v[j].UMI) {
+                break;
+              }
+            }
+
+            // v[i..j-1] share the same UMI
+            ecs.resize(0);
+            for (size_t k = i; k < j; k++) {
+              ecs.push_back(v[k].ec);
+            }
+            int32_t ec = intersect_ecs(ecs, u, ecmap, ecmapinv);
+            if (ec == -1) {
+              ec = intersect_ecs_with_genes(ecs, genemap, ecmap, ecmapinv, ec2genes);              
+              if (ec == -1) {
+                bad_count += j-i;
+              } else {
+                rescued += j-i;
+                ecs_v.push_back(ec);
+              }
+
+            } else {
+              compacted += j-i-1;
+              ecs_v.push_back(ec);
+            }
+            i = j; // increment
+          }
+          std::sort(ecs_v.begin(), ecs_v.end());
+          size_t m = ecs_v.size();
+          for (size_t i = 0; i < m; ) {
+            size_t j = i+1;
+            for (; j < m; j++) {
+              if (ecs_v[i] != ecs_v[j]) {
+                break;
+              }
+            }
+            double val = j-i;
+            of << n_rows << " " << (ecs_v[i]+1) << " " << val << "\n";
+            n_entries++;
+            
+            i = j; // increment
+          }
+        };
+
+        for (const auto& infn : opt.files) { 
+          std::ifstream inf(infn.c_str(), std::ios::binary);
+          parseHeader(inf, h);
+          bclen = h.bclen;
+          
+          int rc = 0;
+          while (true) {
+            inf.read((char*)p, N*sizeof(BUSData));
+            size_t rc = inf.gcount() / sizeof(BUSData);
+            nr += rc;
+            if (rc == 0) {
+              break;
+            }
+
+            
+            for (size_t i = 0; i < rc; i++) {
+              if (p[i].barcode != current_bc) {                 
+                // output whatever is in v
+                if (!v.empty()) {
+                  write_barcode_matrix(v);
+                }
+                v.clear();
+                current_bc = p[i].barcode;
+              }
+              v.push_back(p[i]);
+
+            }            
+          }
+          if (!v.empty()) {
+            write_barcode_matrix(v);
+          }
+        }
+        delete[] p; p = nullptr;
+        n_cols = ecmap.size();
+      
+        of.close();
+        
+        std::stringstream ss;
+        ss << n_rows << " " << n_cols << " " << n_entries << "\n";
+        std::string header = ss.str();
+        int hlen = header.size();
+        assert(hlen < 66);
+        of.open(mtx_ofn, std::ios::binary | std::ios::in | std::ios::out);
+        of.seekp(mat_header_pos);
+        of.write("%",1);
+        of.write(std::string(66-hlen-2,' ').c_str(),66-hlen-2);
+        of.write("\n",1);
+        of.write(header.c_str(), hlen);
+        of.close();
+
+        // write updated ec file
+        h.ecs = std::move(ecmap);
+        writeECs(ec_ofn, h);
+        // write barcode file
+        std::ofstream bcof;
+        bcof.open(barcodes_ofn);
+        for (const auto &x : barcodes) {
+          bcof << binaryToString(x, bclen) << "\n";
+        }
+        bcof.close();
+        std::cerr << "bad counts = " << bad_count <<", rescued  =" << rescued << ", compacted = " << compacted << std::endl;
+
+        //std::cerr << "Read in " << nr << " number of busrecords" << std::endl;
       } else {
         Bustools_dump_Usage();
         exit(1);
