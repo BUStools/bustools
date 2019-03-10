@@ -43,6 +43,7 @@ bool writeHeader(std::ostream &outf, const BUSHeader &header);
 
 bool parseECs(const std::string &filename, BUSHeader &header);
 bool writeECs(const std::string &filename, const BUSHeader &header);
+bool writeGenes(const std::string &filename, const std::unordered_map<std::string, int32_t>  &genenames);
 bool parseGenes(const std::string &filename, const std::unordered_map<std::string, int32_t> &txnames, std::vector<int32_t> &genemap, std::unordered_map<std::string, int32_t> &genenames);
 bool parseTranscripts(const std::string &filename, std::unordered_map<std::string, int32_t> &txnames);
 

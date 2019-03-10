@@ -664,6 +664,49 @@ void vt2gene(const std::vector<int32_t> &v, const std::vector<int32_t> &genemap,
 }
 
 
+void intersect_genes_of_ecs(const std::vector<int32_t> &ecs, const  std::vector<std::vector<int32_t>> &ec2genes, std::vector<int32_t> &glist) {
+  glist.resize(0);
+  if  (ecs.empty()) {
+    return;
+  }
+  // copy first to glist
+  const auto &v = ec2genes[ecs[0]];
+  for (auto x : v) {
+    glist.push_back(x);
+  }
+  // intersect the rest
+  for (int i = 1; i < ecs.size(); i++) {
+    const auto &v = ec2genes[ecs[i]];
+
+    int j = 0;
+    int k = 0;
+    int l = 0;
+    int n = glist.size();
+    int m = v.size();
+    // u and v are sorted, j,k,l = 0
+    while (j < n && l < m) {
+      // invariant: u[:k] is the intersection of u[:j] and v[:l], j <= n, l <= m
+      //            u[:j] <= u[j:], v[:l] <= v[l:], u[j:] is sorted, v[l:] is sorted, u[:k] is sorted
+      if (glist[j] < v[l]) {
+        j++;
+      } else if (glist[j] > v[l]) {
+        l++;
+      } else {
+        // match
+        if (k < j) {
+          std::swap(glist[k], glist[j]);
+        }
+        k++;
+        j++;
+        l++;
+      }
+    }
+    if (k < n) {
+      glist.resize(k);
+    }
+  }
+}
+
 
 int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes, bool assumeIntersectionIsEmpty = true) {
   
@@ -713,6 +756,7 @@ int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vec
     } else {
       ec = ecmapinv.size();
       ecmapinv.insert({u,ec});
+      // todo: update ec2genes?
     }
 
     return ec; // done
@@ -743,6 +787,12 @@ int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vec
         u.push_back(t);
       }
     }
+
+    if (u.empty()) {
+      return -1;
+    }
+    std::sort(u.begin(), u.end());
+
     int32_t ec = -1;
     auto it = ecmapinv.find(u);
     if (it != ecmapinv.end()) {
@@ -1176,6 +1226,33 @@ int main(int argc, char **argv) {
         Bustools_dump_Usage();
         exit(1);
       }
+    } else if (cmd == "fromtext") {
+      BUSHeader h;
+      uint32_t f;
+      bool out_header_written = false;
+      std::string line, bc, umi;
+      int32_t ec,count;
+
+      while(std::getline(std::cin, line)) {
+        std::stringstream ss(line);
+        ss >> bc >> umi >> ec >> count;
+        if (!out_header_written) {
+          h.bclen = bc.size();
+          h.umilen = umi.size();
+          h.version = BUSFORMAT_VERSION;
+          h.text = "converted from text format";
+          writeHeader(std::cout, h);
+          out_header_written = true;
+        }
+        BUSData b;
+        b.barcode = stringToBinary(bc, f);
+        b.UMI = stringToBinary(umi, f);
+        b.ec = ec;
+        b.count = count;
+        b.flags = 0;
+        std::cout.write((char*)&b, sizeof(b));
+      }
+
     } else if (cmd == "count") {
       if (disp_help) {
         Bustools_count_Usage();
@@ -1213,6 +1290,7 @@ int main(int argc, char **argv) {
         std::string mtx_ofn = opt.output + ".mtx";
         std::string barcodes_ofn = opt.output + ".barcodes.txt";
         std::string ec_ofn = opt.output + ".ec.txt";
+        std::string gene_ofn = opt.output + ".genes.txt";
         of.open(mtx_ofn); 
 
         // write out the initial header
@@ -1234,11 +1312,18 @@ int main(int argc, char **argv) {
         uint64_t current_bc = 0xFFFFFFFFFFFFFFFFULL;
         //temporary data
         std::vector<int32_t> ecs;
+        std::vector<int32_t> glist;
         ecs.reserve(100);
         std::vector<int32_t> u;
         u.reserve(100);
-        std::vector<int32_t> ecs_v;
-        ecs_v.reserve(N);
+        std::vector<int32_t> column_v;
+        std::vector<std::pair<int32_t, double>> column_vp;
+        if (!opt.count_collapse) {
+          column_v.reserve(N); 
+        } else {
+          column_vp.reserve(N);
+          glist.reserve(100);
+        }
         //barcodes 
         std::vector<uint64_t> barcodes;
         int bad_count = 0;
@@ -1249,7 +1334,7 @@ int main(int argc, char **argv) {
           if(v.empty()) {
             return;
           }
-          ecs_v.resize(0);
+          column_v.resize(0);
           n_rows+= 1;
           
           barcodes.push_back(v[0].barcode);
@@ -1269,6 +1354,7 @@ int main(int argc, char **argv) {
             for (size_t k = i; k < j; k++) {
               ecs.push_back(v[k].ec);
             }
+
             int32_t ec = intersect_ecs(ecs, u, ecmap, ecmapinv);
             if (ec == -1) {
               ec = intersect_ecs_with_genes(ecs, genemap, ecmap, ecmapinv, ec2genes);              
@@ -1276,26 +1362,78 @@ int main(int argc, char **argv) {
                 bad_count += j-i;
               } else {
                 rescued += j-i;
-                ecs_v.push_back(ec);
+                column_v.push_back(ec);
               }
 
             } else {
               compacted += j-i-1;
-              ecs_v.push_back(ec);
+              column_v.push_back(ec);
             }
             i = j; // increment
           }
-          std::sort(ecs_v.begin(), ecs_v.end());
-          size_t m = ecs_v.size();
+          std::sort(column_v.begin(), column_v.end());
+          size_t m = column_v.size();
           for (size_t i = 0; i < m; ) {
             size_t j = i+1;
             for (; j < m; j++) {
-              if (ecs_v[i] != ecs_v[j]) {
+              if (column_v[i] != column_v[j]) {
                 break;
               }
             }
             double val = j-i;
-            of << n_rows << " " << (ecs_v[i]+1) << " " << val << "\n";
+            of << n_rows << " " << (column_v[i]+1) << " " << val << "\n";
+            n_entries++;
+            
+            i = j; // increment
+          }
+        };
+
+        auto write_barcode_matrix_collapsed = [&](const std::vector<BUSData> &v) {
+          if(v.empty()) {
+            return;
+          }
+          column_vp.resize(0);
+          n_rows+= 1;
+          
+          barcodes.push_back(v[0].barcode);
+          double val = 0.0;
+          size_t n = v.size();
+
+          for (size_t i = 0; i < n; ) {
+            size_t j = i+1;
+            for (; j < n; j++) {
+              if (v[i].UMI != v[j].UMI) {
+                break;
+              }
+            }
+
+            // v[i..j-1] share the same UMI
+            ecs.resize(0);
+            for (size_t k = i; k < j; k++) {
+              ecs.push_back(v[k].ec);
+            }
+
+            intersect_genes_of_ecs(ecs,ec2genes, glist);
+            int gn = glist.size();
+            if (gn > 0) {
+              for (auto x : glist) {
+                column_vp.push_back({x, 1.0/gn});
+              }
+            }
+            i = j; // increment
+          }
+          std::sort(column_vp.begin(), column_vp.end());
+          size_t m = column_vp.size();
+          for (size_t i = 0; i < m; ) {
+            size_t j = i+1;
+            double val = column_vp[i].second;
+            for (; j < m; j++) {
+              if (column_vp[i].first != column_vp[j].first) {
+                break;
+              }
+              val += column_vp[j].second;
+            }
+            of << n_rows << " " << (column_vp[i].first+1) << " " << val << "\n";
             n_entries++;
             
             i = j; // increment
@@ -1321,7 +1459,11 @@ int main(int argc, char **argv) {
               if (p[i].barcode != current_bc) {                 
                 // output whatever is in v
                 if (!v.empty()) {
-                  write_barcode_matrix(v);
+                  if (!opt.count_collapse) {
+                    write_barcode_matrix(v);
+                  } else {
+                    write_barcode_matrix_collapsed(v);
+                  }
                 }
                 v.clear();
                 current_bc = p[i].barcode;
@@ -1331,11 +1473,20 @@ int main(int argc, char **argv) {
             }            
           }
           if (!v.empty()) {
-            write_barcode_matrix(v);
+            if (!opt.count_collapse) {
+              write_barcode_matrix(v);
+            } else {
+              write_barcode_matrix_collapsed(v);
+            }
           }
         }
         delete[] p; p = nullptr;
-        n_cols = ecmap.size();
+
+        if (!opt.count_collapse) {
+          n_cols = ecmap.size();
+        } else {
+          n_cols = genenames.size();
+        }
       
         of.close();
         
@@ -1354,7 +1505,11 @@ int main(int argc, char **argv) {
 
         // write updated ec file
         h.ecs = std::move(ecmap);
-        writeECs(ec_ofn, h);
+        if (!opt.count_collapse) {
+          writeECs(ec_ofn, h);
+        } else {
+          writeGenes(gene_ofn, genenames);
+        }
         // write barcode file
         std::ofstream bcof;
         bcof.open(barcodes_ofn);

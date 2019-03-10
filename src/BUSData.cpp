@@ -153,6 +153,27 @@ bool writeECs(const std::string &filename, const BUSHeader &header) {
   return true;
 }
 
+bool writeGenes(const std::string &filename, const std::unordered_map<std::string, int32_t>  &genenames) {
+  std::ofstream outf;
+  outf.open(filename.c_str(), std::ios::out);
+
+  if (!outf.is_open()) {
+    return false;
+  }
+  std::vector<std::string> names;
+  names.resize(genenames.size());
+  for (const auto &x : genenames) {
+    if (x.second >= 0) {
+      names[x.second] = x.first;
+    }
+  }
+  for (const auto &x : names) {
+    outf << x << "\n";
+  }
+
+  return true;
+}
+
 bool parseTranscripts(const std::string &filename, std::unordered_map<std::string, int32_t> &txnames) {
   std::ifstream inf(filename.c_str());
 
