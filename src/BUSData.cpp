@@ -1,5 +1,7 @@
 #include "BUSData.h"
 
+#include <cstring>
+#include <assert.h>
 #include <unordered_map>
 #include <sstream>
 #include <iostream>
@@ -182,6 +184,21 @@ bool parseTranscripts(const std::string &filename, std::unordered_map<std::strin
   while (inf >> txp) {
     txnames.insert({txp, i});
     i++;
+  }
+  return true;
+}
+
+bool parseCaptureList(const std::string &filename, std::unordered_map<std::string, int32_t> &txnames, std::unordered_set<int32_t> &captures) {
+  std::ifstream inf(filename.c_str());
+
+  std::string txp;
+  while (inf >> txp) {
+    auto it = txnames.find(txp);
+    if (it == txnames.end()) {
+      std::cerr << "Error: could not find capture transcript " << txp << " in transcript list" << std::endl;
+      return false;
+    } 
+    captures.insert(it->second);
   }
   return true;
 }

@@ -26,6 +26,8 @@ struct Bustools_opt {
   std::string count_txp;
   bool count_collapse = false;
 
+  std::string capture;
+
   bool stream_in = false;
   bool stream_out = false;
 
