@@ -1210,6 +1210,9 @@ int main(int argc, char **argv) {
         BUSData* p = new BUSData[N];
         char magic[4];      
         uint32_t version = 0;
+        size_t stat_white = 0;
+        size_t stat_corr = 0;
+        size_t stat_uncorr = 0;
 
         std::ifstream wf(opt.whitelist, std::ios::in);
         std::string line;
@@ -1278,10 +1281,8 @@ int main(int argc, char **argv) {
         bool outheader_written = false;
         
         nr = 0;
-        size_t cc = 0;
         BUSData bd;
         for (const auto& infn : opt.files) { 
-
           std::streambuf *inbuf;
           std::ifstream inf;
           if (!opt.stream_in) {
@@ -1327,16 +1328,25 @@ int main(int argc, char **argv) {
               if (it != correct.end()) {
                 if (bd.barcode != it->second) {
                   bd.barcode = it->second;
+                  stat_corr++;
+                } else {
+                  stat_white++;
                 }
                 bd.count = 1;
-                cc++;
                 bus_out.write((char*) &bd, sizeof(bd));
+              } else {
+                stat_uncorr++;
               }
             }
           }
         }
 
-        std::cerr << "Processed " << nr << " bus records, rescued " << cc << " records" << std::endl;
+        std::cerr << "Processed " << nr << " bus records" << std::endl
+        << "In whitelist = " << stat_white << std::endl
+        << "Corrected = " << stat_corr << std::endl
+        << "Uncorrected = " << stat_uncorr << std::endl;
+
+        
         if (!opt.stream_out) {
           busf_out.close();
         }
