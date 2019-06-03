@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <sys/stat.h>
+#include <unistd.h> 
 
 #include <iostream>
 #include <fstream>
@@ -13,6 +14,8 @@
 
 #include "Common.hpp"
 #include "BUSData.h"
+
+#include "bustools_sort.h"
 
 int my_mkdir(const char *path, mode_t mode) {
   #ifdef _WIN64
@@ -55,11 +58,13 @@ struct SortedVectorHasher {
 
 void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt& opt) {
 
-  const char* opt_string = "t:o:p";
+  const char* opt_string = "t:o:m:T:p";
 
   static struct option long_options[] = {
     {"threads",         required_argument,  0, 't'},
     {"output",          required_argument,  0, 'o'},
+    {"memory",          required_argument,  0, 'm'},
+    {"temp",            required_argument,  0, 'T'},
     {"pipe",            no_argument, 0, 'p'},
     {0,                 0,                  0,  0 }
   };
@@ -67,7 +72,9 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt& opt) {
   int option_index = 0, c;
 
   while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
-
+    std::string s;
+    size_t sh = 0;
+    int n = 0;
     switch (c) {
 
     case 't':
@@ -75,6 +82,34 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt& opt) {
       break;    
     case 'o':
       opt.output = optarg;
+      break;
+    case 'm':
+      s = optarg;
+      sh = 0;
+      n = s.size();
+      if (n==0) {
+        break;
+      }
+      switch(s[n-1]) {
+        case 'm':
+        case 'M':
+          sh = 20;
+          n--;
+          break;
+        case 'g':
+        case 'G':
+          sh = 30;
+          n--;
+          break;
+        default:
+          sh = 0;
+          break;
+      }
+      opt.max_memory = atoi(s.substr(0,n).c_str());
+      opt.max_memory <<= sh;
+      break;
+    case 'T':
+      opt.temp_files = optarg;
       break;
     case 'p':
       opt.stream_out = true;
@@ -297,6 +332,34 @@ bool check_ProgramOptions_sort(Bustools_opt& opt) {
     ret = false;
   } 
 
+  if (opt.max_memory < 1ULL<<26) {
+    if (opt.max_memory < 128) {
+      std::cerr << "Warning: low number supplied for maximum memory usage with out M og G suffix\n  interpreting this as " << opt.max_memory << "Gb" << std::endl;
+      opt.max_memory <<= 30;
+    } else {
+      std::cerr << "Warning: low number supplied for maximum memory, defaulting to 64Mb" << std::endl;
+      opt.max_memory = 1ULL<<26; // 64Mb is absolute minimum
+    }
+  }
+
+  if (opt.temp_files.empty()) {
+    if (opt.stream_out) {
+      std::cerr << "Error: temporary location -T must be set when using streaming output" << std::endl;
+      ret = false;      
+    } else {
+      opt.temp_files = opt.output + ".";
+    }
+  } else {
+    if (checkDirectoryExists(opt.temp_files)) {
+      // if it is a directory, create random file prefix
+      opt.temp_files += "bus.sort." + std::to_string(getpid()) + ".";      
+    } else {
+      int n = opt.temp_files.size();
+      if (opt.temp_files[n-1] != '.') {
+        opt.temp_files += '.';
+      }
+    }
+  }
 
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input files" << std::endl;
@@ -571,6 +634,9 @@ void Bustools_sort_Usage() {
   std::cout << "Usage: bustools sort [options] bus-files" << std::endl << std::endl
   << "Options: " << std::endl
   << "-t, --threads         Number of threads to use" << std::endl
+  << "-m, --memory          Maximum memory used" << std::endl
+  << "-T, --temp            Location and prefix for temporary files " << std::endl
+  << "                      required if using -p, otherwise defaults to output" << std::endl 
   << "-o, --output          File for sorted output" << std::endl
   << "-p, --pipe            Write to standard output" << std::endl
   << std::endl;
@@ -960,88 +1026,8 @@ int main(int argc, char **argv) {
       }
       parse_ProgramOptions_sort(argc-1, argv+1, opt);
       if (check_ProgramOptions_sort(opt)) { //Program options are valid
-        BUSHeader h;
-        std::vector<BUSData> b;
-        size_t N = 100000;
-        BUSData* p = new BUSData[N];
-        char magic[4];
-        uint32_t version = 0;
-        for (const auto& infn : opt.files) { 
-          std::streambuf *inbuf;
-          std::ifstream inf;
-          if (!opt.stream_in) {
-            inf.open(infn.c_str(), std::ios::binary);
-            inbuf = inf.rdbuf();
-          } else {
-            inbuf = std::cin.rdbuf();
-          }
-          std::istream in(inbuf);
-
-          parseHeader(in, h);
-
-          int rc = 1;
-          while (true) {
-            in.read((char*)p, N*sizeof(BUSData));
-            size_t rc = in.gcount() / sizeof(BUSData);
-            if (rc == 0) {
-              break;
-            }
-            // todo, reserve max memory
-            b.insert(b.end(), p, p+rc);
-          }
-        }
-        delete[] p; p = nullptr;
-        std::cerr << "Read in " << b.size() << " number of busrecords" << std::endl;
-
-        // todo: replace with radix sort 
-        std::sort(b.begin(), b.end(), [&](const BUSData& a, const BUSData &b) 
-                                        {
-                                          if (a.barcode == b.barcode) {
-                                          if (a.UMI == b.UMI) {
-                                            return a.ec < b.ec;
-                                          } else {
-                                           return a.UMI < b.UMI;
-                                          } 
-                                         } else { 
-                                           return a.barcode < b.barcode;
-                                         }});
-        std::cerr << "All sorted" << std::endl;
-
-
-        std::streambuf *buf = nullptr;
-        std::ofstream of;
-
-        if (!opt.stream_out) {
-          of.open(opt.output, std::ios::out | std::ios::binary); 
-          buf = of.rdbuf();
-        } else {
-          buf = std::cout.rdbuf();
-        }
-        std::ostream busf_out(buf);
-        
-        writeHeader(busf_out, h);
-
-        size_t n = b.size();
-        for (size_t i = 0; i < n; ) {
-          size_t j = i+1;
-          uint32_t c = b[i].count;
-          auto ec = b[i].ec;          
-          for (; j < n; j++) {
-            if (b[i].barcode != b[j].barcode || b[i].UMI != b[j].UMI || b[i].ec != b[j].ec) {
-              break;
-            }
-            c += b[j].count;
-          }
-          // merge identical things
-          b[i].count = c;
-          busf_out.write((char*)(&(b[i])), sizeof(b[i]));
-          // increment
-          i = j;
-        }
-
-        if (!opt.stream_out) {
-          of.close();    
-        }
+        //bustools_sort_orig(opt);
+        bustools_sort(opt);
       } else {
         Bustools_sort_Usage();
         exit(1);

@@ -20,6 +20,8 @@ struct Bustools_opt {
 
   int ec_d;
   int ec_dmin;
+  size_t max_memory;
+  std::string temp_files;
 
   std::string count_genes;
   std::string count_ecs;
@@ -31,7 +33,7 @@ struct Bustools_opt {
   bool stream_in = false;
   bool stream_out = false;
 
-  Bustools_opt() : threads(1) {}
+  Bustools_opt() : threads(1), max_memory(1ULL<<32) {}
 };
 
 static const char alpha[4] = {'A','C','G','T'};
