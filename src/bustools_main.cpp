@@ -1240,9 +1240,9 @@ int main(int argc, char **argv) {
         std::vector<uint64_t> bad_y;
         for (auto x : wbc) {
           // insert all hamming distance one
-          size_t sh = bclen-1;          
+          size_t sh = wc_bclen-1;          
 
-          for (size_t i = 0; i < bclen; ++i) {
+          for (size_t i = 0; i < wc_bclen; ++i) {
             for (uint64_t d = 1; d <= 3; d++) {
               uint64_t y = x ^ (d << (2*sh));
               if (correct.find(y) != correct.end()) {
@@ -1346,7 +1346,7 @@ int main(int argc, char **argv) {
         << "Corrected = " << stat_corr << std::endl
         << "Uncorrected = " << stat_uncorr << std::endl;
 
-        
+
         if (!opt.stream_out) {
           busf_out.close();
         }

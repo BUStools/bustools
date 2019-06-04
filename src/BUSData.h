@@ -33,8 +33,8 @@ struct BUSData {
   int32_t ec;
   uint32_t count;
   uint32_t flags;
-
-  BUSData() : barcode(0), UMI(0), ec(-1), count(0), flags(0) {}
+  uint32_t pad;
+  BUSData() : barcode(0), UMI(0), ec(-1), count(0), flags(0), pad(0) {}
 };
 
 
