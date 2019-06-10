@@ -1571,14 +1571,23 @@ int main(int argc, char **argv) {
         };
 
         for (const auto& infn : opt.files) { 
-          std::ifstream inf(infn.c_str(), std::ios::binary);
-          parseHeader(inf, h);
+          std::streambuf *inbuf;
+          std::ifstream inf;
+          if (!opt.stream_in) {
+            inf.open(infn.c_str(), std::ios::binary);
+            inbuf = inf.rdbuf();
+          } else {
+            inbuf = std::cin.rdbuf();
+          }
+          std::istream in(inbuf); 
+
+          parseHeader(in, h);
           bclen = h.bclen;
           
           int rc = 0;
           while (true) {
-            inf.read((char*)p, N*sizeof(BUSData));
-            size_t rc = inf.gcount() / sizeof(BUSData);
+            in.read((char*)p, N*sizeof(BUSData));
+            size_t rc = in.gcount() / sizeof(BUSData);
             nr += rc;
             if (rc == 0) {
               break;
@@ -1608,6 +1617,10 @@ int main(int argc, char **argv) {
             } else {
               write_barcode_matrix_collapsed(v);
             }
+          }
+
+          if (!opt.stream_in) {
+            inf.close();
           }
         }
         delete[] p; p = nullptr;
