@@ -350,9 +350,10 @@ bool check_ProgramOptions_sort(Bustools_opt& opt) {
       opt.temp_files = opt.output + ".";
     }
   } else {
+    
     if (checkDirectoryExists(opt.temp_files)) {
       // if it is a directory, create random file prefix
-      opt.temp_files += "bus.sort." + std::to_string(getpid()) + ".";      
+      opt.temp_files += "/bus.sort." + std::to_string(getpid()) + ".";
     } else {
       int n = opt.temp_files.size();
       if (opt.temp_files[n-1] != '.') {
