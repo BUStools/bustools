@@ -620,7 +620,7 @@ void Bustools_Usage() {
   << "Where <CMD> can be one of: " << std::endl << std::endl
   << "sort            Sort bus file by barcodes and UMI" << std::endl
   << "text            Output as tab separated text file" << std::endl 
-  << "merge           Merge bus files from same experiment" << std::endl
+  //<< "merge           Merge bus files from same experiment" << std::endl
   << "correct         Error correct bus files" << std::endl
   << "count           Generate count matrices from bus file" << std::endl
   << "capture         Capture reads mapping to a transcript capture list" << std::endl
