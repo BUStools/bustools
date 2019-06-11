@@ -616,7 +616,8 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
 
 
 void Bustools_Usage() {
-  std::cout << "Usage: bustools <CMD> [arguments] .." << std::endl << std::endl
+  std::cout << "bustools " << BUSTOOLS_VERSION << std::endl << std::endl  
+  << "Usage: bustools <CMD> [arguments] .." << std::endl << std::endl
   << "Where <CMD> can be one of: " << std::endl << std::endl
   << "sort            Sort bus file by barcodes and UMI" << std::endl
   << "text            Output as tab separated text file" << std::endl 
@@ -1661,7 +1662,7 @@ int main(int argc, char **argv) {
           bcof << binaryToString(x, bclen) << "\n";
         }
         bcof.close();
-        std::cerr << "bad counts = " << bad_count <<", rescued  =" << rescued << ", compacted = " << compacted << std::endl;
+        //std::cerr << "bad counts = " << bad_count <<", rescued  =" << rescued << ", compacted = " << compacted << std::endl;
 
         //std::cerr << "Read in " << nr << " number of busrecords" << std::endl;
       } else {

@@ -8,7 +8,7 @@
 #include <string>
 
 
-#define BUSTOOLS_VERSION "0.39.0"
+#define BUSTOOLS_VERSION "0.39.1"
 
 
 struct Bustools_opt {
