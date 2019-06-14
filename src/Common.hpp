@@ -10,7 +10,7 @@
 #include <sstream>
 
 
-#define BUSTOOLS_VERSION "0.39.1"
+#define BUSTOOLS_VERSION "0.39.2"
 
 
 struct Bustools_opt {
@@ -29,6 +29,7 @@ struct Bustools_opt {
   std::string count_ecs;
   std::string count_txp;
   bool count_collapse = false;
+  bool count_gene_multimapping = false;
 
   std::string capture;
 

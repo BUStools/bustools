@@ -9,7 +9,6 @@
 
 
 void bustools_count(Bustools_opt &opt) {
-  bustools_count(opt);
   BUSHeader h;
   size_t nr = 0;
   size_t N = 100000;
@@ -111,13 +110,25 @@ void bustools_count(Bustools_opt &opt) {
         if (ec == -1) {
           bad_count += j-i;
         } else {
-          rescued += j-i;
-          column_v.push_back(ec);
+          bool filter = false;
+          if (!opt.count_gene_multimapping) {
+            filter = (ec2genes[ec].size() != 1);
+          }
+          if (!filter) {
+            rescued += j-i;
+            column_v.push_back(ec);
+          }
         }
 
       } else {
-        compacted += j-i-1;
-        column_v.push_back(ec);
+        bool filter = false;
+        if (!opt.count_gene_multimapping) {
+          filter = (ec2genes[ec].size() != 1);
+        }
+        if (!filter) {
+          compacted += j-i-1;
+          column_v.push_back(ec);
+        }
       }
       i = j; // increment
     }
@@ -166,8 +177,14 @@ void bustools_count(Bustools_opt &opt) {
       intersect_genes_of_ecs(ecs,ec2genes, glist);
       int gn = glist.size();
       if (gn > 0) {
-        for (auto x : glist) {
-          column_vp.push_back({x, 1.0/gn});
+        if (opt.count_gene_multimapping) {
+          for (auto x : glist) {
+            column_vp.push_back({x, 1.0/gn});
+          }
+        } else {
+          if (gn==1) {
+            column_vp.push_back({glist[0],1.0});
+          }
         }
       }
       i = j; // increment

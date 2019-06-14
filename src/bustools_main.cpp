@@ -179,7 +179,7 @@ void parse_ProgramOptions_capture(int argc, char **argv, Bustools_opt& opt) {
 }
 
 void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
-  const char* opt_string = "o:g:e:t:";
+  const char* opt_string = "o:g:e:t:m";
   int gene_flag = 0;
   static struct option long_options[] = {
     {"output",          required_argument,  0, 'o'},
@@ -187,6 +187,7 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
     {"ecmap",          required_argument,  0, 'e'},
     {"txnames",          required_argument,  0, 't'},
     {"genecounts", no_argument, &gene_flag, 1},
+    {"multimapping", no_argument, 0, 'm'},
     {0,                 0,                  0,  0 }
   };
 
@@ -206,6 +207,9 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
       break;
     case 'e':
       opt.count_ecs = optarg;
+      break;
+    case 'm':
+      opt.count_gene_multimapping = true;
       break;
     default:
       break;
@@ -674,6 +678,7 @@ void Bustools_count_Usage() {
   << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
   << "-t, --txnames         File with names of transcripts" << std::endl
   << "--genecounts          Aggregate counts to genes only" << std::endl
+  << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl
   << std::endl;
 }
 
@@ -905,6 +910,7 @@ int main(int argc, char **argv) {
         std::cerr << "Found " << wbc.size() << " barcodes in the whitelist" << std::endl;
 
         std::unordered_map<uint64_t, uint64_t> correct;
+        correct.reserve(wbc.size()*3*wc_bclen);
         // whitelisted barcodes correct to themselves
         for (uint64_t b : wbc) {
           correct.insert({b,b});
