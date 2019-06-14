@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <vector>
 #include <string>
+#include <unordered_map>
+#include <sstream>
 
 
 #define BUSTOOLS_VERSION "0.39.1"
@@ -64,6 +66,30 @@ inline uint32_t rndup(uint32_t v) {
 
   return v;
 }
+
+
+struct SortedVectorHasher {
+  size_t operator()(const std::vector<int32_t>& v) const {
+    uint64_t r = 0;
+    int i=0;
+    for (auto x : v) {
+      uint64_t t = std::hash<int32_t>{}(x);
+      t = (x>>i) | (x<<(64-i));
+      r = r ^ t;
+      i = (i+1)%64;
+    }
+    return r;
+  }
+};
+std::vector<int32_t> intersect(std::vector<int32_t> &u, std::vector<int32_t> &v);
+std::vector<int32_t> union_vectors(const std::vector<std::vector<int32_t>> &v);
+std::vector<int32_t> intersect_vectors(const std::vector<std::vector<int32_t>> &v);
+int32_t intersect_ecs(const std::vector<int32_t> &ecs, std::vector<int32_t> &u, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv);
+void vt2gene(const std::vector<int32_t> &v, const std::vector<int32_t> &genemap, std::vector<int32_t> &glist);
+void intersect_genes_of_ecs(const std::vector<int32_t> &ecs, const  std::vector<std::vector<int32_t>> &ec2genes, std::vector<int32_t> &glist);
+int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes, bool assumeIntersectionIsEmpty = true);
+void create_ec2genes(const std::vector<std::vector<int32_t>> &ecmap, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ec2gene);
+
 
 
 
