@@ -15,7 +15,9 @@ __bustools__ works with __BUS__ files which can be generated efficiently from ra
 
 ## Installation
 
-Download bustools with
+Binaries can be downloaded from the [__bustools__ website](https://bustools.github.io/download). 
+
+To compile bustools download the source code with
 
 `git clone https://github.com/BUStools/bustools.git`
 
