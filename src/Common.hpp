@@ -38,7 +38,7 @@ struct Bustools_opt {
 
   int threshold;
 
-  Bustools_opt() : threads(1), max_memory(1ULL<<32) {}
+  Bustools_opt() : threads(1), max_memory(1ULL<<32), threshold(0)  {}
 };
 
 static const char alpha[4] = {'A','C','G','T'};

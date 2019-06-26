@@ -677,7 +677,7 @@ bool check_ProgramOptions_whitelist(Bustools_opt &opt) {
     }
   }
 
-  if (opt.threshold <= 0) {
+  if (opt.threshold < 0) { // threshold = 0 for no threshold
     std::cerr << "Error: Threshold cannot be less than or equal to 0 " << std::endl;
     ret = false;
   }
