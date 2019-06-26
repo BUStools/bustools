@@ -17,6 +17,7 @@
 
 #include "bustools_sort.h"
 #include "bustools_count.h"
+#include "bustools_whitelist.h"
 
 int my_mkdir(const char *path, mode_t mode) {
   #ifdef _WIN64
@@ -296,6 +297,44 @@ void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt& opt) {
   // all other arguments are fast[a/q] files to be read
   while (optind < argc) opt.files.push_back(argv[optind++]);
 
+  if (opt.files.size() == 1 && opt.files[0] == "-") {
+    opt.stream_in = true;
+  }
+}
+
+void parse_ProgramOptions_whitelist(int argc, char **argv, Bustools_opt &opt) {
+  
+  /* Parse options. */
+  const char *opt_string = "o:f:t:";
+
+  static struct option long_options[] = {
+    {"output", required_argument, 0, 'o'},
+    {"threshold", required_argument, 0, 'f'},
+    {"threads", required_argument, 0, 't'},
+    {0, 0, 0, 0}
+  };
+
+  int option_index = 0, c;
+
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
+    switch (c) {
+      case 'o':
+        opt.output = optarg;
+        break;
+      case 'f':
+        opt.threshold = atoi(optarg);
+        break;
+      case 't':
+        opt.threads = atoi(optarg);
+        break;
+      default:
+        break;
+    }
+  }
+
+  /* All other argumuments are (sorted) BUS files. */
+  while (optind < argc) opt.files.push_back(argv[optind++]);
+  
   if (opt.files.size() == 1 && opt.files[0] == "-") {
     opt.stream_in = true;
   }
@@ -605,6 +644,47 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
   return ret;
 }
 
+bool check_ProgramOptions_whitelist(Bustools_opt &opt) {
+  bool ret = true;
+
+  size_t max_threads = std::thread::hardware_concurrency();
+
+  if (opt.threads <= 0) {
+    std::cerr << "Error: Number of threads cannot be less than or equal to 0" << std::endl;
+    ret = false;
+  } else if (opt.threads > max_threads) {
+    std::cerr << "Warning: Number of threads cannot be greater than or equal to " << max_threads 
+    << ". Setting number of threads to " << max_threads << std::endl;
+    opt.threads = max_threads;
+  }
+
+  if (opt.output.empty()) {
+    std::cerr << "Error: Missing output file" << std::endl;
+    ret = false;
+  } 
+
+  if (opt.files.size() == 0) {
+    std::cerr << "Error: Missing BUS input files" << std::endl;
+    ret = false;
+  } else {
+    if (!opt.stream_in) {
+      for (const auto& it : opt.files) {  
+        if (!checkFileExists(it)) {
+          std::cerr << "Error: File not found, " << it << std::endl;
+          ret = false;
+        }
+      }
+    }
+  }
+
+  if (opt.threshold <= 0) {
+    std::cerr << "Error: Threshold cannot be less than or equal to 0 " << std::endl;
+    ret = false;
+  }
+
+  return ret;
+}
+
 
 void Bustools_Usage() {
   std::cout << "bustools " << BUSTOOLS_VERSION << std::endl << std::endl  
@@ -616,6 +696,7 @@ void Bustools_Usage() {
   << "correct         Error correct bus files" << std::endl
   << "count           Generate count matrices from bus file" << std::endl
   << "capture         Capture reads mapping to a transcript capture list" << std::endl
+  << "whitelist       Generate whitelist from bus file" << std::endl
   << std::endl
   << "Running bustools <CMD> without arguments prints usage information for <CMD>"
   << std::endl << std::endl;
@@ -680,6 +761,15 @@ void Bustools_count_Usage() {
   << "--genecounts          Aggregate counts to genes only" << std::endl
   << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl
   << std::endl;
+}
+
+void Bustools_whitelist_Usage() {
+  std::cout << "Usage: bustools whitelist [options] bus-files" << std::endl << std::endl
+    << "Options: " << std::endl
+    << "-o, --output        File for whitelist" << std::endl
+    << "-f, --threshold     Minimum number of times a barcode must appear to be included in whitelist" << std::endl
+    << "-t, --threads       Number of threads to use" << std::endl
+    << std::endl;
 }
 
 
@@ -1208,6 +1298,18 @@ int main(int argc, char **argv) {
 
       } else {
         Bustools_dump_Usage();
+        exit(1);
+      }
+    } else if (cmd == "whitelist") {
+      if (disp_help) {
+        Bustools_whitelist_Usage();
+        exit(0);        
+      }
+      parse_ProgramOptions_whitelist(argc-1, argv+1, opt);
+      if (check_ProgramOptions_whitelist(opt)) { //Program options are valid
+        bustools_whitelist(opt);
+      } else {
+        Bustools_whitelist_Usage();
         exit(1);
       }
     } else {

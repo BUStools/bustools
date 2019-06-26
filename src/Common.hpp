@@ -36,6 +36,8 @@ struct Bustools_opt {
   bool stream_in = false;
   bool stream_out = false;
 
+  int threshold;
+
   Bustools_opt() : threads(1), max_memory(1ULL<<32) {}
 };
 
