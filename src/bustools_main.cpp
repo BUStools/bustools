@@ -305,12 +305,11 @@ void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt& opt) {
 void parse_ProgramOptions_whitelist(int argc, char **argv, Bustools_opt &opt) {
   
   /* Parse options. */
-  const char *opt_string = "o:f:t:";
+  const char *opt_string = "o:f:";
 
   static struct option long_options[] = {
     {"output", required_argument, 0, 'o'},
     {"threshold", required_argument, 0, 'f'},
-    {"threads", required_argument, 0, 't'},
     {0, 0, 0, 0}
   };
 
@@ -323,9 +322,6 @@ void parse_ProgramOptions_whitelist(int argc, char **argv, Bustools_opt &opt) {
         break;
       case 'f':
         opt.threshold = atoi(optarg);
-        break;
-      case 't':
-        opt.threads = atoi(optarg);
         break;
       default:
         break;
@@ -647,17 +643,6 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
 bool check_ProgramOptions_whitelist(Bustools_opt &opt) {
   bool ret = true;
 
-  size_t max_threads = std::thread::hardware_concurrency();
-
-  if (opt.threads <= 0) {
-    std::cerr << "Error: Number of threads cannot be less than or equal to 0" << std::endl;
-    ret = false;
-  } else if (opt.threads > max_threads) {
-    std::cerr << "Warning: Number of threads cannot be greater than or equal to " << max_threads 
-    << ". Setting number of threads to " << max_threads << std::endl;
-    opt.threads = max_threads;
-  }
-
   if (opt.output.empty()) {
     std::cerr << "Error: Missing output file" << std::endl;
     ret = false;
@@ -768,7 +753,6 @@ void Bustools_whitelist_Usage() {
     << "Options: " << std::endl
     << "-o, --output        File for whitelist" << std::endl
     << "-f, --threshold     Minimum number of times a barcode must appear to be included in whitelist" << std::endl
-    << "-t, --threads       Number of threads to use" << std::endl
     << std::endl;
 }
 
