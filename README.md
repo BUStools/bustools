@@ -6,7 +6,7 @@ RNA-Seq datasets.
 
 The design and motivation for the BUS format and BUStools are described in detail in 
 
-P Melsted, V Ntranos, L Pachter, [The Barcode, UMI, Set format and BUStools](https://www.biorxiv.org/content/early/2018/11/18/472571), bioRxiv 2018 pp: 472571.
+P Melsted, V Ntranos, L Pachter, [The Barcode, UMI, Set format and BUStools](https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/btz279/5487510), Bioinformatics, btz279, 2019.
 
 
 ## BUS format
