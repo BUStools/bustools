@@ -751,7 +751,7 @@ void Bustools_count_Usage() {
 void Bustools_whitelist_Usage() {
   std::cout << "Usage: bustools whitelist [options] bus-files" << std::endl << std::endl
     << "Options: " << std::endl
-    << "-o, --output        File for whitelist" << std::endl
+    << "-o, --output        File for the whitelist" << std::endl
     << "-f, --threshold     Minimum number of times a barcode must appear to be included in whitelist" << std::endl
     << std::endl;
 }
@@ -940,7 +940,7 @@ int main(int argc, char **argv) {
         if (!opt.stream_out) {
           of.close();
         }
-        std::cerr << "Read in " << nr << " number of busrecords" << std::endl;
+        std::cerr << "Read in " << nr << " BUS records" << std::endl;
       } else {
         Bustools_dump_Usage();
         exit(1);
@@ -1145,7 +1145,7 @@ int main(int argc, char **argv) {
       if (check_ProgramOptions_count(opt)) { //Program options are valid
         bustools_count(opt);
       } else {
-        Bustools_dump_Usage();
+        Bustools_count_Usage();
         exit(1);
       }
     } else if (cmd == "capture") {

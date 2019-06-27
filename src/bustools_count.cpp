@@ -299,5 +299,5 @@ void bustools_count(Bustools_opt &opt) {
   bcof.close();
   //std::cerr << "bad counts = " << bad_count <<", rescued  =" << rescued << ", compacted = " << compacted << std::endl;
 
-  //std::cerr << "Read in " << nr << " number of busrecords" << std::endl;
+  //std::cerr << "Read in " << nr << " BUS records" << std::endl;
 }
