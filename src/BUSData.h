@@ -13,7 +13,8 @@ const uint32_t BUSFORMAT_VERSION = 1;
 struct BUSTranscript {
   std::string name;
   uint32_t transcriptLength;
-  BUSTranscript() : transcriptLength(0) {}  
+  BUSTranscript() : transcriptLength(0) {}
+  BUSTranscript(std::string n) : name(n), transcriptLength(0) {}
 };
 
 
