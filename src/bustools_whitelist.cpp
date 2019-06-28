@@ -144,11 +144,12 @@ void bustools_whitelist(Bustools_opt &opt) {
     }
     /* Done going through BUSdata *p. */
 
-    if (bc_count >= threshold) {
-      o << binaryToString(curr_bc, bclen) << "\n";
-    }
   }
   /* Done reading BUS file. */
+  
+  if (bc_count >= threshold) {
+    o << binaryToString(curr_bc, bclen) << "\n";
+  }
 
   delete[] p; p = nullptr;
   of.close();

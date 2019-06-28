@@ -18,6 +18,7 @@
 #include "bustools_sort.h"
 #include "bustools_count.h"
 #include "bustools_whitelist.h"
+#include "bustools_project.h"
 
 int my_mkdir(const char *path, mode_t mode) {
   #ifdef _WIN64
@@ -322,6 +323,52 @@ void parse_ProgramOptions_whitelist(int argc, char **argv, Bustools_opt &opt) {
         break;
       case 'f':
         opt.threshold = atoi(optarg);
+        break;
+      default:
+        break;
+    }
+  }
+
+  /* All other argumuments are (sorted) BUS files. */
+  while (optind < argc) opt.files.push_back(argv[optind++]);
+  
+  if (opt.files.size() == 1 && opt.files[0] == "-") {
+    opt.stream_in = true;
+  }
+}
+
+void parse_ProgramOptions_project(int argc, char **argv, Bustools_opt &opt) {
+  
+  /* Parse options. */
+  const char *opt_string = "o:g:e:t:p";
+
+  static struct option long_options[] = {
+    {"output", required_argument, 0, 'o'},
+    {"genemap", required_argument, 0, 'g'},
+    {"ecmap", required_argument, 0, 'e'},
+    {"txnames", required_argument, 0, 't'},
+    {"pipe", no_argument, 0, 'p'},
+    {0, 0, 0, 0}
+  };
+
+  int option_index = 0, c;
+
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
+    switch (c) {
+      case 'o':
+        opt.output = optarg;
+        break;
+      case 'g':
+        opt.count_genes = optarg;
+        break;
+      case 'e':
+        opt.count_ecs = optarg;
+        break;
+      case 't':
+        opt.count_txp = optarg;
+        break;
+      case 'p':
+        opt.stream_out = true;
         break;
       default:
         break;
@@ -651,20 +698,78 @@ bool check_ProgramOptions_whitelist(Bustools_opt &opt) {
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input files" << std::endl;
     ret = false;
-  } else {
+  } else if (opt.files.size() == 1) {
     if (!opt.stream_in) {
-      for (const auto& it : opt.files) {  
+      for (const auto& it : opt.files) {
         if (!checkFileExists(it)) {
           std::cerr << "Error: File not found, " << it << std::endl;
           ret = false;
         }
       }
     }
+  } else {
+    std::cerr << "Error: Only one input file allowed" << std::endl;
+    ret = false;
   }
 
   if (opt.threshold < 0) { // threshold = 0 for no threshold
-    std::cerr << "Error: Threshold cannot be less than or equal to 0 " << std::endl;
+    std::cerr << "Error: Threshold cannot be less than or equal to 0" << std::endl;
     ret = false;
+  }
+
+  return ret;
+}
+
+bool check_ProgramOptions_project(Bustools_opt &opt) {
+  bool ret = true;
+
+  if (opt.output.empty()) {
+    std::cerr << "Error: Missing output file" << std::endl;
+    ret = false;
+  } 
+
+  if (opt.files.size() == 0) {
+    std::cerr << "Error: Missing BUS input files" << std::endl;
+    ret = false;
+  } else if (opt.files.size() == 1) {
+    if (!opt.stream_in) {
+      for (const auto& it : opt.files) {
+        if (!checkFileExists(it)) {
+          std::cerr << "Error: File not found, " << it << std::endl;
+          ret = false;
+        }
+      }
+    }
+  } else {
+    std::cerr << "Error: Only one input file allowed" << std::endl;
+    ret = false;
+  }
+
+  if (opt.count_genes.size() == 0) {
+    std::cerr << "Error: missing gene mapping file" << std::endl;
+  } else {
+    if (!checkFileExists(opt.count_genes)) {
+      std::cerr << "Error: File not found " << opt.count_genes << std::endl;
+      ret = false;
+    }
+  }
+  
+  if (opt.count_ecs.size() == 0) {
+    std::cerr << "Error: missing equialence class mapping file" << std::endl;
+  } else {
+    if (!checkFileExists(opt.count_genes)) {
+      std::cerr << "Error: File not found " << opt.count_ecs << std::endl;
+      ret = false;
+    }
+  }
+  
+  if (opt.count_txp.size() == 0) {
+    std::cerr << "Error: missing transcript name file" << std::endl;
+  } else {
+    if (!checkFileExists(opt.count_genes)) {
+      std::cerr << "Error: File not found " << opt.count_txp << std::endl;
+      ret = false;
+    }
   }
 
   return ret;
@@ -682,6 +787,7 @@ void Bustools_Usage() {
   << "count           Generate count matrices from bus file" << std::endl
   << "capture         Capture reads mapping to a transcript capture list" << std::endl
   << "whitelist       Generate whitelist from bus file" << std::endl
+  << "project         Get bus file with gene equivalence classes" << std::endl
   << std::endl
   << "Running bustools <CMD> without arguments prints usage information for <CMD>"
   << std::endl << std::endl;
@@ -756,6 +862,16 @@ void Bustools_whitelist_Usage() {
     << std::endl;
 }
 
+void Bustools_project_Usage() {
+  std::cout << "Usage: bustools project [options] bus-files" << std::endl << std::endl
+    << "Options: " << std::endl
+    << "-o, --output          File for project bug output and list of genes (no extension)" << std::endl
+    << "-g, --genemap         File for mapping transcripts to genes" << std::endl
+    << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
+    << "-t, --txnames         File with names of transcripts" << std::endl
+    << "-p, --pipe            Write to standard output" << std::endl
+    << std::endl;
+}
 
 
 
@@ -1294,6 +1410,18 @@ int main(int argc, char **argv) {
         bustools_whitelist(opt);
       } else {
         Bustools_whitelist_Usage();
+        exit(1);
+      }
+    } else if (cmd == "project") {
+      if (disp_help) {
+        Bustools_project_Usage();
+        exit(0);
+      }
+      parse_ProgramOptions_project(argc-1, argv+1, opt);
+      if (check_ProgramOptions_project(opt)) { //Program options are valid
+        bustools_project(opt);
+      } else {
+        Bustools_project_Usage();
         exit(1);
       }
     } else {
