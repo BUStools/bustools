@@ -138,16 +138,15 @@ void bustools_project(Bustools_opt &opt) {
         currRec->barcode = p[i].barcode;
         currRec->UMI = p[i].UMI;
         counts.clear();
-      } else {
-        // Get gene EC and add entry to map
-        int32_t geneEc = txEc2geneEc[p[i].ec];
-        if (geneEc != -1) {
-          auto it = counts.find(geneEc);
-          if (it == counts.end()) {
-            counts.insert({geneEc, p[i].count});
-          } else {
-            it->second += p[i].count;
-          }
+      }
+      // Get gene EC and add entry to map
+      int32_t geneEc = txEc2geneEc[p[i].ec];
+      if (geneEc != -1) {
+        auto it = counts.find(geneEc);
+        if (it == counts.end()) {
+          counts.insert({geneEc, p[i].count});
+        } else {
+          it->second += p[i].count;
         }
       }
     }
