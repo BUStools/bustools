@@ -19,6 +19,7 @@
 #include "bustools_count.h"
 #include "bustools_whitelist.h"
 #include "bustools_project.h"
+#include "bustools_inspect.h"
 
 int my_mkdir(const char *path, mode_t mode) {
   #ifdef _WIN64
@@ -383,6 +384,44 @@ void parse_ProgramOptions_project(int argc, char **argv, Bustools_opt &opt) {
   }
 }
 
+void parse_ProgramOptions_inspect(int argc, char **argv, Bustools_opt &opt) {
+  
+  /* Parse options. */
+  const char *opt_string = "e:w:p";
+
+  static struct option long_options[] = {
+    {"ecmap", required_argument, 0, 'e'},
+    {"whitelist", required_argument, 0, 'w'},
+    {"pipe", no_argument, 0, 'p'},
+    {0, 0, 0, 0}
+  };
+
+  int option_index = 0, c;
+
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
+    switch (c) {
+      case 'e':
+        opt.count_ecs = optarg;
+        break;
+      case 'w':
+        opt.whitelist = optarg;
+        break;
+      case 'p':
+        opt.stream_out = true;
+        break;
+      default:
+        break;
+    }
+  }
+
+  /* All other argumuments are (sorted) BUS files. */
+  while (optind < argc) opt.files.push_back(argv[optind++]);
+  
+  if (opt.files.size() == 1 && opt.files[0] == "-") {
+    opt.stream_in = true;
+  }
+}
+
 
 
 bool check_ProgramOptions_sort(Bustools_opt& opt) {
@@ -669,7 +708,7 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
   if (opt.count_ecs.size() == 0) {
     std::cerr << "Error: missing equialence class mapping file" << std::endl;
   } else {
-    if (!checkFileExists(opt.count_genes)) {
+    if (!checkFileExists(opt.count_ecs)) {
       std::cerr << "Error: File not found " << opt.count_ecs << std::endl;
       ret = false;
     }
@@ -757,7 +796,7 @@ bool check_ProgramOptions_project(Bustools_opt &opt) {
   if (opt.count_ecs.size() == 0) {
     std::cerr << "Error: missing equialence class mapping file" << std::endl;
   } else {
-    if (!checkFileExists(opt.count_genes)) {
+    if (!checkFileExists(opt.count_ecs)) {
       std::cerr << "Error: File not found " << opt.count_ecs << std::endl;
       ret = false;
     }
@@ -775,6 +814,43 @@ bool check_ProgramOptions_project(Bustools_opt &opt) {
   return ret;
 }
 
+bool check_ProgramOptions_inspect(Bustools_opt &opt) {
+  bool ret = true;
+
+  if (opt.files.size() == 0) {
+    std::cerr << "Error: Missing BUS input files" << std::endl;
+    ret = false;
+  } else if (opt.files.size() == 1) {
+    if (!opt.stream_in) {
+      for (const auto& it : opt.files) {
+        if (!checkFileExists(it)) {
+          std::cerr << "Error: File not found, " << it << std::endl;
+          ret = false;
+        }
+      }
+    }
+  } else {
+    std::cerr << "Error: Only one input file allowed" << std::endl;
+    ret = false;
+  }
+  
+  if (opt.count_ecs.size()) {
+    if (!checkFileExists(opt.count_ecs)) {
+      std::cerr << "Error: File not found " << opt.count_ecs << std::endl;
+      ret = false;
+    }
+  }
+
+  if (opt.whitelist.size()) {
+    if (!checkFileExists(opt.whitelist)) {
+      std::cerr << "Error: File not found " << opt.whitelist << std::endl;
+      ret = false;
+    }
+  }
+  
+  return ret;
+}
+
 
 void Bustools_Usage() {
   std::cout << "bustools " << BUSTOOLS_VERSION << std::endl << std::endl  
@@ -788,6 +864,7 @@ void Bustools_Usage() {
   << "capture         Capture reads mapping to a transcript capture list" << std::endl
   << "whitelist       Generate whitelist from bus file" << std::endl
   << "project         Get bus file with gene equivalence classes" << std::endl
+  << "inspect         Gives information about BUS file" << std::endl
   << std::endl
   << "Running bustools <CMD> without arguments prints usage information for <CMD>"
   << std::endl << std::endl;
@@ -855,7 +932,7 @@ void Bustools_count_Usage() {
 }
 
 void Bustools_whitelist_Usage() {
-  std::cout << "Usage: bustools whitelist [options] bus-files" << std::endl << std::endl
+  std::cout << "Usage: bustools whitelist [options] sorted-bus-file" << std::endl << std::endl
     << "Options: " << std::endl
     << "-o, --output        File for the whitelist" << std::endl
     << "-f, --threshold     Minimum number of times a barcode must appear to be included in whitelist" << std::endl
@@ -863,12 +940,21 @@ void Bustools_whitelist_Usage() {
 }
 
 void Bustools_project_Usage() {
-  std::cout << "Usage: bustools project [options] bus-files" << std::endl << std::endl
+  std::cout << "Usage: bustools project [options] sorted-bus-file" << std::endl << std::endl
     << "Options: " << std::endl
     << "-o, --output          File for project bug output and list of genes (no extension)" << std::endl
     << "-g, --genemap         File for mapping transcripts to genes" << std::endl
     << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
     << "-t, --txnames         File with names of transcripts" << std::endl
+    << "-p, --pipe            Write to standard output" << std::endl
+    << std::endl;
+}
+
+void Bustools_inspect_Usage() {
+  std::cout << "Usage: bustools inspect [options] sorted-bus-file" << std::endl << std::endl
+    << "Options: " << std::endl
+    << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
+    << "-w, --whitelist       File of whitelisted barcodes to correct to" << std::endl
     << "-p, --pipe            Write to standard output" << std::endl
     << std::endl;
 }
@@ -1422,6 +1508,18 @@ int main(int argc, char **argv) {
         bustools_project(opt);
       } else {
         Bustools_project_Usage();
+        exit(1);
+      }
+    } else if (cmd == "inspect") {
+      if (disp_help) {
+        Bustools_inspect_Usage();
+        exit(0);
+      }
+      parse_ProgramOptions_inspect(argc-1, argv+1, opt);
+      if (check_ProgramOptions_inspect(opt)) { //Program options are valid
+        bustools_inspect(opt);
+      } else {
+        Bustools_inspect_Usage();
         exit(1);
       }
     } else {
