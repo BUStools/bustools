@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
+#include <map>
 #include <time.h>
 
 #include "Common.hpp"
@@ -10,8 +11,6 @@
 
 
 void bustools_inspect(Bustools_opt &opt) {
-  time_t startTime = time(0);
-
   BUSHeader h;
 
   /* Load matrix.ec. */
@@ -27,8 +26,6 @@ void bustools_inspect(Bustools_opt &opt) {
     }
   }
 
-  std::cerr << time(0) - startTime << ": Loaded matrix.ec" << std::endl;
-
   /* Load whitelist. */
   std::unordered_set<uint64_t> whitelist;
   if (opt.whitelist.size()) {
@@ -40,8 +37,6 @@ void bustools_inspect(Bustools_opt &opt) {
     }
     wl.close();
   }
-  
-  std::cerr << time(0) - startTime << ": Loaded whitelist" << std::endl;
 
   /* Inspect. */
   size_t N = 100000;
@@ -60,12 +55,10 @@ void bustools_inspect(Bustools_opt &opt) {
 
   /* Number of records. */
   size_t nr = 0;
-  /* Number of records with multiplicity. */
-  size_t reads = 0;
 
   /* Number of distinct barcodes. */
   uint32_t bc_count = 0;
-  /* List describing number of records per barcode, with multiplicity. */
+  /* List describing number of reads per barcode. */
   std::vector<uint32_t> readsPerBc;
   
   /* Set of all UMIs. */
@@ -77,12 +70,10 @@ void bustools_inspect(Bustools_opt &opt) {
 
   /* Frequency of number of records (for Good-Toulmin).
      Multiplicity --> frequency of multiplicity. */
-  std::unordered_map<uint32_t, uint32_t> freq_records;
+  int64_t gt_records = 0;
 
-  /* List describing number of targets per set, with multiplicity. */
-  std::vector<uint32_t> targetsPerSet;
-  /* Number of records with singleton target. */
-  uint32_t singleton;
+  /* Frequency of number of targets per set, with multiplicity. */
+  std::unordered_map<uint32_t, uint32_t> freq_targetsPerSet;
   /* Frequency of targets (for Good-Toulmin). */
   std::vector<uint32_t> freq_targets(numTargets, 0);
 
@@ -95,24 +86,33 @@ void bustools_inspect(Bustools_opt &opt) {
   uint32_t readsPerBc_count = 0, umisPerBc_count = 0;
   bool flag = false;
 
+
   /* Process records. */
-  while (true) {
-    in.read((char*) p, N * sizeof(BUSData));
-    size_t rc = in.gcount() / sizeof(BUSData);
-    if (rc == 0) {
-      break;
+  time_t startTime = time(0);
+    
+  in.read((char*) p, N * sizeof(BUSData));
+  size_t rc = in.gcount() / sizeof(BUSData);
+  nr += rc;
+
+  if (rc > 0) {
+    if (curr_bc == p[0].barcode) {
+      --curr_bc;
     }
-    nr += rc;
+    if (curr_umi == p[0].UMI) {
+      --curr_umi;
+    }
+  }
+
+  while (rc > 0) {
 
     for (size_t i = 0; i < rc; i++) {
-      if (curr_bc != p[i].barcode || !flag) {
+      if (curr_bc != p[i].barcode) {
         if (whitelist.find(curr_bc) != whitelist.end()) {
           reads_wl += readsPerBc_count;
         }
 
         ++bc_count;
         curr_bc = p[i].barcode;
-        flag = true;
         readsPerBc.push_back(readsPerBc_count);
         readsPerBc_count = 0;
 
@@ -135,13 +135,12 @@ void bustools_inspect(Bustools_opt &opt) {
         /* Do something... */
       }
 
-      reads += p[i].count;
-
       readsPerBc_count += p[i].count;
 
-      auto ok = freq_records.insert({p[i].count, 1});
-      if (!ok.second) {
-        ++ok.first->second;
+      if (p[i].count % 2) {
+        ++gt_records;
+      } else {
+        --gt_records;
       }
 
       if (ecmap.size()) {
@@ -149,14 +148,18 @@ void bustools_inspect(Bustools_opt &opt) {
           ++freq_targets[target];
         }
         uint32_t targetsInSet = ecmap[p[i].ec].size();
-        targetsPerSet.insert(targetsPerSet.end(), p[i].count, targetsInSet);
-        if (targetsInSet == 1) {
-          singleton += p[i].count;
+        auto ok = freq_targetsPerSet.insert({targetsInSet, p[i].count});
+        if (!ok.second) {
+          ok.first->second += p[i].count;
         }
       }
 
     }
     /* Done going through BUSData *p. */
+    
+    in.read((char*) p, N * sizeof(BUSData));
+    rc = in.gcount() / sizeof(BUSData);
+    nr += rc;
 
   }
   /* Done reading BUS file. */
@@ -165,7 +168,6 @@ void bustools_inspect(Bustools_opt &opt) {
   if (whitelist.find(curr_bc) != whitelist.end()) {
     reads_wl += readsPerBc_count;
   }
-  readsPerBc.push_back(readsPerBc_count);
   umisPerBc.push_back(umisPerBc_count);
 
   delete[] p; p = nullptr;
@@ -174,6 +176,20 @@ void bustools_inspect(Bustools_opt &opt) {
 
   /* Some computation. */
   size_t s;
+  
+  // Mean targets per set
+  // Number of reads
+  size_t reads = 0;
+  double targetsPerSetMean = 0;
+  for (const auto &elt : freq_targetsPerSet) {
+    targetsPerSetMean += elt.first * elt.second;
+    reads += elt.second;
+  }
+  if (reads == 0) {
+    std::cerr << "ERROR: No reads processed" << std::endl;
+    exit(1);
+  }
+  targetsPerSetMean /= reads;
 
   // Median reads per barcode
   double readsPerBcMed = 0;
@@ -182,11 +198,11 @@ void bustools_inspect(Bustools_opt &opt) {
   if (s > 1) { // Discard first elt = 0
     readsPerBcMed = readsPerBc[s / 2 + 1];
     if (s % 2) {
-      readsPerBcMed += readsPerBc[s / 2 + 2];
+      readsPerBcMed += readsPerBc[s / 2];
       readsPerBcMed /= 2;
     }
   }
- 
+
   // Median UMIs per barcode
   double umisPerBcMed = 0;
   s = umisPerBc.size();
@@ -194,39 +210,41 @@ void bustools_inspect(Bustools_opt &opt) {
   if (s > 1) { // Discard first elt = 0
     umisPerBcMed = umisPerBc[s / 2 + 1];
     if (s % 2) {
-      umisPerBcMed += umisPerBc[s / 2 + 2];
+      umisPerBcMed += umisPerBc[s / 2];
       umisPerBcMed /= 2;
     }
   }
 
-  // Good-Toulmin for number of records
-  int64_t gt_records = 0;
-  for (const auto &elt : freq_records) {
-    if (elt.first % 2) {
-      gt_records += elt.second;
-    } else {
-      gt_records -= elt.second;
-    }
-  }
-  
   // Median targets per set
   double targetsPerSetMed = 0;
-  s = targetsPerSet.size();
-  std::sort(targetsPerSet.begin(), targetsPerSet.end());
-  if (s) {
-    targetsPerSetMed = targetsPerSet[s / 2];
-    if (s % 2) {
-      targetsPerSetMed += targetsPerSet[s / 2];
+  if (freq_targetsPerSet.size()) {
+    std::map<uint32_t, uint32_t> ftps(freq_targetsPerSet.begin(), freq_targetsPerSet.end());
+    int target = reads / 2;
+    if (reads % 2 == 0) {
+      --target;
+    }
+    size_t i = 0;
+    auto elt = ftps.begin();
+    while (true) {
+      i += elt->second;
+      if (i >= target) {
+        break;
+      }
+      ++elt;
+    }
+    targetsPerSetMed = elt->first;
+    if (reads % 2 == 0 && i == target) {
+      targetsPerSetMed += (++elt)->first;
       targetsPerSetMed /= 2;
     }
   }
 
-  // Mean targets per set
-  double targetsPerSetMean = 0;
-  for (const auto &elt : targetsPerSet) {
-    targetsPerSetMean += elt;
+  // Number of singleton reads
+  uint32_t singleton = 0;
+  auto it = freq_targetsPerSet.find(1);
+  if (it != freq_targetsPerSet.end()) {
+    singleton = it->second;
   }
-  targetsPerSetMean /= targetsPerSet.size();
 
   // Good-Toulmin for number of targets
   // Also number of targets detected
@@ -303,7 +321,5 @@ void bustools_inspect(Bustools_opt &opt) {
 
       << std::flush;
   }
-  
-  std::cerr << time(0) - startTime << ": Done" << std::endl;
 
 }
