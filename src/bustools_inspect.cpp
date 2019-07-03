@@ -2,7 +2,6 @@
 #include <fstream>
 #include <cstring>
 #include <map>
-#include <time.h>
 
 #include "Common.hpp"
 #include "BUSData.h"
@@ -88,7 +87,6 @@ void bustools_inspect(Bustools_opt &opt) {
 
 
   /* Process records. */
-  time_t startTime = time(0);
     
   in.read((char*) p, N * sizeof(BUSData));
   size_t rc = in.gcount() / sizeof(BUSData);
@@ -171,8 +169,6 @@ void bustools_inspect(Bustools_opt &opt) {
   umisPerBc.push_back(umisPerBc_count);
 
   delete[] p; p = nullptr;
-
-  std::cerr << time(0) - startTime << ": Processed reads" << std::endl;
 
   /* Some computation. */
   size_t s;
@@ -267,8 +263,6 @@ void bustools_inspect(Bustools_opt &opt) {
       gt_targets -= elt.second;
     }
   }
-  
-  std::cerr << time(0) - startTime << ": Completed calculations" << std::endl;
 
   /* Output info. */
   std::cout
