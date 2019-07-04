@@ -31,7 +31,7 @@ void bustools_whitelist(Bustools_opt &opt) {
   uint32_t bclen = h.bclen;
   size_t rc = 1; // Non-zero so that second while loop works when using custom threshold
   int threshold;
-  int wl_count;
+  int wl_count = 0;
   
   uint32_t bc_r = 0, bc_u = 0;
   uint64_t curr_umi;
@@ -149,6 +149,7 @@ void bustools_whitelist(Bustools_opt &opt) {
   
   if (bc_count >= threshold) {
     o << binaryToString(curr_bc, bclen) << "\n";
+    ++wl_count;
   }
 
   delete[] p; p = nullptr;
