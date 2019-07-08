@@ -20,6 +20,7 @@
 #include "bustools_whitelist.h"
 #include "bustools_project.h"
 #include "bustools_inspect.h"
+#include "bustools_linker.h"
 
 int my_mkdir(const char *path, mode_t mode) {
   #ifdef _WIN64
@@ -405,6 +406,48 @@ void parse_ProgramOptions_inspect(int argc, char **argv, Bustools_opt &opt) {
         break;
       case 'w':
         opt.whitelist = optarg;
+        break;
+      case 'p':
+        opt.stream_out = true;
+        break;
+      default:
+        break;
+    }
+  }
+
+  /* All other argumuments are (sorted) BUS files. */
+  while (optind < argc) opt.files.push_back(argv[optind++]);
+  
+  if (opt.files.size() == 1 && opt.files[0] == "-") {
+    opt.stream_in = true;
+  }
+}
+
+void parse_ProgramOptions_linker(int argc, char **argv, Bustools_opt &opt) {
+  
+  /* Parse options. */
+  const char *opt_string = "o:s:e:p:";
+
+  static struct option long_options[] = {
+    {"output", required_argument, 0, 'o'},
+    {"start", required_argument, 0, 's'},
+    {"end", required_argument, 0, 'e'},
+    {"pipe", no_argument, 0, 'p'},
+    {0, 0, 0, 0}
+  };
+
+  int option_index = 0, c;
+
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
+    switch (c) {
+      case 'o':
+        opt.output = optarg;
+        break;
+      case 's':
+        opt.start = std::stoi(optarg);
+        break;
+      case 'e':
+        opt.end = std::stoi(optarg);
         break;
       case 'p':
         opt.stream_out = true;
@@ -851,20 +894,48 @@ bool check_ProgramOptions_inspect(Bustools_opt &opt) {
   return ret;
 }
 
+bool check_ProgramOptions_linker(Bustools_opt &opt) {
+  bool ret = true;
+  
+  if (opt.output.empty()) {
+    std::cerr << "Error: Missing output file" << std::endl;
+    ret = false;
+  } 
+
+  if (opt.files.size() == 0) {
+    std::cerr << "Error: Missing BUS input files" << std::endl;
+    ret = false;
+  } else if (opt.files.size() == 1) {
+    if (!opt.stream_in) {
+      for (const auto& it : opt.files) {
+        if (!checkFileExists(it)) {
+          std::cerr << "Error: File not found, " << it << std::endl;
+          ret = false;
+        }
+      }
+    }
+  } else {
+    std::cerr << "Error: Only one input file allowed" << std::endl;
+    ret = false;
+  }
+  
+  return ret;
+}
+
 
 void Bustools_Usage() {
   std::cout << "bustools " << BUSTOOLS_VERSION << std::endl << std::endl  
   << "Usage: bustools <CMD> [arguments] .." << std::endl << std::endl
   << "Where <CMD> can be one of: " << std::endl << std::endl
-  << "sort            Sort bus file by barcodes and UMI" << std::endl
-  << "text            Output as tab separated text file" << std::endl 
+  << "capture         Capture records from a BUS file" << std::endl
+  << "correct         Error correct a BUS file" << std::endl
+  << "count           Generate count matrices from a BUS file" << std::endl
+  << "inspect         Produce a report summarizing a BUS file" << std::endl
   //<< "merge           Merge bus files from same experiment" << std::endl
-  << "correct         Error correct bus files" << std::endl
-  << "count           Generate count matrices from bus file" << std::endl
-  << "capture         Capture reads mapping to a transcript capture list" << std::endl
-  << "whitelist       Generate whitelist from bus file" << std::endl
-  << "project         Get bus file with gene equivalence classes" << std::endl
-  << "inspect         Gives information about BUS file" << std::endl
+  << "project         Project a BUS file to gene sets" << std::endl
+  << "sort            Sort a BUS file by barcodes and UMIs" << std::endl
+  << "text            Convert a binary BUS file to a tab-delimited text file" << std::endl
+  << "whitelist       Generate a whitelist from a BUS file" << std::endl
   << std::endl
   << "Running bustools <CMD> without arguments prints usage information for <CMD>"
   << std::endl << std::endl;
@@ -955,6 +1026,15 @@ void Bustools_inspect_Usage() {
     << "Options: " << std::endl
     << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
     << "-w, --whitelist       File of whitelisted barcodes to correct to" << std::endl
+    << "-p, --pipe            Write to standard output" << std::endl
+    << std::endl;
+}
+
+void Bustools_linker_Usage() {
+  std::cout << "Usage: bustools linker [options] sorted-bus-file" << std::endl << std::endl
+    << "Options: " << std::endl
+    << "-s, --start           Start coordinate for section of barcode to remove (0-indexed, inclusive)" << std::endl
+    << "-e, --end             End coordinate for section of barcode to remove (0-indexed, exclusive)" << std::endl
     << "-p, --pipe            Write to standard output" << std::endl
     << std::endl;
 }
@@ -1520,6 +1600,18 @@ int main(int argc, char **argv) {
         bustools_inspect(opt);
       } else {
         Bustools_inspect_Usage();
+        exit(1);
+      }
+    } else if (cmd == "linker") {
+      if (disp_help) {
+        Bustools_linker_Usage();
+        exit(0);
+      }
+      parse_ProgramOptions_linker(argc-1, argv+1, opt);
+      if (check_ProgramOptions_linker(opt)) { //Program options are valid
+        bustools_linker(opt);
+      } else {
+        Bustools_linker_Usage();
         exit(1);
       }
     } else {

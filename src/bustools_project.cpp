@@ -79,7 +79,6 @@ void bustools_project(Bustools_opt &opt) {
   /* Open input/output BUS files and write header. */
 
   std::streambuf *buf = nullptr;
-
   if (!opt.stream_out) {
     of.open(opt.output + ".bus"); 
     buf = of.rdbuf();
