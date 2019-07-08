@@ -931,6 +931,7 @@ void Bustools_Usage() {
   << "correct         Error correct a BUS file" << std::endl
   << "count           Generate count matrices from a BUS file" << std::endl
   << "inspect         Produce a report summarizing a BUS file" << std::endl
+  << "linker          Remove part of barcodes in a BUS file" << std::endl
   //<< "merge           Merge bus files from same experiment" << std::endl
   << "project         Project a BUS file to gene sets" << std::endl
   << "sort            Sort a BUS file by barcodes and UMIs" << std::endl
@@ -956,7 +957,7 @@ void Bustools_sort_Usage() {
 }
 
 void Bustools_capture_Usage() {
-  std::cout << "Usage: bustools capture [options] bus-files" << std::endl << std::endl
+  std::cout << "Usage: bustools capture [options] sorted-bus-files" << std::endl << std::endl
   << "Options: " << std::endl
   << "-o, --output          Directory for output " << std::endl
   << "-c, --capture         List of transcripts to capture" << std::endl
@@ -991,7 +992,7 @@ void Bustools_correct_Usage() {
 }
 
 void Bustools_count_Usage() {
-  std::cout << "Usage: bustools count [options] bus-files" << std::endl << std::endl
+  std::cout << "Usage: bustools count [options] sorted-bus-files" << std::endl << std::endl
   << "Options: " << std::endl
   << "-o, --output          File for corrected bus output" << std::endl
   << "-g, --genemap         File for mapping transcripts to genes" << std::endl
@@ -1031,7 +1032,7 @@ void Bustools_inspect_Usage() {
 }
 
 void Bustools_linker_Usage() {
-  std::cout << "Usage: bustools linker [options] sorted-bus-file" << std::endl << std::endl
+  std::cout << "Usage: bustools linker [options] bus-file" << std::endl << std::endl
     << "Options: " << std::endl
     << "-s, --start           Start coordinate for section of barcode to remove (0-indexed, inclusive)" << std::endl
     << "-e, --end             End coordinate for section of barcode to remove (0-indexed, exclusive)" << std::endl

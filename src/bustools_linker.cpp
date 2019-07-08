@@ -61,10 +61,6 @@ void bustools_linker(Bustools_opt &opt) {
   size_t N = 100000;
   BUSData *p = new BUSData[N];
 
-  uint64_t curr_prefix;
-  // Map of record --> count
-//  std::unordered_map<lnk_Record, uint32_t> counts;
-
   while (true) {
     in.read((char*) p, N * sizeof(BUSData));
     size_t rc = in.gcount() / sizeof(BUSData);
