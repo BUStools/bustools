@@ -8,6 +8,31 @@
 
 #include "bustools_inspect.h"
 
+// From kallisto PlaintextWriter.cpp
+std::string to_json(const std::string& id, const std::string& val, bool quote,
+    bool comma = true, int level = 1) {
+  std::string out;
+
+  for (auto i = 0; i < level; ++i) {
+    out += "\t";
+  }
+
+  out += '"';
+  out += id;
+  out += "\": ";
+  if (quote) {
+    out += '"';
+  }
+  out += val;
+  if (quote) {
+    out += '"';
+  }
+  if (comma) {
+    out += ',';
+  }
+
+  return out;
+}
 
 void bustools_inspect(Bustools_opt &opt) {
   BUSHeader h;
@@ -30,7 +55,7 @@ void bustools_inspect(Bustools_opt &opt) {
   if (opt.whitelist.size()) {
     std::ifstream wl(opt.whitelist);
     std::string inp;
-    uint32_t flag;
+    uint32_t flag; // Unused
     while (std::getline(wl, inp)) {
       whitelist.insert(stringToBinary(inp, flag));
     }
@@ -263,55 +288,105 @@ void bustools_inspect(Bustools_opt &opt) {
   }
 
   /* Output info. */
-  std::cout
-    << "Read in " << nr << " BUS records" << std::endl
-    << "Total number of reads: " << reads << std::endl
-    << std::endl
+  if (opt.output.size()) {
+    std::ofstream of(opt.output);
 
-    << "Number of distinct barcodes: " << std::to_string(bc_count) << std::endl
-    << "Median number of reads per barcode: " << std::to_string(readsPerBcMed) << std::endl
-    << "Mean number of reads per barcode: " << std::to_string((double) reads / bc_count) << std::endl
-    << std::endl
+    of << "{" << std::endl
+      << to_json("numRecords", std::to_string(nr), false) << std::endl
+      << to_json("numReads", std::to_string(reads), false) << std::endl
+      
+      << to_json("numBarcodes", std::to_string(bc_count), false) << std::endl
+      << to_json("medianReadsPerBarcode", std::to_string(readsPerBcMed), false) << std::endl
+      << to_json("meanReadsPerBarcode", std::to_string((double) reads / bc_count), false) << std::endl
 
-    << "Number of distinct UMIs: " << std::to_string(umis.size()) << std::endl
-    << "Number of distinct barcode-UMI pairs: " << std::to_string(umi_count) << std::endl
-    << "Median number of UMIs per barcode: " << std::to_string(umisPerBcMed) << std::endl
-    << "Mean number of UMIs per barcode: " << std::to_string((double) umi_count / bc_count) << std::endl
-    << std::endl
+      << to_json("numUMIs", std::to_string(umis.size()), false) << std::endl
+      << to_json("numBarcodeUMIs", std::to_string(umi_count), false) << std::endl
+      << to_json("medianUMIsPerBarcode", std::to_string(umisPerBcMed), false) << std::endl
+      << to_json("meanUMIsPerBarcode", std::to_string((double) umi_count / bc_count), false) << std::endl
 
-    << "Estimated number of new records at 2x sequencing depth: "
-      << std::to_string(gt_records) << std::endl
-    << std::endl
+      << to_json("gtRecords", std::to_string(gt_records), false, opt.count_ecs.size() || opt.whitelist.size()) << std::endl
 
-    << std::flush;
+      << std::flush;
 
-  if (opt.count_ecs.size()) {
+    if (opt.count_ecs.size()) {
+      of
+        << to_json("numTargets", std::to_string(targetsDetected), false) << std::endl
+        << to_json("medianTargetsPerSet", std::to_string(targetsPerSetMed), false) << std::endl
+        << to_json("meanTargetsPerSet", std::to_string(targetsPerSetMean), false) << std::endl
+
+        << to_json("numSingleton", std::to_string(singleton), false) << std::endl
+
+        << to_json("gtTargets", std::to_string(gt_targets), false, opt.whitelist.size()) << std::endl
+
+        << std::flush;
+    }
+
+
+    if (opt.whitelist.size()) {
+      of
+        << to_json("numBarcodesOnWhitelist", std::to_string(bc_wl), false) << std::endl
+        << to_json("percentageBarcodesOnWhitelist", std::to_string((double) bc_wl / bc_count * 100), false) << std::endl
+
+        << to_json("numReadsOnWhitelist", std::to_string(reads_wl), false) << std::endl
+        << to_json("percentageReadsOnWhitelist", std::to_string((double) reads_wl / reads * 100), false, false) << std::endl
+
+        << std::flush;
+    }
+    
+    of << "}" << std::endl;
+
+    of.close();
+  } else {
     std::cout
-      << "Number of distinct targets detected: " << std::to_string(targetsDetected) << std::endl
-      << "Median number of targets per set: " << std::to_string(targetsPerSetMed) << std::endl
-      << "Mean number of targets per set: " << std::to_string(targetsPerSetMean) << std::endl
+      << "Read in " << nr << " BUS records" << std::endl
+      << "Total number of reads: " << reads << std::endl
       << std::endl
 
-      << "Number of reads with singleton target: " << std::to_string(singleton) << std::endl
+      << "Number of distinct barcodes: " << std::to_string(bc_count) << std::endl
+      << "Median number of reads per barcode: " << std::to_string(readsPerBcMed) << std::endl
+      << "Mean number of reads per barcode: " << std::to_string((double) reads / bc_count) << std::endl
       << std::endl
 
-      << "Estimated number of new targets at 2x seuqencing depth: "
-        << std::to_string(gt_targets) << std::endl
+      << "Number of distinct UMIs: " << std::to_string(umis.size()) << std::endl
+      << "Number of distinct barcode-UMI pairs: " << std::to_string(umi_count) << std::endl
+      << "Median number of UMIs per barcode: " << std::to_string(umisPerBcMed) << std::endl
+      << "Mean number of UMIs per barcode: " << std::to_string((double) umi_count / bc_count) << std::endl
+      << std::endl
+
+      << "Estimated number of new records at 2x sequencing depth: "
+        << std::to_string(gt_records) << std::endl
       << std::endl
 
       << std::flush;
-  }
+
+    if (opt.count_ecs.size()) {
+      std::cout
+        << "Number of distinct targets detected: " << std::to_string(targetsDetected) << std::endl
+        << "Median number of targets per set: " << std::to_string(targetsPerSetMed) << std::endl
+        << "Mean number of targets per set: " << std::to_string(targetsPerSetMean) << std::endl
+        << std::endl
+
+        << "Number of reads with singleton target: " << std::to_string(singleton) << std::endl
+        << std::endl
+
+        << "Estimated number of new targets at 2x seuqencing depth: "
+          << std::to_string(gt_targets) << std::endl
+        << std::endl
+
+        << std::flush;
+    }
 
 
-  if (opt.whitelist.size()) {
-    std::cout
-      << "Number of barcodes in agreement with whitelist: " << std::to_string(bc_wl)
-        << " (" << std::to_string((double) bc_wl / bc_count * 100) << "%)" << std::endl
-      << "Number of reads with barcode in agreement with whitelist: " << std::to_string(reads_wl)
-        << " (" << std::to_string((double) reads_wl / reads * 100) << "%)" << std::endl
-      << std::endl
+    if (opt.whitelist.size()) {
+      std::cout
+        << "Number of barcodes in agreement with whitelist: " << std::to_string(bc_wl)
+          << " (" << std::to_string((double) bc_wl / bc_count * 100) << "%)" << std::endl
+        << "Number of reads with barcode in agreement with whitelist: " << std::to_string(reads_wl)
+          << " (" << std::to_string((double) reads_wl / reads * 100) << "%)" << std::endl
+        << std::endl
 
-      << std::flush;
+        << std::flush;
+    }
   }
 
 }

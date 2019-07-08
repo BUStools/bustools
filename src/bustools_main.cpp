@@ -388,9 +388,10 @@ void parse_ProgramOptions_project(int argc, char **argv, Bustools_opt &opt) {
 void parse_ProgramOptions_inspect(int argc, char **argv, Bustools_opt &opt) {
   
   /* Parse options. */
-  const char *opt_string = "e:w:p";
+  const char *opt_string = "o:e:w:p";
 
   static struct option long_options[] = {
+    {"output", required_argument, 0, 'o'},
     {"ecmap", required_argument, 0, 'e'},
     {"whitelist", required_argument, 0, 'w'},
     {"pipe", no_argument, 0, 'p'},
@@ -401,6 +402,9 @@ void parse_ProgramOptions_inspect(int argc, char **argv, Bustools_opt &opt) {
 
   while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
     switch (c) {
+      case 'o':
+        opt.output = optarg;
+        break;
       case 'e':
         opt.count_ecs = optarg;
         break;
@@ -859,7 +863,7 @@ bool check_ProgramOptions_project(Bustools_opt &opt) {
 
 bool check_ProgramOptions_inspect(Bustools_opt &opt) {
   bool ret = true;
-
+  
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input files" << std::endl;
     ret = false;
@@ -931,7 +935,7 @@ void Bustools_Usage() {
   << "correct         Error correct a BUS file" << std::endl
   << "count           Generate count matrices from a BUS file" << std::endl
   << "inspect         Produce a report summarizing a BUS file" << std::endl
-  << "linker          Remove part of barcodes in a BUS file" << std::endl
+  << "linker          Remove section of barcodes in a BUS file" << std::endl
   //<< "merge           Merge bus files from same experiment" << std::endl
   << "project         Project a BUS file to gene sets" << std::endl
   << "sort            Sort a BUS file by barcodes and UMIs" << std::endl
@@ -1025,6 +1029,7 @@ void Bustools_project_Usage() {
 void Bustools_inspect_Usage() {
   std::cout << "Usage: bustools inspect [options] sorted-bus-file" << std::endl << std::endl
     << "Options: " << std::endl
+    << "-o, --output          File for JSON output (optional)" << std::endl
     << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
     << "-w, --whitelist       File of whitelisted barcodes to correct to" << std::endl
     << "-p, --pipe            Write to standard output" << std::endl
