@@ -80,9 +80,9 @@ void bustools_inspect(Bustools_opt &opt) {
   std::vector<uint32_t> freq_targets(numTargets, 0);
 
   /* Number of barcodes in agreement with whitelist. */
-  uint32_t bc_wl;
+  uint32_t bc_wl = 0;
   /* Number of reads in agreement with whitelist. */
-  uint32_t reads_wl;
+  uint32_t reads_wl = 0;
 
   uint64_t curr_umi, curr_bc;
   uint32_t readsPerBc_count = 0, umisPerBc_count = 0;
@@ -274,12 +274,12 @@ void bustools_inspect(Bustools_opt &opt) {
     << std::endl
 
     << "Number of distinct UMIs: " << std::to_string(umis.size()) << std::endl
-    << "Number of distinct barcode/UMI pairs: " << std::to_string(umi_count) << std::endl
+    << "Number of distinct barcode-UMI pairs: " << std::to_string(umi_count) << std::endl
     << "Median number of UMIs per barcode: " << std::to_string(umisPerBcMed) << std::endl
     << "Mean number of UMIs per barcode: " << std::to_string((double) umi_count / bc_count) << std::endl
     << std::endl
 
-    << "Estimated number of new records discovered if sequenced again: "
+    << "Estimated number of new records at 2x sequencing depth: "
       << std::to_string(gt_records) << std::endl
     << std::endl
 
@@ -295,7 +295,7 @@ void bustools_inspect(Bustools_opt &opt) {
       << "Number of reads with singleton target: " << std::to_string(singleton) << std::endl
       << std::endl
 
-      << "Estimated number of new targets discovered if sequenced again: "
+      << "Estimated number of new targets at 2x seuqencing depth: "
         << std::to_string(gt_targets) << std::endl
       << std::endl
 
