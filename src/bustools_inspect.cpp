@@ -54,6 +54,9 @@ void bustools_inspect(Bustools_opt &opt) {
 
   /* Number of records. */
   size_t nr = 0;
+  
+  /* Number of reads. */
+  uint64_t reads = 0;
 
   /* Number of distinct barcodes. */
   uint32_t bc_count = 0;
@@ -133,6 +136,8 @@ void bustools_inspect(Bustools_opt &opt) {
         /* Do something... */
       }
 
+      reads += p[i].count;
+
       readsPerBc_count += p[i].count;
 
       if (p[i].count % 2) {
@@ -174,16 +179,9 @@ void bustools_inspect(Bustools_opt &opt) {
   size_t s;
   
   // Mean targets per set
-  // Number of reads
-  size_t reads = 0;
   double targetsPerSetMean = 0;
   for (const auto &elt : freq_targetsPerSet) {
     targetsPerSetMean += elt.first * elt.second;
-    reads += elt.second;
-  }
-  if (reads == 0) {
-    std::cerr << "ERROR: No reads processed" << std::endl;
-    exit(1);
   }
   targetsPerSetMean /= reads;
 
