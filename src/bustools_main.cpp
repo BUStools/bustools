@@ -782,7 +782,7 @@ bool check_ProgramOptions_whitelist(Bustools_opt &opt) {
   } 
 
   if (opt.files.size() == 0) {
-    std::cerr << "Error: Missing BUS input files" << std::endl;
+    std::cerr << "Error: Missing BUS input file" << std::endl;
     ret = false;
   } else if (opt.files.size() == 1) {
     if (!opt.stream_in) {
@@ -809,13 +809,13 @@ bool check_ProgramOptions_whitelist(Bustools_opt &opt) {
 bool check_ProgramOptions_project(Bustools_opt &opt) {
   bool ret = true;
 
-  if (opt.output.empty()) {
+  if (!opt.stream_out && opt.output.empty()) {
     std::cerr << "Error: Missing output file" << std::endl;
     ret = false;
   } 
 
   if (opt.files.size() == 0) {
-    std::cerr << "Error: Missing BUS input files" << std::endl;
+    std::cerr << "Error: Missing BUS input file" << std::endl;
     ret = false;
   } else if (opt.files.size() == 1) {
     if (!opt.stream_in) {
@@ -865,7 +865,7 @@ bool check_ProgramOptions_inspect(Bustools_opt &opt) {
   bool ret = true;
   
   if (opt.files.size() == 0) {
-    std::cerr << "Error: Missing BUS input files" << std::endl;
+    std::cerr << "Error: Missing BUS input file" << std::endl;
     ret = false;
   } else if (opt.files.size() == 1) {
     if (!opt.stream_in) {
@@ -901,7 +901,7 @@ bool check_ProgramOptions_inspect(Bustools_opt &opt) {
 bool check_ProgramOptions_linker(Bustools_opt &opt) {
   bool ret = true;
   
-  if (opt.output.empty()) {
+  if (!opt.stream_out && opt.output.empty()) {
     std::cerr << "Error: Missing output file" << std::endl;
     ret = false;
   } 
@@ -909,18 +909,15 @@ bool check_ProgramOptions_linker(Bustools_opt &opt) {
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input files" << std::endl;
     ret = false;
-  } else if (opt.files.size() == 1) {
+  } else {
     if (!opt.stream_in) {
-      for (const auto& it : opt.files) {
+      for (const auto& it : opt.files) {  
         if (!checkFileExists(it)) {
           std::cerr << "Error: File not found, " << it << std::endl;
           ret = false;
         }
       }
     }
-  } else {
-    std::cerr << "Error: Only one input file allowed" << std::endl;
-    ret = false;
   }
   
   return ret;
@@ -935,7 +932,7 @@ void Bustools_Usage() {
   << "correct         Error correct a BUS file" << std::endl
   << "count           Generate count matrices from a BUS file" << std::endl
   << "inspect         Produce a report summarizing a BUS file" << std::endl
-  << "linker          Remove section of barcodes in a BUS file" << std::endl
+  << "linker          Remove section of barcodes in BUS files" << std::endl
   //<< "merge           Merge bus files from same experiment" << std::endl
   << "project         Project a BUS file to gene sets" << std::endl
   << "sort            Sort a BUS file by barcodes and UMIs" << std::endl
@@ -1037,7 +1034,7 @@ void Bustools_inspect_Usage() {
 }
 
 void Bustools_linker_Usage() {
-  std::cout << "Usage: bustools linker [options] bus-file" << std::endl << std::endl
+  std::cout << "Usage: bustools linker [options] bus-files" << std::endl << std::endl
     << "Options: " << std::endl
     << "-s, --start           Start coordinate for section of barcode to remove (0-indexed, inclusive)" << std::endl
     << "-e, --end             End coordinate for section of barcode to remove (0-indexed, exclusive)" << std::endl
