@@ -49,12 +49,92 @@ To see a list of available commands type `bustools` in the terminal
 > bustools 
 Usage: bustools <CMD> [arguments] ..
 
-Where <CMD> can be one of:
+Where <CMD> can be one of: 
 
-sort            Sort bus file by barcodes and UMI
-text            Output as tab separated text file
+capture         Capture records from a BUS file
+correct         Error correct a BUS file
+count           Generate count matrices from a BUS file
+inspect         Produce a report summarizing a BUS file
+linker          Remove section of barcodes in BUS files
+project         Project a BUS file to gene sets
+sort            Sort a BUS file by barcodes and UMIs
+text            Convert a binary BUS file to a tab-delimited text file
+whitelist       Generate a whitelist from a BUS file
 
 Running bustools <CMD> without arguments prints usage information for <CMD>
+~~~
+
+
+### Inspect
+A report summarizing the contents of a sorted BUS file can be output either to standard out or to a JSON file for further analysis using `bustools inspect`.
+
+~~~
+> bustools inspect
+Usage: bustools inspect [options] sorted-bus-file
+
+Options: 
+-o, --output          File for JSON output (optional)
+-e, --ecmap           File for mapping equivalence classes to transcripts
+-w, --whitelist       File of whitelisted barcodes to correct to
+-p, --pipe            Write to standard output
+~~~
+
+`--ecmap` and `--whitelist` are optional parameters; `bustools inspect` is much faster without them, especially without the former.
+
+Sample output (to stdout):
+~~~
+Read in 3148815 BUS records
+Total number of reads: 3431849
+
+Number of distinct barcodes: 162360
+Median number of reads per barcode: 1.000000
+Mean number of reads per barcode: 21.137281
+
+Number of distinct UMIs: 966593
+Number of distinct barcode-UMI pairs: 3062719
+Median number of UMIs per barcode: 1.000000
+Mean number of UMIs per barcode: 18.863753
+
+Estimated number of new records at 2x sequencing depth: 2719327
+
+Number of distinct targets detected: 70492
+Median number of targets per set: 2.000000
+Mean number of targets per set: 3.091267
+
+Number of reads with singleton target: 1233940
+
+Estimated number of new targets at 2x seuqencing depth: 6168
+
+Number of barcodes in agreement with whitelist: 92889 (57.211752%)
+Number of reads with barcode in agreement with whitelist: 3281671 (95.623992%)
+~~~
+
+### Linker
+`bustools linker` removes specified section of barcode in BUS files.
+
+~~~
+Usage: bustools linker [options] bus-files
+
+Options: 
+-s, --start           Start coordinate for section of barcode to remove (0-indexed, inclusive)
+-e, --end             End coordinate for section of barcode to remove (0-indexed, exclusive)
+-p, --pipe            Write to standard output
+~~~
+
+If `--start` is -1, the removed section begins at beginning of barcode. Likewise, if `--end` is -1, the removed section ends at the end of the barcode. BUS files should contain barcodes of the same length.
+
+### Project
+The `kallisto bus` command maps reads to a set of transcripts. `bustools project` takes as input kallisto's (sorted) output and a transcript to gene map (tr2g file), and outputs a BUS file, a matrix.ec file, and a list of genes, which collectively map each read to a set of genes.
+
+~~~
+Usage: bustools project [options] sorted-bus-file
+
+Options: 
+-o, --output          File for project bug output and list of genes (no extension)
+-g, --genemap         File for mapping transcripts to genes
+-e, --ecmap           File for mapping equivalence classes to transcripts
+-t, --txnames         File with names of transcripts
+-p, --pipe            Write to standard output
 ~~~
 
 ### Sorting
@@ -83,3 +163,17 @@ Usage: bustools text [options] bus-files
 Options: 
 -o, --output          File for text output
 ~~~
+
+### Whitelist
+`bustools whitelist` generates a whitelist based on the barcodes in a sorted BUS file.
+
+~~~
+Usage: bustools whitelist [options] sorted-bus-file
+
+Options: 
+-o, --output        File for the whitelist
+-f, --threshold     Minimum number of times a barcode must appear to be included in whitelist
+~~~
+
+`--threshold` is a (highly) optional parameter. If not provided, `bustools whitelist` will determine a threshold based on the first 200 to 100,200 records.
+
