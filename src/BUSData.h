@@ -47,7 +47,8 @@ bool parseECs(const std::string &filename, BUSHeader &header);
 bool writeECs(const std::string &filename, const BUSHeader &header);
 bool writeGenes(const std::string &filename, const std::unordered_map<std::string, int32_t>  &genenames);
 bool parseGenes(const std::string &filename, const std::unordered_map<std::string, int32_t> &txnames, std::vector<int32_t> &genemap, std::unordered_map<std::string, int32_t> &genenames);
-bool parseCaptureList(const std::string &filename, std::unordered_map<std::string, int32_t> &txnames, std::unordered_set<int32_t> &captures);
+bool parseTxCaptureList(const std::string &filename, std::unordered_map<std::string, int32_t> &txnames, std::unordered_set<uint64_t> &captures);
+bool parseUMIBcCaptureList(const std::string &filename, std::unordered_set<uint64_t> &captures);
 bool parseTranscripts(const std::string &filename, std::unordered_map<std::string, int32_t> &txnames);
 
 uint64_t stringToBinary(const std::string &s, uint32_t &flag);
