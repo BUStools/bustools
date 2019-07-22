@@ -1,12 +1,11 @@
 # bustools
 
 __bustools__ is a program for manipulating [__BUS__](https://github.com/BUStools/BUS) files for single cell 
-RNA-Seq datasets. 
+RNA-Seq datasets. It can be used to error correct barcodes, collapse UMIs, produce gene count or transcript compatbility count matrices, and is useful for many other tasks. See the [__kallisto &#124; bustools website__](https://www.kallistobus.tools/) for examples and instructions on how to use __bustools__ as part of a single-cell RNA-seq workflow.
 
+The design and motivation for the __BUS__ format and __bustools__ are described in detail in 
 
-The design and motivation for the BUS format and BUStools are described in detail in 
-
-P Melsted, V Ntranos, L Pachter, [The Barcode, UMI, Set format and BUStools](https://www.biorxiv.org/content/early/2018/11/18/472571), bioRxiv 2018 pp: 472571.
+P Melsted, V Ntranos, L Pachter, [The Barcode, UMI, Set format and BUStools](https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/btz279/5487510), Bioinformatics, btz279, 2019.
 
 
 ## BUS format
@@ -15,7 +14,9 @@ __bustools__ works with __BUS__ files which can be generated efficiently from ra
 
 ## Installation
 
-Download bustools with
+Binaries for Mac, Linux, Windows, and Rock64 can be downloaded from the [__bustools__ website](https://bustools.github.io/download). 
+
+To compile bustools download the source code with
 
 `git clone https://github.com/BUStools/bustools.git`
 
@@ -37,13 +38,13 @@ Build the code:
 
 `make`
 
-The bustools executable is now located in build/src. To install bustools into the cmake install prefix path type:
+The bustools executable will be located in build/src. To install bustools into the cmake install prefix path type:
 
 `make install`
 
 ## Usage
 
-To see a list of available commands type `bustools` in the terminal
+To see a list of available commands, type `bustools` in the terminal
 
 ~~~
 > bustools 
@@ -64,8 +65,49 @@ whitelist       Generate a whitelist from a BUS file
 Running bustools <CMD> without arguments prints usage information for <CMD>
 ~~~
 
+### capture
+`bustools capture` can separate BUS files into multiple files according to the capture criteria.
 
-### Inspect
+~~~
+Usage: bustools capture [options] bus-files
+
+Options: 
+-o, --output          Directory for output 
+-c, --capture         List of transcripts to capture
+-e, --ecmap           File for mapping equivalence classes to transcripts
+-t, --txnames         File with names of transcripts
+~~~
+
+
+### correct
+BUS files can be barcode error corrected with respect to a technology-specific whitelist of barcodes using `bustools correct`.
+
+~~~
+> bustools correct
+Usage: bustools correct [options] bus-files
+
+Options: 
+-o, --output          File for corrected bus output
+-w, --whitelist       File of whitelisted barcodes to correct to
+-p, --pipe            Write to standard output
+~~~
+
+### count
+BUS files can be converted into a barcode-feature matrix, where the feature can be TCCs (Transcript Compatibility Counts) or genes using `bustools count`.
+
+~~~
+> bustools count
+Usage: bustools count [options] bus-files
+
+Options: 
+-o, --output          File for corrected bus output
+-g, --genemap         File for mapping transcripts to genes
+-e, --ecmap           File for mapping equivalence classes to transcripts
+-t, --txnames         File with names of transcripts
+--genecounts          Aggregate counts to genes only
+~~~
+
+### inspect
 A report summarizing the contents of a sorted BUS file can be output either to standard out or to a JSON file for further analysis using `bustools inspect`.
 
 ~~~
@@ -109,7 +151,7 @@ Number of barcodes in agreement with whitelist: 92889 (57.211752%)
 Number of reads with barcode in agreement with whitelist: 3281671 (95.623992%)
 ~~~
 
-### Linker
+### linker
 `bustools linker` removes specified section of barcode in BUS files.
 
 ~~~
@@ -123,7 +165,7 @@ Options:
 
 If `--start` is -1, the removed section begins at beginning of barcode. Likewise, if `--end` is -1, the removed section ends at the end of the barcode. BUS files should contain barcodes of the same length.
 
-### Project
+### project
 The `kallisto bus` command maps reads to a set of transcripts. `bustools project` takes as input kallisto's (sorted) output and a transcript to gene map (tr2g file), and outputs a BUS file, a matrix.ec file, and a list of genes, which collectively map each read to a set of genes.
 
 ~~~
@@ -137,7 +179,7 @@ Options:
 -p, --pipe            Write to standard output
 ~~~
 
-### Sorting
+### sort
 
 Raw BUS output from pseudoalignment programs may be unsorted. To simply and accelerate downstream processing BUS files can be sorted using `bustools sort`
 
@@ -145,16 +187,20 @@ Raw BUS output from pseudoalignment programs may be unsorted. To simply and acce
 > bustools sort 
 Usage: bustools sort [options] bus-files
 
-Options:
+Options: 
 -t, --threads         Number of threads to use
+-m, --memory          Maximum memory used
+-T, --temp            Location and prefix for temporary files 
+                      required if using -p, otherwise defaults to output
 -o, --output          File for sorted output
+-p, --pipe            Write to standard output
 ~~~
 
 This will create a new BUS file where the BUS records are sorted by barcode first, UMI second, and equivalence class third.
 
-### Text
+### text
 
-BUS files can be converted to a tab-separated format for easy inspection and processing using shell scripts or high level languages. `bustools text` 
+BUS files can be converted to a tab-separated format for easy inspection and processing using shell scripts or high level languages with `bustools text`.
 
 ~~~
 > bustools text
@@ -164,7 +210,7 @@ Options:
 -o, --output          File for text output
 ~~~
 
-### Whitelist
+### whitelist
 `bustools whitelist` generates a whitelist based on the barcodes in a sorted BUS file.
 
 ~~~
@@ -176,4 +222,3 @@ Options:
 ~~~
 
 `--threshold` is a (highly) optional parameter. If not provided, `bustools whitelist` will determine a threshold based on the first 200 to 100,200 records.
-
