@@ -16,6 +16,10 @@
 #define CAPTURE_TX  1
 #define CAPTURE_BC  2
 #define CAPTURE_UMI 3
+#define SORT_BC 0
+#define SORT_UMI 1
+#define SORT_F 2
+#define SORT_COUNT 3
 
 struct Bustools_opt {
   int threads;
@@ -23,6 +27,8 @@ struct Bustools_opt {
   std::string output;
   std::string whitelist;  
   std::vector<std::string> files;
+  
+  char type;
 
   int ec_d;
   int ec_dmin;
@@ -36,7 +42,6 @@ struct Bustools_opt {
   bool count_gene_multimapping = false;
 
   std::string capture;
-  char type;
   bool complement = false;
   bool filter = false;
 

@@ -50,13 +50,16 @@ bool checkDirectoryExists(const std::string &fn) {
 
 void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt& opt) {
 
-  const char* opt_string = "t:o:m:T:p";
+  const char* opt_string = "t:o:m:T:cusp";
 
   static struct option long_options[] = {
     {"threads",         required_argument,  0, 't'},
     {"output",          required_argument,  0, 'o'},
     {"memory",          required_argument,  0, 'm'},
     {"temp",            required_argument,  0, 'T'},
+    {"umi",             no_argument,        0, 'u'},
+    {"count",           no_argument,        0, 'c'},
+    {"flags",           no_argument,        0, 's'},
     {"pipe",            no_argument, 0, 'p'},
     {0,                 0,                  0,  0 }
   };
@@ -102,6 +105,15 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt& opt) {
       break;
     case 'T':
       opt.temp_files = optarg;
+      break;
+    case 'c':
+      opt.type = SORT_COUNT;
+      break;
+    case 'u':
+      opt.type = SORT_UMI;
+      break;
+    case 's':
+      opt.type = SORT_F;
       break;
     case 'p':
       opt.stream_out = true;
