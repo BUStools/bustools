@@ -58,12 +58,23 @@ void bustools_project(Bustools_opt &opt) {
   /* Write gene EC matrix. */
   of.open(opt.output + ".ec");
   for (int i = 0; i < geneEc2genes.size(); ++i) {
+    of << i << '\t';
+
+    auto gene = geneEc2genes[i].begin();
+    of << std::to_string(*gene);
+    ++gene;
+    for (gene; gene != geneEc2genes[i].end(); ++gene) {
+      of << ',' << std::to_string(*gene);
+    }
+    of << std::endl;
+#if 0
     std::string geneEc = "";
     for (const auto &gene : geneEc2genes[i]) {
       geneEc += ",";
       geneEc += std::to_string(gene);
     }
     of << i << '\t' << geneEc.substr(1) << '\n';
+#endif
   }
   of.close();
 
@@ -103,7 +114,7 @@ void bustools_project(Bustools_opt &opt) {
     h.transcripts.emplace_back(gene);
   }
 
-  h.ecs = geneEc2genes;
+  h.ecs = std::move(geneEc2genes);
 
   writeHeader(o, h);
  
@@ -112,7 +123,7 @@ void bustools_project(Bustools_opt &opt) {
   size_t nw = 0;
   size_t N = 100000;
   BUSData *p = new BUSData[N];
-  BUSData *currRec = new BUSData;
+  BUSData currRec;
   // Gene EC --> counts for current barcode/UMI pair
   std::unordered_map<uint32_t, uint32_t> counts;
   
@@ -125,17 +136,17 @@ void bustools_project(Bustools_opt &opt) {
     nr += rc;
 
     for (size_t i = 0; i < rc; i++) {
-      if (currRec->barcode != p[i].barcode || currRec->UMI != p[i].UMI) {
+      if (currRec.barcode != p[i].barcode || currRec.UMI != p[i].UMI) {
         // Output BUG record
         for (const auto &rec : counts) {
           ++nw;
-          currRec->ec = rec.first;
-          currRec->count = rec.second;
-          o.write((char *) currRec, sizeof(BUSData));
+          currRec.ec = rec.first;
+          currRec.count = rec.second;
+          o.write((char *) &currRec, sizeof(BUSData));
         }
         
-        currRec->barcode = p[i].barcode;
-        currRec->UMI = p[i].UMI;
+        currRec.barcode = p[i].barcode;
+        currRec.UMI = p[i].UMI;
         counts.clear();
       }
       // Get gene EC and add entry to map
@@ -155,13 +166,12 @@ void bustools_project(Bustools_opt &opt) {
 
   for (const auto &rec : counts) {
     ++nw;
-    currRec->ec = rec.first;
-    currRec->count = rec.second;
-    o.write((char *) currRec, sizeof(BUSData));
+    currRec.ec = rec.first;
+    currRec.count = rec.second;
+    o.write((char *) &currRec, sizeof(BUSData));
   }
 
   delete[] p; p = nullptr;
-  delete currRec; currRec = nullptr;
   of.close();
 
 

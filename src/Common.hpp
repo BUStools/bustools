@@ -12,6 +12,7 @@
 
 #define BUSTOOLS_VERSION "0.39.2"
 
+#if 0
 #define TYPE_NONE 0
 #define CAPTURE_TX  1
 #define CAPTURE_BC  2
@@ -20,6 +21,10 @@
 #define SORT_UMI 1
 #define SORT_F 2
 #define SORT_COUNT 3
+#endif
+
+enum CAPTURE_TYPE : char {CAPTURE_NONE = 0, CAPTURE_TX, CAPTURE_BC, CAPTURE_UMI};
+enum SORT_TYPE : char {SORT_BC = 0, SORT_UMI, SORT_F, SORT_COUNT};
 
 struct Bustools_opt {
   int threads;
@@ -52,7 +57,7 @@ struct Bustools_opt {
 
   int start, end;
 
-  Bustools_opt() : threads(1), max_memory(1ULL<<32), type(TYPE_NONE),
+  Bustools_opt() : threads(1), max_memory(1ULL<<32), type(0),
     threshold(0), start(-1), end(-1)  {}
 };
 

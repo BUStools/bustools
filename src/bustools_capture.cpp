@@ -36,7 +36,7 @@ void bustools_capture(Bustools_opt &opt) {
   } else if (opt.type == CAPTURE_UMI || opt.type == CAPTURE_BC) {
     parseUMIBcCaptureList(opt.capture, captures);
   } else { // Should never happen
-    std::cerr << "error: unknown capture type" << std::endl;
+    std::cerr << "ERROR: Unknown capture type" << std::endl;
     exit(1);
   }
 

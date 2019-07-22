@@ -686,7 +686,7 @@ bool check_ProgramOptions_capture(Bustools_opt& opt) {
     }
   }
 
-  if (opt.type == TYPE_NONE) {
+  if (opt.type == CAPTURE_NONE) {
     std::cerr << "Error: capture list type must be specified (one of -s, -u, or -b)" << std::endl;
     ret = false;
   }

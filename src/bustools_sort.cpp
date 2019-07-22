@@ -152,6 +152,9 @@ void bustools_sort(const Bustools_opt& opt) {
       cmp = &cmp4;
       ncmp = &ncmp4;
       break;
+    default:
+      std::cerr << "ERROR: Unknown sort type" << std::endl;
+      exit(1);
   }
 
   
