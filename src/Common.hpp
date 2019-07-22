@@ -12,6 +12,10 @@
 
 #define BUSTOOLS_VERSION "0.39.2"
 
+#define TYPE_NONE 0
+#define CAPTURE_TX  1
+#define CAPTURE_BC  2
+#define CAPTURE_UMI 3
 
 struct Bustools_opt {
   int threads;
@@ -32,11 +36,19 @@ struct Bustools_opt {
   bool count_gene_multimapping = false;
 
   std::string capture;
+  char type;
+  bool complement = false;
+  bool filter = false;
 
   bool stream_in = false;
   bool stream_out = false;
 
-  Bustools_opt() : threads(1), max_memory(1ULL<<32) {}
+  int threshold;
+
+  int start, end;
+
+  Bustools_opt() : threads(1), max_memory(1ULL<<32), type(TYPE_NONE),
+    threshold(0), start(-1), end(-1)  {}
 };
 
 static const char alpha[4] = {'A','C','G','T'};

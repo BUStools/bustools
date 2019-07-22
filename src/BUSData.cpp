@@ -188,7 +188,7 @@ bool parseTranscripts(const std::string &filename, std::unordered_map<std::strin
   return true;
 }
 
-bool parseCaptureList(const std::string &filename, std::unordered_map<std::string, int32_t> &txnames, std::unordered_set<int32_t> &captures) {
+bool parseTxCaptureList(const std::string &filename, std::unordered_map<std::string, int32_t> &txnames, std::unordered_set<uint64_t> &captures) {
   std::ifstream inf(filename.c_str());
 
   std::string txp;
@@ -198,8 +198,20 @@ bool parseCaptureList(const std::string &filename, std::unordered_map<std::strin
       std::cerr << "Error: could not find capture transcript " << txp << " in transcript list" << std::endl;
       return false;
     } 
-    captures.insert(it->second);
+    captures.insert((uint64_t) it->second);
   }
+  return true;
+}
+
+bool parseUMIBcCaptureList(const std::string &filename, std::unordered_set<uint64_t> &captures) {
+  std::ifstream inf(filename.c_str());
+
+  std::string inp;
+  uint32_t flag; // Unused
+  while (getline(inf, inp)) {
+    captures.insert(stringToBinary(inp, flag));
+  }
+
   return true;
 }
 

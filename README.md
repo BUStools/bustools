@@ -50,18 +50,136 @@ To see a list of available commands, type `bustools` in the terminal
 > bustools 
 Usage: bustools <CMD> [arguments] ..
 
-Where <CMD> can be one of:
+Where <CMD> can be one of: 
 
-sort            Sort bus file by barcodes and UMI
-text            Output as tab separated text file
-correct         Error correct bus files
-count           Generate count matrices from bus file
-capture         Capture reads mapping to a transcript capture list
+capture         Capture records from a BUS file
+correct         Error correct a BUS file
+count           Generate count matrices from a BUS file
+inspect         Produce a report summarizing a BUS file
+linker          Remove section of barcodes in BUS files
+project         Project a BUS file to gene sets
+sort            Sort a BUS file by barcodes and UMIs
+text            Convert a binary BUS file to a tab-delimited text file
+whitelist       Generate a whitelist from a BUS file
 
 Running bustools <CMD> without arguments prints usage information for <CMD>
 ~~~
 
-### Sorting
+### capture
+`bustools capture` can separate BUS files into multiple files according to the capture criteria.
+
+~~~
+Usage: bustools capture [options] bus-files
+
+Options: 
+-o, --output          Directory for output 
+-c, --capture         List of transcripts to capture
+-e, --ecmap           File for mapping equivalence classes to transcripts
+-t, --txnames         File with names of transcripts
+~~~
+
+
+### correct
+BUS files can be barcode error corrected with respect to a technology-specific whitelist of barcodes using `bustools correct`.
+
+~~~
+> bustools correct
+Usage: bustools correct [options] bus-files
+
+Options: 
+-o, --output          File for corrected bus output
+-w, --whitelist       File of whitelisted barcodes to correct to
+-p, --pipe            Write to standard output
+~~~
+
+### count
+BUS files can be converted into a barcode-feature matrix, where the feature can be TCCs (Transcript Compatibility Counts) or genes using `bustools count`.
+
+~~~
+> bustools count
+Usage: bustools count [options] bus-files
+
+Options: 
+-o, --output          File for corrected bus output
+-g, --genemap         File for mapping transcripts to genes
+-e, --ecmap           File for mapping equivalence classes to transcripts
+-t, --txnames         File with names of transcripts
+--genecounts          Aggregate counts to genes only
+~~~
+
+### inspect
+A report summarizing the contents of a sorted BUS file can be output either to standard out or to a JSON file for further analysis using `bustools inspect`.
+
+~~~
+> bustools inspect
+Usage: bustools inspect [options] sorted-bus-file
+
+Options: 
+-o, --output          File for JSON output (optional)
+-e, --ecmap           File for mapping equivalence classes to transcripts
+-w, --whitelist       File of whitelisted barcodes to correct to
+-p, --pipe            Write to standard output
+~~~
+
+`--ecmap` and `--whitelist` are optional parameters; `bustools inspect` is much faster without them, especially without the former.
+
+Sample output (to stdout):
+~~~
+Read in 3148815 BUS records
+Total number of reads: 3431849
+
+Number of distinct barcodes: 162360
+Median number of reads per barcode: 1.000000
+Mean number of reads per barcode: 21.137281
+
+Number of distinct UMIs: 966593
+Number of distinct barcode-UMI pairs: 3062719
+Median number of UMIs per barcode: 1.000000
+Mean number of UMIs per barcode: 18.863753
+
+Estimated number of new records at 2x sequencing depth: 2719327
+
+Number of distinct targets detected: 70492
+Median number of targets per set: 2.000000
+Mean number of targets per set: 3.091267
+
+Number of reads with singleton target: 1233940
+
+Estimated number of new targets at 2x seuqencing depth: 6168
+
+Number of barcodes in agreement with whitelist: 92889 (57.211752%)
+Number of reads with barcode in agreement with whitelist: 3281671 (95.623992%)
+~~~
+
+### linker
+`bustools linker` removes specified section of barcode in BUS files.
+
+~~~
+Usage: bustools linker [options] bus-files
+
+Options: 
+-s, --start           Start coordinate for section of barcode to remove (0-indexed, inclusive)
+-e, --end             End coordinate for section of barcode to remove (0-indexed, exclusive)
+-p, --pipe            Write to standard output
+~~~
+
+If `--start` is -1, the removed section begins at beginning of barcode. Likewise, if `--end` is -1, the removed section ends at the end of the barcode. BUS files should contain barcodes of the same length.
+
+### project
+The `kallisto bus` command maps reads to a set of transcripts. `bustools project` takes as input kallisto's (sorted) output and a transcript to gene map (tr2g file), and outputs a BUS file, a matrix.ec file, and a list of genes, which collectively map each read to a set of genes.
+
+~~~
+Usage: bustools project [options] sorted-bus-file
+
+Options: 
+-o, --output          File for project bug output and list of genes (no extension)
+-g, --genemap         File for mapping transcripts to genes
+-e, --ecmap           File for mapping equivalence classes to transcripts
+-t, --txnames         File with names of transcripts
+-p, --pipe            Write to standard output
+~~~
+
+### sort
 
 Raw BUS output from pseudoalignment programs may be unsorted. To simply and accelerate downstream processing BUS files can be sorted using `bustools sort`
 
@@ -80,7 +198,7 @@ Options:
 
 This will create a new BUS file where the BUS records are sorted by barcode first, UMI second, and equivalence class third.
 
-### Text
+### text
 
 BUS files can be converted to a tab-separated format for easy inspection and processing using shell scripts or high level languages with `bustools text`.
 
@@ -92,45 +210,15 @@ Options:
 -o, --output          File for text output
 ~~~
 
-### Correct
-BUS files can be barcode error corrected with respect to a technology-specific whitelist of barcodes using `bustools correct`.
+### whitelist
+`bustools whitelist` generates a whitelist based on the barcodes in a sorted BUS file.
 
 ~~~
-> bustools correct
-Usage: bustools correct [options] bus-files
+Usage: bustools whitelist [options] sorted-bus-file
 
 Options: 
--o, --output          File for corrected bus output
--w, --whitelist       File of whitelisted barcodes to correct to
--p, --pipe            Write to standard output
+-o, --output        File for the whitelist
+-f, --threshold     Minimum number of times a barcode must appear to be included in whitelist
 ~~~
 
-### Count
-BUS files can be converted into a barcode-feature matrix, where the feature can be TCCs (Transcript Compatibility Counts) or genes using `bustools count`.
-
-~~~
-> bustools count
-Usage: bustools count [options] bus-files
-
-Options: 
--o, --output          File for corrected bus output
--g, --genemap         File for mapping transcripts to genes
--e, --ecmap           File for mapping equivalence classes to transcripts
--t, --txnames         File with names of transcripts
---genecounts          Aggregate counts to genes only
-~~~
-
-### Capture
-`bustools capture` can separate BUS files into multiple files according to the capture criteria.
-
-~~~
-Usage: bustools capture [options] bus-files
-
-Options: 
--o, --output          Directory for output 
--c, --capture         List of transcripts to capture
--e, --ecmap           File for mapping equivalence classes to transcripts
--t, --txnames         File with names of transcripts
-~~~
-
-
+`--threshold` is a (highly) optional parameter. If not provided, `bustools whitelist` will determine a threshold based on the first 200 to 100,200 records.

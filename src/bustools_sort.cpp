@@ -117,7 +117,7 @@ void bustools_sort(const Bustools_opt& opt) {
   p = nullptr;
 
 
-  std::cerr << "Read in " << sc << " number of busrecords" << std::endl;
+  std::cerr << "Read in " << sc << " BUS records" << std::endl;
 
   std::streambuf *buf = nullptr;
   std::ofstream of;
@@ -252,7 +252,7 @@ void bustools_sort_orig(const Bustools_opt& opt) {
   }
 
   delete[] p; p = nullptr;
-  std::cerr << "Read in " << b.size() << " number of busrecords" << std::endl;
+  std::cerr << "Read in " << b.size() << " BUS records" << std::endl;
 
   // todo: replace with radix sort 
   std::sort(b.begin(), b.end(), [&](const BUSData& a, const BUSData &b) 
