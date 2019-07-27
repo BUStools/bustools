@@ -22,6 +22,7 @@
 #include "bustools_inspect.h"
 #include "bustools_linker.h"
 #include "bustools_capture.h"
+#include "bustools_merge.h"
 
 
 #define DUMP_FLAGS 1
@@ -994,7 +995,7 @@ void Bustools_Usage() {
   << "count           Generate count matrices from a BUS file" << std::endl
   << "inspect         Produce a report summarizing a BUS file" << std::endl
   << "linker          Remove section of barcodes in BUS files" << std::endl
-  //<< "merge           Merge bus files from same experiment" << std::endl
+  << "merge           Merge bus files from same experiment" << std::endl
   << "project         Project a BUS file to gene sets" << std::endl
   << "sort            Sort a BUS file by barcodes and UMIs" << std::endl
   << "text            Convert a binary BUS file to a tab-delimited text file" << std::endl
@@ -1035,6 +1036,7 @@ void Bustools_capture_Usage() {
 
 void Bustools_merge_Usage() {
   std::cout << "Usage: bustools merge [options] directories" << std::endl << std::endl
+  << "  Note: BUS files should be sorted by flag" << std::endl
   << "Options: " << std::endl
   << "-t, --threads         Number of threads to use" << std::endl
   << "-o, --output          Directory for merged output" << std::endl
@@ -1142,97 +1144,11 @@ int main(int argc, char **argv) {
       }
       parse_ProgramOptions_merge(argc-1, argv+1, opt);
       if (check_ProgramOptions_merge(opt)) {
-        // first parse all headers
-        std::vector<BUSHeader> vh;
-        // TODO: check for compatible headers, version numbers umi and bclen
-
-        for (const auto& infn : opt.files) {
-          std::ifstream inf((infn + "/output.bus").c_str(), std::ios::binary);
-          BUSHeader h;
-          parseHeader(inf, h);
-          inf.close();
-          
-          parseECs(infn + "/matrix.ec", h);
-          vh.push_back(std::move(h));
-        }
-
-        // create master ec
-        BUSHeader oh;
-        oh.version = BUSFORMAT_VERSION;
-        oh.text = "Merged files from BUStools";
-        //TODO: parse the transcripts file, check that they are identical and merge.
-        oh.bclen = vh[0].bclen;
-        oh.umilen = vh[0].umilen;
-        std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
-        std::vector<std::vector<int32_t>> ectrans;        
-        std::vector<int32_t> ctrans;
-        
-        oh.ecs = vh[0].ecs; // copy operator
-
-        for (int32_t ec = 0; ec < oh.ecs.size(); ec++) {
-          ctrans.push_back(ec);
-          const auto &v = oh.ecs[ec];
-          ecmapinv.insert({v, ec});
-        }
-        ectrans.push_back(std::move(ctrans));
-        
-        for (int i = 1; i < opt.files.size(); i++) {
-          ctrans.clear();
-          // merge the rest of the ecs
-          int j = -1;
-          for (const auto &v : vh[i].ecs) {
-            j++;
-            int32_t ec = -1;
-            auto it = ecmapinv.find(v);
-            if (it != ecmapinv.end()) {
-              ec = it->second;              
-            } else {
-              ec = ecmapinv.size();
-              oh.ecs.push_back(v); // copy
-              ecmapinv.insert({v,ec});
-            }
-            ctrans.push_back(ec);
-          }
-          ectrans.push_back(ctrans);
-        }
-
-        // now create a single output file
-        writeECs(opt.output + "/matrix.ec", oh);
-        std::ofstream outf(opt.output + "/output.bus");
-        writeHeader(outf, oh);
-
-
-        size_t N = 100000;
-        BUSData* p = new BUSData[N];
-        size_t nr = 0;
-        for (int i = 0; i < opt.files.size(); i++) {
-          // open busfile and parse header
-          BUSHeader h;
-          const auto &ctrans = ectrans[i];
-          std::ifstream inf((opt.files[i] + "/output.bus").c_str(), std::ios::binary);
-          parseHeader(inf, h);
-          // now read all records and translate the ecs
-          while (true) {
-            inf.read((char*)p, N*sizeof(BUSData));
-            size_t rc = inf.gcount() / sizeof(BUSData);
-            if (rc == 0) {
-              break;
-            }
-            nr += rc;
-            for (size_t i = 0; i < rc; i++) {
-              auto &b = p[i];
-              b.ec = ctrans[b.ec]; // modify the ec              
-            }
-            outf.write((char*)p, rc*sizeof(BUSData));
-          }
-          inf.close();
-        }
-        outf.close();
+        bustools_merge(opt);
       } else {
         Bustools_merge_Usage();
         exit(1);
       }
-
     } else if (cmd == "dump" || cmd == "text") {
       if (disp_help) {
         Bustools_dump_Usage();
