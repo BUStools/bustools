@@ -23,6 +23,11 @@
 #include "bustools_linker.h"
 #include "bustools_capture.h"
 
+
+#define DUMP_FLAGS 1
+
+
+
 int my_mkdir(const char *path, mode_t mode) {
   #ifdef _WIN64
   return mkdir(path);
@@ -59,6 +64,7 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt& opt) {
     {"temp",            required_argument,  0, 'T'},
     {"umi",             no_argument,        0, 'u'},
     {"count",           no_argument,        0, 'c'},
+    {"bam",             no_argument,        0, 'b'},
     {"flags",           no_argument,        0, 's'},
     {"pipe",            no_argument, 0, 'p'},
     {0,                 0,                  0,  0 }
@@ -109,6 +115,9 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt& opt) {
     case 'c':
       opt.type = SORT_COUNT;
       break;
+    case 'b':
+      opt.type = SORT_BAM;
+      break;
     case 'u':
       opt.type = SORT_UMI;
       break;
@@ -156,7 +165,7 @@ void parse_ProgramOptions_merge(int argc, char **argv, Bustools_opt& opt) {
 }
 
 void parse_ProgramOptions_capture(int argc, char **argv, Bustools_opt& opt) {
-   const char* opt_string = "o:xc:e:t:subfp";
+   const char* opt_string = "o:xc:e:t:Fsubfp";
 
   static struct option long_options[] = {
     {"output",          required_argument,  0, 'o'},
@@ -164,6 +173,7 @@ void parse_ProgramOptions_capture(int argc, char **argv, Bustools_opt& opt) {
     {"capture",         required_argument,  0, 'c'},
     {"ecmap",           required_argument,  0, 'e'},
     {"txnames",         required_argument,  0, 't'},
+    {"flag",            no_argument,        0, 'F'},
     {"transcripts",     no_argument,        0, 's'},
     {"umis",            no_argument,        0, 'u'},
     {"barcode",         no_argument,        0, 'b'},
@@ -191,6 +201,9 @@ void parse_ProgramOptions_capture(int argc, char **argv, Bustools_opt& opt) {
       break;
     case 't':
       opt.count_txp = optarg;
+      break;
+    case 'F':
+      opt.type = CAPTURE_F;
       break;
     case 's':
       opt.type = CAPTURE_TX;
@@ -1270,7 +1283,11 @@ int main(int argc, char **argv) {
             }
             nr += rc;
             for (size_t i = 0; i < rc; i++) {
-              o << binaryToString(p[i].barcode, bclen) << "\t" << binaryToString(p[i].UMI,umilen) << "\t" << p[i].ec << "\t" << p[i].count << "\n";        
+              o << binaryToString(p[i].barcode, bclen) << "\t" << binaryToString(p[i].UMI,umilen) << "\t" << p[i].ec << "\t" << p[i].count
+#if DUMP_FLAGS
+                << "\t" << p[i].flags
+#endif
+                << "\n";        
             }
           }
         }
