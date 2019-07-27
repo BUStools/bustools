@@ -137,6 +137,7 @@ void bustools_sort(const Bustools_opt& opt) {
   bool (*ncmp)(const TP &a, const TP &b);
   switch (opt.type) {
     case SORT_BC:
+    case SORT_BAM:
       cmp = &cmp1;
       ncmp = &ncmp1;
       break;
@@ -196,15 +197,20 @@ void bustools_sort(const Bustools_opt& opt) {
       for (size_t i = 0; i < rc; ) {
         size_t j = i+1;
         uint32_t c = p[i].count;
+        uint32_t f = p[i].flags;
         auto ec = p[i].ec;          
         for (; j < rc; j++) {
           if (p[i].barcode != p[j].barcode || p[i].UMI != p[j].UMI || p[i].ec != p[j].ec) {
               break;
           }
           c += p[j].count;
+          f += p[i].flags;
         }
         // merge identical things
         p[i].count = c;
+        if (opt.type == SORT_BAM) {
+          p[i].flags = f;
+        }
         outf.write((char*)(&(p[i])), sizeof(p[i]));
         // increment
         i = j;
@@ -235,7 +241,7 @@ void bustools_sort(const Bustools_opt& opt) {
 
 
   // todo: skip writing to disk if it fits in memory
-  if (tmp_file_no == 1) {
+  if (opt.type != SORT_BAM && tmp_file_no == 1) {
     size_t M = N / 8;
     p = new BUSData[M];
     std::ifstream in(opt.temp_files  + "0", std::ios::binary);
@@ -284,9 +290,20 @@ void bustools_sort(const Bustools_opt& opt) {
       if (m.barcode == curr.barcode && m.UMI == curr.UMI && m.ec == curr.ec) {
         // same data, increase count
         curr.count += m.count;
+        curr.flags += m.flags;
       } else {
+        if (opt.type == SORT_BAM) {
+          if (curr.flags == 0) {
+            curr.count = 0;
+          } else {
+            curr.count /= curr.flags;
+          }
+        }
+
         // new data let's output curr, new curr is m
-        busf_out.write((char*)&curr, sizeof(curr));
+        if (curr.count != 0) {
+          busf_out.write((char*)&curr, sizeof(curr));
+        }
         curr = m;
       }
       // read next from stream
