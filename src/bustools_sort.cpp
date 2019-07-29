@@ -295,6 +295,7 @@ void bustools_sort(const Bustools_opt& opt) {
           && (opt.type != SORT_BAM || m.flags == curr.flags)) {
         // same data, increase count
         curr.count += m.count;
+        curr.flags += m.flags;
       } else {
         if (opt.type == SORT_BAM) {
           if (curr.flags == 0) {
