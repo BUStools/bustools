@@ -13,18 +13,10 @@
 
 inline bool ncmp(const TP &a, const TP &b) {
   if (a.first.flags == b.first.flags) {
-    if (a.first.barcode == b.first.barcode) {
-      if (a.first.UMI == b.first.UMI) {
-        if (a.first.ec == b.first.ec) {
-          return a.second > b.second;
-        } else {
-          return a.first.ec > b.first.ec;
-        }
-      } else {
-        return a.first.UMI > b.first.UMI;
-      }
+    if (a.first.ec == b.first.ec) {
+      return a.second > b.second;
     } else {
-      return a.first.barcode > b.first.barcode;
+      return a.first.ec > b.first.ec;
     }
   } else {
     return a.first.flags > b.first.flags;
@@ -106,7 +98,7 @@ void bustools_merge(const Bustools_opt &opt) {
   }
 
   BUSData curr = pq.top().first;
-  curr.count = 0; // We'll count this again in the first loop
+//  curr.count = 0; // We'll count this again in the first loop
   std::unordered_set<int32_t> currec;
   while (!pq.empty()) {
     TP min = pq.top();
@@ -116,8 +108,8 @@ void bustools_merge(const Bustools_opt &opt) {
     int i = min.second;
     // Do I have to check the other fields?
     if (m.flags == curr.flags && m.barcode == curr.barcode && m.UMI == curr.UMI) {
-      // Same data, increase count
-      curr.count += m.count;
+      // Same data, increase count?
+//      curr.count += m.count;
       currec.insert(ectrans[i][m.ec]);
     } else {
       // Create new ec if necessary
