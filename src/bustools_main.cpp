@@ -805,7 +805,7 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
     std::cerr << "Error: missing transcript name file" << std::endl;
     ret = false;
   } else {
-    if (!checkFileExists(opt.count_genes)) {
+    if (!checkFileExists(opt.count_txp)) {
       std::cerr << "Error: File not found " << opt.count_txp << std::endl;
       ret = false;
     }
