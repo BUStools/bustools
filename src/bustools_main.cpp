@@ -594,14 +594,9 @@ bool check_ProgramOptions_merge(Bustools_opt& opt) {
     }
 
     // check if output directory exists or if we can create it
-    struct stat stFileInfo;
-    auto intStat = stat(opt.output.c_str(), &stFileInfo);
-    if (intStat == 0) {
-      // file/dir exits
-      if (!S_ISDIR(stFileInfo.st_mode)) {
-        std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
-        ret = false;
-      } 
+    if (checkDirectoryExists(opt.output.c_str())) {
+      std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
+      ret = false;
     } else {
       // create directory
       if (my_mkdir(opt.output.c_str(), 0777) == -1) {
@@ -647,14 +642,9 @@ bool check_ProgramOptions_capture(Bustools_opt& opt) {
     ret = false;
   } else if (false) { // TODO: change this to account for filter option
     // check if output directory exists or if we can create it
-    struct stat stFileInfo;
-    auto intStat = stat(opt.output.c_str(), &stFileInfo);
-    if (intStat == 0) {
-      // file/dir exits
-      if (!S_ISDIR(stFileInfo.st_mode)) {
-        std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
-        ret = false;
-      } 
+    if (!checkDirectoryExists(opt.output)) {
+      std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
+      ret = false;      
     } else {
       // create directory
       if (my_mkdir(opt.output.c_str(), 0777) == -1) {
@@ -759,11 +749,23 @@ bool check_ProgramOptions_correct(Bustools_opt& opt) {
 bool check_ProgramOptions_count(Bustools_opt& opt) {
   bool ret = true;
 
+  // check for output directory
   if (opt.output.empty()) {
-    std::cerr << "Error: Missing output file" << std::endl;
+    std::cerr << "Error: Missing output directory" << std::endl;
     ret = false;
-  } 
+  } else {
+    if (!checkDirectoryExists(opt.output)) {
+      if (checkFileExists(opt.output)) {
+        std::cerr << "Error: " << opt.output << " exists and is not a directory" << std::endl;
+        ret = false;
+      } else if (my_mkdir(opt.output.c_str(), 0777) == -1) {
+        std::cerr << "Error: could not create directory " << opt.output << std::endl;
+        ret = false;
+      }      
+    }
+  }
 
+  
 
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input files" << std::endl;
@@ -781,6 +783,7 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
 
   if (opt.count_genes.size() == 0) {
     std::cerr << "Error: missing gene mapping file" << std::endl;
+    ret = false;
   } else {
     if (!checkFileExists(opt.count_genes)) {
       std::cerr << "Error: File not found " << opt.count_genes << std::endl;
@@ -790,6 +793,7 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
 
   if (opt.count_ecs.size() == 0) {
     std::cerr << "Error: missing equialence class mapping file" << std::endl;
+    ret = false;
   } else {
     if (!checkFileExists(opt.count_ecs)) {
       std::cerr << "Error: File not found " << opt.count_ecs << std::endl;
@@ -799,6 +803,7 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
 
   if (opt.count_txp.size() == 0) {
     std::cerr << "Error: missing transcript name file" << std::endl;
+    ret = false;
   } else {
     if (!checkFileExists(opt.count_genes)) {
       std::cerr << "Error: File not found " << opt.count_txp << std::endl;
