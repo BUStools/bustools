@@ -10,7 +10,7 @@
 #include <sstream>
 
 
-#define BUSTOOLS_VERSION "0.39.2"
+#define BUSTOOLS_VERSION "0.39.3"
 
 #define TYPE_NONE 0
 #define CAPTURE_TX  1
