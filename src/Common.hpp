@@ -32,6 +32,8 @@ struct Bustools_opt {
   std::string output;
   std::string whitelist;  
   std::vector<std::string> files;
+
+  std::vector<std::string> fastq;
   
   char type;
 

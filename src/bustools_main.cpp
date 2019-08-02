@@ -23,6 +23,7 @@
 #include "bustools_linker.h"
 #include "bustools_capture.h"
 #include "bustools_merge.h"
+#include "bustools_extract.h"
 
 
 #define DUMP_FLAGS 1
@@ -49,6 +50,16 @@ bool checkDirectoryExists(const std::string &fn) {
   return intStat == 0 && S_ISDIR(stFileInfo.st_mode);
 }
 
+bool checkOutputFileValid(const std::string &fn) {
+  std::ofstream of(fn);
+  if (of.is_open()) {
+    of.close();
+    return checkFileExists(fn);
+  } else {
+    return false;
+  }
+}
+
 
 
 
@@ -65,8 +76,8 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt& opt) {
     {"temp",            required_argument,  0, 'T'},
     {"umi",             no_argument,        0, 'u'},
     {"count",           no_argument,        0, 'c'},
-    {"bam",             no_argument,        0, 'b'},
-    {"flags",           no_argument,        0, 's'},
+    {"flags",           no_argument,        0, 'F'},
+    {"bam",             no_argument,        0, 'B'},
     {"pipe",            no_argument, 0, 'p'},
     {0,                 0,                  0,  0 }
   };
@@ -116,13 +127,13 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt& opt) {
     case 'c':
       opt.type = SORT_COUNT;
       break;
-    case 'b':
+    case 'B':
       opt.type = SORT_BAM;
       break;
     case 'u':
       opt.type = SORT_UMI;
       break;
-    case 's':
+    case 'F':
       opt.type = SORT_F;
       break;
     case 'p':
@@ -481,7 +492,7 @@ void parse_ProgramOptions_inspect(int argc, char **argv, Bustools_opt &opt) {
 void parse_ProgramOptions_linker(int argc, char **argv, Bustools_opt &opt) {
   
   /* Parse options. */
-  const char *opt_string = "o:s:e:p:";
+  const char *opt_string = "o:s:e:p";
 
   static struct option long_options[] = {
     {"output", required_argument, 0, 'o'},
@@ -520,6 +531,45 @@ void parse_ProgramOptions_linker(int argc, char **argv, Bustools_opt &opt) {
   }
 }
 
+void parse_ProgramOptions_extract(int argc, char **argv, Bustools_opt &opt) {
+  
+  /* Parse options. */
+  const char *opt_string = "o:f:p";
+
+  static struct option long_options[] = {
+    {"output", required_argument, 0, 'o'},
+    {"fastq", required_argument, 0, 'f'},
+    {"pipe", no_argument, 0, 'p'},
+    {0, 0, 0, 0}
+  };
+
+  int option_index = 0, c;
+
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
+    switch (c) {
+      case 'o':
+        opt.output = optarg;
+        break;
+      case 'f':
+        opt.fastq = {optarg};
+        break;
+      case 'p':
+        opt.stream_out = true;
+        break;
+      default:
+        break;
+    }
+  }
+
+  /* All other argumuments are (sorted) BUS files. */
+  while (optind < argc) opt.files.push_back(argv[optind++]);
+  
+  if (opt.files.size() == 1 && opt.files[0] == "-") {
+    opt.stream_in = true;
+  }
+}
+
+
 
 
 bool check_ProgramOptions_sort(Bustools_opt& opt) {
@@ -537,9 +587,14 @@ bool check_ProgramOptions_sort(Bustools_opt& opt) {
     opt.threads = max_threads;
   }
 
-  if (!opt.stream_out && opt.output.empty()) {
-    std::cerr << "Error missing output file" << std::endl;
-    ret = false;
+  if (!opt.stream_out) {
+    if (opt.output.empty()) {
+      std::cerr << "Error: missing output file" << std::endl;
+      ret = false;
+    } else if (!checkOutputFileValid(opt.output)) {
+      std::cerr << "Error: unable to open output file" << std::endl;
+      ret = false;
+    }
   } 
 
   if (opt.max_memory < 1ULL<<26) {
@@ -588,13 +643,30 @@ bool check_ProgramOptions_sort(Bustools_opt& opt) {
 }
 
 
+
 bool check_ProgramOptions_merge(Bustools_opt& opt) {
   bool ret = true;
   
   if (opt.output.empty()) {
-    std::cerr << "Error missing output directory" << std::endl;
-    ret = false;
-  } 
+    std::cerr << "Error: missing output directory" << std::endl;
+  } else {
+    // check if output directory exists or if we can create it
+    struct stat stFileInfo;
+    auto intStat = stat(opt.output.c_str(), &stFileInfo);
+    if (intStat == 0) {
+      // file/dir exits
+      if (!S_ISDIR(stFileInfo.st_mode)) {
+        std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
+        ret = false;
+      } 
+    } else {
+      // create directory
+      if (my_mkdir(opt.output.c_str(), 0777) == -1) {
+        std::cerr << "Error: could not create directory " << opt.output << std::endl;
+        ret = false;
+      }
+    }
+  }
 
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input directories" << std::endl;
@@ -618,35 +690,22 @@ bool check_ProgramOptions_merge(Bustools_opt& opt) {
         }
       }
     }
-
-    // check if output directory exists or if we can create it
-    struct stat stFileInfo;
-    auto intStat = stat(opt.output.c_str(), &stFileInfo);
-    if (intStat == 0) {
-      // file/dir exits
-      if (!S_ISDIR(stFileInfo.st_mode)) {
-        std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
-        ret = false;
-      } 
-    } else {
-      // create directory
-      if (my_mkdir(opt.output.c_str(), 0777) == -1) {
-        std::cerr << "Error: could not create directory " << opt.output << std::endl;
-        ret = false;
-      }
-    }
   }
 
   return ret;
-
 }
 
 bool check_ProgramOptions_dump(Bustools_opt& opt) {
   bool ret = true;
 
-  if (!opt.stream_out && opt.output.empty()) {
-    std::cerr << "Error missing output file" << std::endl;
-    ret = false;
+  if (!opt.stream_out) {
+    if (opt.output.empty()) {
+      std::cerr << "Error: missing output file" << std::endl;
+      ret = false;
+    } else if (!checkOutputFileValid(opt.output)) {
+      std::cerr << "Error: unable to open output file" << std::endl;
+      ret = false;
+    }
   } 
 
 
@@ -668,10 +727,7 @@ bool check_ProgramOptions_dump(Bustools_opt& opt) {
 bool check_ProgramOptions_capture(Bustools_opt& opt) {
   bool ret = true;
 
-  if (!opt.stream_out && opt.output.empty()) {
-    std::cerr << "Error missing output file" << std::endl;
-    ret = false;
-  } else if (false) { // TODO: change this to account for filter option
+  if (opt.filter) {
     // check if output directory exists or if we can create it
     struct stat stFileInfo;
     auto intStat = stat(opt.output.c_str(), &stFileInfo);
@@ -688,8 +744,16 @@ bool check_ProgramOptions_capture(Bustools_opt& opt) {
         ret = false;
       }
     }
+  } else if (!opt.stream_out) {
+    if (opt.output.empty()) {
+      std::cerr << "Error: missing output file" << std::endl;
+      ret = false;
+    } else if (!checkOutputFileValid(opt.output)) {
+      std::cerr << "Error: unable to open output file" << std::endl;
+      ret = false;
+    }
   }
-
+ 
   if (opt.capture.empty()) {
     std::cerr << "Error: missing capture list" << std::endl;
     ret = false;
@@ -749,9 +813,14 @@ bool check_ProgramOptions_capture(Bustools_opt& opt) {
 bool check_ProgramOptions_correct(Bustools_opt& opt) {
   bool ret = true;
 
-  if (!opt.stream_out && opt.output.empty()) {
-    std::cerr << "Error: Missing output file" << std::endl;
-    ret = false;
+  if (!opt.stream_out) {
+    if (opt.output.empty()) {
+      std::cerr << "Error: missing output file" << std::endl;
+      ret = false;
+    } else if (!checkOutputFileValid(opt.output)) {
+      std::cerr << "Error: unable to open output file" << std::endl;
+      ret = false;
+    }
   } 
 
 
@@ -786,10 +855,12 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
   bool ret = true;
 
   if (opt.output.empty()) {
-    std::cerr << "Error: Missing output file" << std::endl;
+    std::cerr << "Error: missing output file" << std::endl;
     ret = false;
-  } 
-
+  } else if (!checkOutputFileValid(opt.output)) {
+    std::cerr << "Error: unable to open output file" << std::endl;
+    ret = false;
+  }
 
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input files" << std::endl;
@@ -839,9 +910,12 @@ bool check_ProgramOptions_whitelist(Bustools_opt &opt) {
   bool ret = true;
 
   if (opt.output.empty()) {
-    std::cerr << "Error: Missing output file" << std::endl;
+    std::cerr << "Error: missing output file" << std::endl;
     ret = false;
-  } 
+  } else if (!checkOutputFileValid(opt.output)) {
+    std::cerr << "Error: unable to open output file" << std::endl;
+    ret = false;
+  }
 
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input file" << std::endl;
@@ -872,9 +946,25 @@ bool check_ProgramOptions_project(Bustools_opt &opt) {
   bool ret = true;
 
   if (opt.output.empty()) {
-    std::cerr << "Error: Missing output directory" << std::endl;
-    ret = false;
-  } 
+    std::cerr << "Error: missing output directory" << std::endl;
+  } else {
+    // check if output directory exists or if we can create it
+    struct stat stFileInfo;
+    auto intStat = stat(opt.output.c_str(), &stFileInfo);
+    if (intStat == 0) {
+      // file/dir exits
+      if (!S_ISDIR(stFileInfo.st_mode)) {
+        std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
+        ret = false;
+      } 
+    } else {
+      // create directory
+      if (my_mkdir(opt.output.c_str(), 0777) == -1) {
+        std::cerr << "Error: could not create directory " << opt.output << std::endl;
+        ret = false;
+      }
+    }
+  }
 
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input file" << std::endl;
@@ -925,6 +1015,11 @@ bool check_ProgramOptions_project(Bustools_opt &opt) {
 
 bool check_ProgramOptions_inspect(Bustools_opt &opt) {
   bool ret = true;
+
+  if (opt.output.size() && !checkOutputFileValid(opt.output)) {
+    std::cerr << "Error: unable to open output file" << std::endl;
+    ret = false;
+  }
   
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input file" << std::endl;
@@ -963,9 +1058,14 @@ bool check_ProgramOptions_inspect(Bustools_opt &opt) {
 bool check_ProgramOptions_linker(Bustools_opt &opt) {
   bool ret = true;
   
-  if (!opt.stream_out && opt.output.empty()) {
-    std::cerr << "Error: Missing output file" << std::endl;
-    ret = false;
+  if (!opt.stream_out) {
+    if (opt.output.empty()) {
+      std::cerr << "Error: missing output file" << std::endl;
+      ret = false;
+    } else if (!checkOutputFileValid(opt.output)) {
+      std::cerr << "Error: unable to open output file" << std::endl;
+      ret = false;
+    }
   } 
 
   if (opt.files.size() == 0) {
@@ -985,6 +1085,51 @@ bool check_ProgramOptions_linker(Bustools_opt &opt) {
   return ret;
 }
 
+bool check_ProgramOptions_extract(Bustools_opt &opt) {
+  bool ret = true;
+  
+  if (!opt.stream_out) {
+    if (opt.output.empty()) {
+      std::cerr << "Error: missing output file" << std::endl;
+      ret = false;
+    } else if (!checkOutputFileValid(opt.output)) {
+      std::cerr << "Error: unable to open output file" << std::endl;
+      ret = false;
+    }
+  } 
+
+  if (opt.files.size() == 0) {
+    std::cerr << "Error: Missing BUS input file" << std::endl;
+    ret = false;
+  } else if (opt.files.size() == 1) {
+    if (!opt.stream_in) {
+      for (const auto& it : opt.files) {
+        if (!checkFileExists(it)) {
+          std::cerr << "Error: File not found, " << it << std::endl;
+          ret = false;
+        }
+      }
+    }
+  } else {
+    std::cerr << "Error: Only one input file allowed" << std::endl;
+    ret = false;
+  }
+
+  if (opt.fastq.size() == 0) {
+    std::cerr << "Error: Missing FASTQ file" << std::endl;
+    ret = false;
+  } else {
+    for (const auto &f : opt.fastq) {
+      if (!checkFileExists(f)) {
+        std::cerr << "Error: File not found, " << f << std::endl;
+        ret = false;
+      }
+    }
+  }
+  
+  return ret;
+}
+
 
 void Bustools_Usage() {
   std::cout << "bustools " << BUSTOOLS_VERSION << std::endl << std::endl  
@@ -993,6 +1138,7 @@ void Bustools_Usage() {
   << "capture         Capture records from a BUS file" << std::endl
   << "correct         Error correct a BUS file" << std::endl
   << "count           Generate count matrices from a BUS file" << std::endl
+  << "extract         Extract FASTQ reads correspnding to reads in BUS file" << std::endl
   << "inspect         Produce a report summarizing a BUS file" << std::endl
   << "linker          Remove section of barcodes in BUS files" << std::endl
   << "merge           Merge bus files from same experiment" << std::endl
@@ -1010,12 +1156,17 @@ void Bustools_Usage() {
 void Bustools_sort_Usage() {
   std::cout << "Usage: bustools sort [options] bus-files" << std::endl << std::endl
   << "Options: " << std::endl
+  << "Default behavior (with no flag) is to sort by barcode, UMI, ec, then flag" << std::endl
   << "-t, --threads         Number of threads to use" << std::endl
   << "-m, --memory          Maximum memory used" << std::endl
   << "-T, --temp            Location and prefix for temporary files " << std::endl
   << "                      required if using -p, otherwise defaults to output" << std::endl 
   << "-o, --output          File for sorted output" << std::endl
   << "-p, --pipe            Write to standard output" << std::endl
+  << "    --umi             Sort by UMI, barcode, then ec" << std::endl
+  << "    --count           Sort by multiplicity, barcode, UMI, then ec" << std::endl
+  << "    --flags           Sort by flag, barcode, UMI, then ec" << std::endl
+  << "    --bam             bus-files were generated from BAM files" << std::endl
   << std::endl;
 }
 
@@ -1035,8 +1186,8 @@ void Bustools_capture_Usage() {
 }
 
 void Bustools_merge_Usage() {
-  std::cout << "Usage: bustools merge [options] directories" << std::endl << std::endl
-  << "  Note: BUS files should be sorted by flag" << std::endl
+  std::cout << "Usage: bustools merge [options] directories" << std::endl
+  << "  Note: BUS files should be sorted by flag" << std::endl << std::endl
   << "Options: " << std::endl
   << "-t, --threads         Number of threads to use" << std::endl
   << "-o, --output          Directory for merged output" << std::endl
@@ -1109,6 +1260,16 @@ void Bustools_linker_Usage() {
     << "-p, --pipe            Write to standard output" << std::endl
     << std::endl;
 }
+
+void Bustools_extract_Usage() {
+  std::cout << "Usage: bustools extract [options] sorted-bus-file" << std::endl
+    << "  Note: BUS file should be sorted by flag using bustools sort --flag" << std::endl << std::endl
+    << "Options: " << std::endl
+    << "-f, --fastq           FASTQ file from which to extract reads" << std::endl
+    << "-p, --pipe            Write to standard output" << std::endl
+    << std::endl;
+}
+
 
 
 
@@ -1428,7 +1589,7 @@ int main(int argc, char **argv) {
       if (check_ProgramOptions_capture(opt)) { //Program options are valid
         bustools_capture(opt);
       } else {
-        Bustools_dump_Usage();
+        Bustools_capture_Usage();
         exit(1);
       }
     } else if (cmd == "whitelist") {
@@ -1477,6 +1638,18 @@ int main(int argc, char **argv) {
         bustools_linker(opt);
       } else {
         Bustools_linker_Usage();
+        exit(1);
+      }
+    } else if (cmd == "extract") {
+      if (disp_help) {
+        Bustools_extract_Usage();
+        exit(0);
+      }
+      parse_ProgramOptions_extract(argc-1, argv+1, opt);
+      if (check_ProgramOptions_extract(opt)) { //Program options are valid
+        bustools_extract(opt);
+      } else {
+        Bustools_extract_Usage();
         exit(1);
       }
     } else {
