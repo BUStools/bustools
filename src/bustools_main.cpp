@@ -3,6 +3,12 @@
 #include <sys/stat.h>
 #include <unistd.h> 
 
+#ifdef _WIN64
+#include <windows.h>
+#else
+#include <wordexp.h>
+#endif
+
 #include <iostream>
 #include <fstream>
 #include <thread>
@@ -38,6 +44,33 @@ int my_mkdir(const char *path, mode_t mode) {
   #endif
 }
 
+std::string my_wordexp(const char *path) {
+  std::string ret;
+
+#ifdef _WIN64
+  char *w = new char[4096];
+  auto err = ExpandEnvironmentStrings(path, w, 4094);
+  if (err > 4094) {
+    std::cerr << "Error: path " << path << " is too long" << std::endl;
+  } else if (!err) {
+    std::cerr << "Error: unable to expand " << path << std::endl;
+  } else {
+    ret = std::string(w);
+  }
+  delete[] w;
+#else
+  wordexp_t w;
+  if (wordexp(path, &w, 0)) {
+    std::cerr << "Error: unable to expand " << path << std::endl;
+  } else {
+    ret = std::string(w.we_wordv[0]);
+  }
+  wordfree(&w);
+#endif
+
+  return ret;
+}
+
 bool checkFileExists(const std::string &fn) {
   struct stat stFileInfo;
   auto intStat = stat(fn.c_str(), &stFileInfo);
@@ -60,8 +93,19 @@ bool checkOutputFileValid(const std::string &fn) {
   }
 }
 
-
-
+std::vector<std::string> parseList(const std::string &s, const std::string &sep = ",") {
+  std::vector<std::string> ret;
+  size_t start = 0, end;
+  while ((end = s.find(sep, start)) != std::string::npos) {
+    ret.push_back(s.substr(start, end - start));
+    start = end + sep.length();
+  }
+  end = s.size();
+  if (end - start > 0) {
+    ret.push_back(s.substr(start, end - start));
+  }
+  return ret;
+}
 
 
 
@@ -551,7 +595,10 @@ void parse_ProgramOptions_extract(int argc, char **argv, Bustools_opt &opt) {
         opt.output = optarg;
         break;
       case 'f':
-        opt.fastq = {optarg};
+        opt.fastq = parseList(optarg);
+        for (auto &elt : opt.fastq) {
+          elt = my_wordexp(elt.c_str());
+        }
         break;
       case 'p':
         opt.stream_out = true;
@@ -1088,15 +1135,26 @@ bool check_ProgramOptions_linker(Bustools_opt &opt) {
 bool check_ProgramOptions_extract(Bustools_opt &opt) {
   bool ret = true;
   
-  if (!opt.stream_out) {
-    if (opt.output.empty()) {
-      std::cerr << "Error: missing output file" << std::endl;
-      ret = false;
-    } else if (!checkOutputFileValid(opt.output)) {
-      std::cerr << "Error: unable to open output file" << std::endl;
-      ret = false;
+  if (opt.output.empty()) {
+    std::cerr << "Error: missing output directory" << std::endl;
+  } else {
+    // check if output directory exists or if we can create it
+    struct stat stFileInfo;
+    auto intStat = stat(opt.output.c_str(), &stFileInfo);
+    if (intStat == 0) {
+      // file/dir exits
+      if (!S_ISDIR(stFileInfo.st_mode)) {
+        std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
+        ret = false;
+      } 
+    } else {
+      // create directory
+      if (my_mkdir(opt.output.c_str(), 0777) == -1) {
+        std::cerr << "Error: could not create directory " << opt.output << std::endl;
+        ret = false;
+      }
     }
-  } 
+  }
 
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input file" << std::endl;
@@ -1116,7 +1174,7 @@ bool check_ProgramOptions_extract(Bustools_opt &opt) {
   }
 
   if (opt.fastq.size() == 0) {
-    std::cerr << "Error: Missing FASTQ file" << std::endl;
+    std::cerr << "Error: Missing FASTQ file(s)" << std::endl;
     ret = false;
   } else {
     for (const auto &f : opt.fastq) {
@@ -1255,6 +1313,7 @@ void Bustools_inspect_Usage() {
 void Bustools_linker_Usage() {
   std::cout << "Usage: bustools linker [options] bus-files" << std::endl << std::endl
     << "Options: " << std::endl
+    << "-o, --output          Output BUS file" << std::endl
     << "-s, --start           Start coordinate for section of barcode to remove (0-indexed, inclusive)" << std::endl
     << "-e, --end             End coordinate for section of barcode to remove (0-indexed, exclusive)" << std::endl
     << "-p, --pipe            Write to standard output" << std::endl
@@ -1265,7 +1324,8 @@ void Bustools_extract_Usage() {
   std::cout << "Usage: bustools extract [options] sorted-bus-file" << std::endl
     << "  Note: BUS file should be sorted by flag using bustools sort --flag" << std::endl << std::endl
     << "Options: " << std::endl
-    << "-f, --fastq           FASTQ file from which to extract reads" << std::endl
+    << "-o, --output          Output directory for FASTQ files" << std::endl
+    << "-f, --fastq           FASTQ file(s) from which to extract reads (comma-separated list)" << std::endl
     << "-p, --pipe            Write to standard output" << std::endl
     << std::endl;
 }

@@ -15,16 +15,10 @@ void bustools_extract(const Bustools_opt &opt) {
   size_t nr = 0;
   size_t N = 100000;
   BUSData *p = new BUSData[N];
+  char *buf = new char[N];
+  buf[0] = '@';
 
-  std::streambuf *buf = nullptr;
-  std::ofstream of;
-  if (!opt.stream_out) {
-    of.open(opt.output); 
-    buf = of.rdbuf();
-  } else {
-    buf = std::cout.rdbuf();
-  }
-  std::ostream o(buf);
+  size_t K = opt.fastq.size();
 
   std::streambuf *inbuf;
   std::ifstream inf;
@@ -37,10 +31,12 @@ void bustools_extract(const Bustools_opt &opt) {
   std::istream in(inbuf);
   parseHeader(in, h);
   
-  std::vector<gzFile> fastq(opt.fastq.size());
-  std::vector<kseq_t *> seq(opt.fastq.size());
+ std::vector<gzFile> of(K);
+  std::vector<gzFile> fastq(K);
+  std::vector<kseq_t *> seq(K, nullptr);
   uint32_t iFastq = 0;
-  for (int i = 0; i < opt.fastq.size(); ++i) {
+  for (int i = 0; i < K; ++i) {
+    of[i] = gzopen(std::string(opt.output + "/" + std::to_string(i + 1) + ".fastq.gz").c_str(), "w");
     fastq[i] = gzopen(opt.fastq[i].c_str(), "r");
     seq[i] = kseq_init(fastq[i]);
     if (kseq_read(seq[i]) < 0) {
@@ -72,16 +68,40 @@ void bustools_extract(const Bustools_opt &opt) {
         goto end_extract;
       }
 
-      for (const auto &s : seq) {
-        std::string name(s->name.s, s->name.l);
-        std::string comment(s->comment.s, s->comment.l);
-        std::string sequence(s->seq.s, s->seq.l);
-        std::string qual(s->qual.s, s->qual.l);
+      for (int i = 0; i < K; ++i) {
+        int bufLen = 1; // Already have @ character in buffer
+        
+        memcpy(buf + bufLen, seq[i]->name.s, seq[i]->name.l);
+        bufLen += seq[i]->name.l;
+        
+        memcpy(buf + bufLen, seq[i]->comment.s, seq[i]->comment.l);
+        bufLen += seq[i]->comment.l;
+        
+        buf[bufLen++] = '\n';
 
-        o << '@' << name << comment << '\n'
-          << sequence << '\n'
-          << '+' << name << comment << '\n'
-          << qual << std::endl;
+        memcpy(buf + bufLen, seq[i]->seq.s, seq[i]->seq.l);
+        bufLen += seq[i]->seq.l;
+        
+        buf[bufLen++] = '\n';
+        buf[bufLen++] = '+';
+
+        memcpy(buf + bufLen, seq[i]->name.s, seq[i]->name.l);
+        bufLen += seq[i]->name.l;
+        
+        memcpy(buf + bufLen, seq[i]->comment.s, seq[i]->comment.l);
+        bufLen += seq[i]->comment.l;
+        
+        buf[bufLen++] = '\n';
+
+        memcpy(buf + bufLen, seq[i]->qual.s, seq[i]->qual.l);
+        bufLen += seq[i]->qual.l;
+        
+        buf[bufLen++] = '\n';
+
+        if (gzwrite(of[i], buf, bufLen) != bufLen) {
+          std::cerr << "Error writing to FASTQ" << std::endl;
+          goto end_extract;
+        }
       }
     }
   }
@@ -90,11 +110,17 @@ void bustools_extract(const Bustools_opt &opt) {
 
 end_extract:
   delete[] p;
-  for (const auto &elt : seq) {
-    kseq_destroy(elt);
-  }
-  for (const auto &elt : fastq) {
+  delete[] buf;
+  for (auto &elt : of) {
     gzclose(elt);
+  }
+  for (auto &elt : fastq) {
+    gzclose(elt);
+  }
+  for (auto &elt : seq) {
+    if (elt) {
+      kseq_destroy(elt);
+    }
   }
 }
 

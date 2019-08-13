@@ -28,10 +28,13 @@ enum SORT_TYPE : char {SORT_BC = 0, SORT_UMI, SORT_F, SORT_COUNT, SORT_BAM};
 
 struct Bustools_opt {
   int threads;
-  std::string ecf;
-  std::string output;
+  
   std::string whitelist;  
+  std::string output;
   std::vector<std::string> files;
+
+  bool stream_in = false;
+  bool stream_out = false;
 
   std::vector<std::string> fastq;
   
@@ -51,9 +54,6 @@ struct Bustools_opt {
   std::string capture;
   bool complement = false;
   bool filter = false;
-
-  bool stream_in = false;
-  bool stream_out = false;
 
   int threshold;
 
