@@ -518,7 +518,7 @@ bool check_ProgramOptions_sort(Bustools_opt& opt) {
 
   if (opt.max_memory < 1ULL<<26) {
     if (opt.max_memory < 128) {
-      std::cerr << "Warning: low number supplied for maximum memory usage with out M og G suffix\n  interpreting this as " << opt.max_memory << "Gb" << std::endl;
+      std::cerr << "Warning: low number supplied for maximum memory usage without M or G suffix\n  interpreting this as " << opt.max_memory << "Gb" << std::endl;
       opt.max_memory <<= 30;
     } else {
       std::cerr << "Warning: low number supplied for maximum memory, defaulting to 64Mb" << std::endl;
