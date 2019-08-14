@@ -27,7 +27,7 @@ void bustools_merge(const Bustools_opt &opt) {
   int k = opt.files.size();
   std::vector<std::ifstream> bf(k);
   std::vector<BUSHeader> vh;
- 
+
   /* Parse all headers. */ 
   // TODO: check for compatible headers, version numbers umi and bclen
   for (int i = 0; i < k; ++i) {
@@ -39,7 +39,34 @@ void bustools_merge(const Bustools_opt &opt) {
     vh.push_back(std::move(h));
   }
 
-  /* Create master ec(?) */
+  /* Parse all transcripts.txt files (and output new transcripts.txt file). */
+  std::unordered_map<std::string, int32_t> txnames;
+  std::vector<std::vector<int32_t>> txtrans;
+  std::vector<int32_t> xtrans;
+  int32_t iTx = 0;
+
+  std::ofstream ofn(opt.output + "/transcripts.txt");
+
+  for (int i = 0; i < k; ++i) {
+    xtrans.clear();
+    std::ifstream inf(opt.files[i] + "/transcripts.txt");
+    std::string txp;
+    while (inf >> txp) {
+      auto ok = txnames.insert({txp, iTx});
+      if (ok.second) {
+        xtrans.push_back(iTx);
+        ofn << txp << std::endl;
+        ++iTx;
+      } else {
+        xtrans.push_back(ok.first->second);
+      }
+    }
+    txtrans.push_back(xtrans);
+  }
+
+  ofn.close();
+
+  /* Create master ec */
   BUSHeader oh;
   oh.version = BUSFORMAT_VERSION;
   oh.text = "Merged files from BUStools";
@@ -61,22 +88,25 @@ void bustools_merge(const Bustools_opt &opt) {
   
   for (int i = 1; i < k; i++) {
     ctrans.clear();
+    const auto &xtrans = txtrans[i];
     // merge the rest of the ecs
-    int j = -1;
     for (const auto &v : vh[i].ecs) {
-      j++;
       int32_t ec = -1;
-      auto it = ecmapinv.find(v);
+      std::vector<int32_t> w(v.size());
+      for (int j = 0; j < v.size(); ++j) {
+        w[j] = xtrans[v[j]];
+      }
+      auto it = ecmapinv.find(w);
       if (it != ecmapinv.end()) {
         ec = it->second;              
       } else {
         ec = ecmapinv.size();
-        oh.ecs.push_back(v); // copy
-        ecmapinv.insert({v,ec});
+        oh.ecs.push_back(w); // copy
+        ecmapinv.insert({w,ec});
       }
       ctrans.push_back(ec);
     }
-    ectrans.push_back(ctrans);
+    ectrans.push_back(std::move(ctrans));
   }
 
   std::vector<std::vector<int32_t>> ecmap(ecmapinv.size());
@@ -108,8 +138,6 @@ void bustools_merge(const Bustools_opt &opt) {
     int i = min.second;
     // Do I have to check the other fields?
     if (m.flags == curr.flags && m.barcode == curr.barcode && m.UMI == curr.UMI) {
-      // Same data, increase count?
-//      curr.count += m.count;
       currec.insert(ectrans[i][m.ec]);
     } else {
       // Create new ec if necessary
@@ -135,10 +163,10 @@ void bustools_merge(const Bustools_opt &opt) {
         }
       }
 
-      if (curr.count > 0) {
-        outf.write((char *) &curr, sizeof(curr));
-        ++nw;
-      }
+      curr.count = 1;
+      outf.write((char *) &curr, sizeof(curr));
+      ++nw;
+
       curr = m;
       currec.clear();
       currec.insert(ectrans[i][m.ec]);
