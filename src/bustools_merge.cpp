@@ -96,6 +96,7 @@ void bustools_merge(const Bustools_opt &opt) {
       for (int j = 0; j < v.size(); ++j) {
         w[j] = xtrans[v[j]];
       }
+      std::sort(w.begin(), w.end());
       auto it = ecmapinv.find(w);
       if (it != ecmapinv.end()) {
         ec = it->second;              
@@ -122,9 +123,13 @@ void bustools_merge(const Bustools_opt &opt) {
   std::priority_queue<TP, std::vector<TP>, std::function<bool(const TP &a, const TP &b)>> pq(ncmp);
   BUSData t;
   for (int i = 0; i < k; ++i) {
-    bf[i].read((char *) &t, sizeof(t));
-    pq.push({t, i});
-    ++nr;
+    if (bf[i].good()) {
+      bf[i].read((char *) &t, sizeof(t));
+      if (bf[i].good()) {
+        pq.push({t, i});
+        ++nr;
+      }
+    }
   }
 
   BUSData curr = pq.top().first;
@@ -139,6 +144,7 @@ void bustools_merge(const Bustools_opt &opt) {
     // Do I have to check the other fields?
     if (m.flags == curr.flags && m.barcode == curr.barcode && m.UMI == curr.UMI) {
       currec.insert(ectrans[i][m.ec]);
+      std::cout << "From file " << i << ": " << m.ec << " translated to " << ectrans[i][m.ec] << std::endl;
     } else {
       // Create new ec if necessary
       if (currec.size() == 1) {
@@ -148,9 +154,20 @@ void bustools_merge(const Bustools_opt &opt) {
         for (const auto &ec : currec) {
           const auto &v = ecmap[ec];
           tx.insert(tx.end(), v.begin(), v.end());
+          std::cout << "EC " << ec << ": contains " << std::flush;
+          for (const auto &giraffe : v) {
+            std::cout << giraffe << "," << std::flush;
+          }
+          std::cout << std::endl;
         }
         std::sort(tx.begin(), tx.end());
         tx.erase(std::unique(tx.begin(), tx.end()), tx.end());
+
+        std::cout << "Final EC contains " << std::flush;
+        for (const auto &giraffe : tx) {
+          std::cout << giraffe << "," << std::flush;
+        }
+        std::cout << std::endl;
 
         auto it = ecmapinv.find(tx);
         if (it == ecmapinv.end()) {
@@ -183,7 +200,42 @@ void bustools_merge(const Bustools_opt &opt) {
   }
 
   // Write out remaining straggler
-  if (curr.count > 0) {
+  if (currec.size()) {
+    // Create new ec if necessary
+    if (currec.size() == 1) {
+      curr.ec = *currec.begin();
+    } else {
+      std::vector<int32_t> tx;
+      for (const auto &ec : currec) {
+        const auto &v = ecmap[ec];
+        tx.insert(tx.end(), v.begin(), v.end());
+        std::cout << "EC " << ec << ": contains " << std::flush;
+        for (const auto &giraffe : v) {
+          std::cout << giraffe << "," << std::flush;
+        }
+        std::cout << std::endl;
+      }
+      std::sort(tx.begin(), tx.end());
+      tx.erase(std::unique(tx.begin(), tx.end()), tx.end());
+
+      std::cout << "Final EC contains " << std::flush;
+      for (const auto &giraffe : tx) {
+        std::cout << giraffe << "," << std::flush;
+      }
+      std::cout << std::endl;
+
+      auto it = ecmapinv.find(tx);
+      if (it == ecmapinv.end()) {
+        curr.ec = ecmapinv.size();
+        oh.ecs.push_back(tx); // Copy
+        ecmapinv.insert({tx, curr.ec});
+        ecmap.push_back(tx);
+      } else {
+        curr.ec = it->second;
+      }
+    }
+
+    curr.count = 1;
     outf.write((char *) &curr, sizeof(curr));
     ++nw;
   }

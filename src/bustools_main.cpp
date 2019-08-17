@@ -901,13 +901,28 @@ bool check_ProgramOptions_correct(Bustools_opt& opt) {
 bool check_ProgramOptions_count(Bustools_opt& opt) {
   bool ret = true;
 
+  /*
   if (opt.output.empty()) {
-    std::cerr << "Error: missing output file" << std::endl;
-    ret = false;
-  } else if (!checkOutputFileValid(opt.output)) {
-    std::cerr << "Error: unable to open output file" << std::endl;
-    ret = false;
+    std::cerr << "Error: missing output directory" << std::endl;
+  } else {
+    // check if output directory exists or if we can create it
+    struct stat stFileInfo;
+    auto intStat = stat(opt.output.c_str(), &stFileInfo);
+    if (intStat == 0) {
+      // file/dir exits
+      if (!S_ISDIR(stFileInfo.st_mode)) {
+        std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
+        ret = false;
+      } 
+    } else {
+      // create directory
+      if (my_mkdir(opt.output.c_str(), 0777) == -1) {
+        std::cerr << "Error: could not create directory " << opt.output << std::endl;
+        ret = false;
+      }
+    }
   }
+  */
 
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input files" << std::endl;
@@ -1272,7 +1287,7 @@ void Bustools_correct_Usage() {
 void Bustools_count_Usage() {
   std::cout << "Usage: bustools count [options] sorted-bus-files" << std::endl << std::endl
   << "Options: " << std::endl
-  << "-o, --output          File for corrected bus output" << std::endl
+  << "-o, --output          Directory and prefix for gene matrix files" << std::endl
   << "-g, --genemap         File for mapping transcripts to genes" << std::endl
   << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
   << "-t, --txnames         File with names of transcripts" << std::endl

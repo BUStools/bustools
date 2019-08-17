@@ -47,7 +47,8 @@ void bustools_project(Bustools_opt &opt) {
   for (int32_t ec = 0; ec < geneEc2genes.size(); ++ec) {
     geneEc2genesinv.insert({geneEc2genes[ec], ec});
   }
-  geneEc2genesinv.insert({{}, -1});
+  std::vector<int32_t> v;
+  geneEc2genesinv.insert({std::move(v), -1});
 
   std::vector<int32_t> txEc2geneEc;
   for (const auto &txEc : ec2genes) {
