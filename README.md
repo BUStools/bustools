@@ -14,7 +14,7 @@ __bustools__ works with __BUS__ files which can be generated efficiently from ra
 
 ## Installation
 
-Binaries for Mac, Linux, Windows, and Rock64 can be downloaded from the [__bustools__ website](https://bustools.github.io/download). 
+Binaries for Mac, Linux, Windows, and Rock64 can be downloaded from the [__bustools__ website](https://bustools.github.io/download). Binary installation time is less than two minutes.
 
 To compile bustools download the source code with
 
