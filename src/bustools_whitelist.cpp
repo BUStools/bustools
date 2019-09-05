@@ -108,7 +108,7 @@ void bustools_whitelist(Bustools_opt &opt) {
     // [average count of top 10] * [chance of perfect barcode]
     // = [expected number of perfect barcodes]
     // And then multiply by some constant(?)
-    threshold = avgCount * (1 - pow(1 - ERROR_RATE, bclen));
+    threshold = avgCount * (1 - std::pow(1 - ERROR_RATE, bclen));
   
     /* Process all the records we just went through. */
     for (const auto &rec : vec) {

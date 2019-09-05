@@ -2,6 +2,7 @@
 #define BUSTOOLS_COMMON_HPP
 
 #include <cassert>
+#include <cmath>
 #include <algorithm>
 #include <stdint.h>
 #include <vector>
