@@ -2,6 +2,9 @@
 #include <getopt.h>
 #include <sys/stat.h>
 #include <unistd.h> 
+#include <libgen.h>
+#include <string.h>
+
 
 #include <iostream>
 #include <fstream>
@@ -11,6 +14,7 @@
 #include <unordered_set>
 #include <functional>
 #include <sstream>
+
 
 #include "Common.hpp"
 #include "BUSData.h"
@@ -539,11 +543,34 @@ bool check_ProgramOptions_sort(Bustools_opt& opt) {
       // if it is a directory, create random file prefix
       opt.temp_files += "/bus.sort." + std::to_string(getpid()) + ".";
     } else {
-      int n = opt.temp_files.size();
-      if (opt.temp_files[n-1] != '.') {
-        opt.temp_files += '.';
+      if (opt.temp_files.at(opt.temp_files.size()-1) == '/') {
+        // try creating the directory
+        if (my_mkdir(opt.temp_files.c_str(),0777) == 0) {
+          // 
+          opt.temp_files += "/bus.sort." + std::to_string(getpid()) + ".";
+        } else {
+          std::cerr << "Error: directory " << opt.temp_files << " does not exist and could not be created. Check that the parent directory exists and you have write permissions." << std::endl;
+          ret = false;
+        }  
+      } else {
+        int n = opt.temp_files.size();
+        if (opt.temp_files[n-1] != '.') {
+          opt.temp_files += '.';
+        }
+        // assume the directory exist       
       }
     }
+  }
+
+  if (ret) {
+    FILE *tmpf = fopen(opt.temp_files.c_str(), "a+");
+    if (tmpf == nullptr) {
+      char *dirn = dirname(strdup(opt.temp_files.c_str()));
+      std::cerr << "Error: Could not create a temporary file in directory " << dirn << ". check that the directory exists and if you have permissions to write in it" << std::endl;
+      free(dirn);
+      ret = false;
+    }
+    remove(opt.temp_files.c_str());
   }
 
   if (opt.files.size() == 0) {
