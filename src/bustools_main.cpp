@@ -26,6 +26,8 @@
 #include "bustools_inspect.h"
 #include "bustools_linker.h"
 #include "bustools_capture.h"
+#include "bustools_correct.h"
+
 
 int my_mkdir(const char *path, mode_t mode) {
   #ifdef _WIN64
@@ -1310,159 +1312,8 @@ int main(int argc, char **argv) {
       }
       parse_ProgramOptions_correct(argc-1, argv+1, opt);
       if (check_ProgramOptions_correct(opt)) { //Program options are valid
+        bustools_correct(opt);
         
-        uint32_t bclen = 0; 
-        uint32_t wc_bclen = 0;
-        uint32_t umilen = 0;
-        BUSHeader h;
-        size_t nr = 0;
-        size_t N = 100000;
-        BUSData* p = new BUSData[N];
-        char magic[4];      
-        uint32_t version = 0;
-        size_t stat_white = 0;
-        size_t stat_corr = 0;
-        size_t stat_uncorr = 0;
-
-        std::ifstream wf(opt.whitelist, std::ios::in);
-        std::string line;
-        line.reserve(100);
-        std::unordered_set<uint64_t> wbc;
-        wbc.reserve(100000);
-        uint32_t f = 0;
-        while(std::getline(wf, line)) {
-          if (wc_bclen == 0) {
-            wc_bclen = line.size();
-          }
-          uint64_t bc = stringToBinary(line, f);
-          wbc.insert(bc);          
-        }
-        wf.close();
-
-        std::cerr << "Found " << wbc.size() << " barcodes in the whitelist" << std::endl;
-
-        std::unordered_map<uint64_t, uint64_t> correct;
-        correct.reserve(wbc.size()*3*wc_bclen);
-        // whitelisted barcodes correct to themselves
-        for (uint64_t b : wbc) {
-          correct.insert({b,b});
-        }
-        // include hamming distance 1 to all codewords
-        std::vector<uint64_t> bad_y;
-        for (auto x : wbc) {
-          // insert all hamming distance one
-          size_t sh = wc_bclen-1;          
-
-          for (size_t i = 0; i < wc_bclen; ++i) {
-            for (uint64_t d = 1; d <= 3; d++) {
-              uint64_t y = x ^ (d << (2*sh));
-              if (correct.find(y) != correct.end()) {
-                bad_y.push_back(y);
-              } else {
-                correct.insert({y,x});
-              }
-            }                
-            sh--;
-          }
-        }
-
-        // paranoia about error correcting
-        int removed_ys = 0;
-        for (auto y : bad_y) {
-          if (wbc.find(y) == wbc.end()) {
-            if (correct.erase(y)>0) { // duplicates are fine
-              removed_ys++;
-            }
-          }
-        }
-
-        std::cerr << "Number of hamming dist 1 barcodes = " << correct.size() << std::endl;
-        
-        std::streambuf *buf = nullptr;
-        std::ofstream busf_out;
-        
-        if (!opt.stream_out) {
-          busf_out.open(opt.output , std::ios::out | std::ios::binary);
-          buf = busf_out.rdbuf();
-        } else {
-          buf = std::cout.rdbuf();
-        }
-        std::ostream bus_out(buf);
-
-        bool outheader_written = false;
-        
-        nr = 0;
-        BUSData bd;
-        for (const auto& infn : opt.files) { 
-          std::streambuf *inbuf;
-          std::ifstream inf;
-          if (!opt.stream_in) {
-            inf.open(infn.c_str(), std::ios::binary);
-            inbuf = inf.rdbuf();
-          } else {
-            inbuf = std::cin.rdbuf();
-          }
-          std::istream in(inbuf);          
-          parseHeader(in, h);
-
-          if (!outheader_written) {
-            writeHeader(bus_out, h);
-            outheader_written = true;
-          }
-
-          if (bclen == 0) {
-            bclen = h.bclen;
-
-            if (bclen != wc_bclen) { 
-              std::cerr << "Error: barcode length and whitelist length differ, barcodes = " << bclen << ", whitelist = " << wc_bclen << std::endl
-                        << "       check that your whitelist matches the technology used" << std::endl;
-
-              exit(1);
-            }
-          }
-          if (umilen == 0) {
-            umilen = h.umilen;
-          }
-
-          int rc = 0;
-          while (true) {
-            in.read((char*)p, N*sizeof(BUSData));
-            size_t rc = in.gcount() / sizeof(BUSData);
-            if (rc == 0) {
-              break;
-            }
-            nr +=rc;
-
-            for (size_t i = 0; i < rc; i++) {
-              bd = p[i];
-              auto it = correct.find(bd.barcode);
-              if (it != correct.end()) {
-                if (bd.barcode != it->second) {
-                  bd.barcode = it->second;
-                  stat_corr++;
-                } else {
-                  stat_white++;
-                }
-                bd.count = 1;
-                bus_out.write((char*) &bd, sizeof(bd));
-              } else {
-                stat_uncorr++;
-              }
-            }
-          }
-        }
-
-        std::cerr << "Processed " << nr << " bus records" << std::endl
-        << "In whitelist = " << stat_white << std::endl
-        << "Corrected = " << stat_corr << std::endl
-        << "Uncorrected = " << stat_uncorr << std::endl;
-
-
-        if (!opt.stream_out) {
-          busf_out.close();
-        }
-
-        delete[] p; p = nullptr;
       } else {
         Bustools_dump_Usage();
         exit(1);
