@@ -216,6 +216,7 @@ void parse_ProgramOptions_capture(int argc, char **argv, Bustools_opt& opt) {
 void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
   const char* opt_string = "o:g:e:t:m";
   int gene_flag = 0;
+  int em_flag = 0;
   static struct option long_options[] = {
     {"output",          required_argument,  0, 'o'},
     {"genemap",          required_argument,  0, 'g'},
@@ -223,6 +224,7 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
     {"txnames",          required_argument,  0, 't'},
     {"genecounts", no_argument, &gene_flag, 1},
     {"multimapping", no_argument, 0, 'm'},
+    {"em", no_argument, &em_flag, 1},
     {0,                 0,                  0,  0 }
   };
 
@@ -252,6 +254,9 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
   }
   if (gene_flag) {
     opt.count_collapse = true;
+  }
+  if (em_flag) {
+    opt.count_em = true;
   }
 
   while (optind < argc) opt.files.push_back(argv[optind++]);
@@ -794,6 +799,11 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
     }
   }
 
+  if (opt.count_em && opt.count_gene_multimapping) {
+    std::cerr << "Error: EM algorithm and counting multimapping reads are incompatible" << std::endl;
+    ret = false;
+  }
+
   
 
   if (opt.files.size() == 0) {
@@ -821,7 +831,7 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
   }
 
   if (opt.count_ecs.size() == 0) {
-    std::cerr << "Error: missing equialence class mapping file" << std::endl;
+    std::cerr << "Error: missing equivalence class mapping file" << std::endl;
     ret = false;
   } else {
     if (!checkFileExists(opt.count_ecs)) {
@@ -1074,7 +1084,8 @@ void Bustools_count_Usage() {
   << "-g, --genemap         File for mapping transcripts to genes" << std::endl
   << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
   << "-t, --txnames         File with names of transcripts" << std::endl
-  << "--genecounts          Aggregate counts to genes only" << std::endl
+  << "    --genecounts      Aggregate counts to genes only" << std::endl
+  << "    --em              Estimate gene abundances using EM algorithm"
   << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl
   << std::endl;
 }

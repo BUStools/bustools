@@ -33,6 +33,7 @@ struct Bustools_opt {
   std::string count_genes;
   std::string count_ecs;
   std::string count_txp;
+  bool count_em = false;
   bool count_collapse = false;
   bool count_gene_multimapping = false;
 
