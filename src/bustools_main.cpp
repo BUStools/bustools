@@ -229,7 +229,7 @@ void parse_ProgramOptions_capture(int argc, char **argv, Bustools_opt& opt) {
     {"capture",         required_argument,  0, 'c'},
     {"ecmap",           required_argument,  0, 'e'},
     {"txnames",         required_argument,  0, 't'},
-    {"flag",            no_argument,        0, 'F'},
+    {"flags",            no_argument,        0, 'F'},
     {"transcripts",     no_argument,        0, 's'},
     {"umis",            no_argument,        0, 'u'},
     {"barcode",         no_argument,        0, 'b'},
@@ -414,11 +414,12 @@ void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt& opt) {
 void parse_ProgramOptions_whitelist(int argc, char **argv, Bustools_opt &opt) {
   
   /* Parse options. */
-  const char *opt_string = "o:f:";
+  const char *opt_string = "o:f:h";
 
   static struct option long_options[] = {
     {"output", required_argument, 0, 'o'},
     {"threshold", required_argument, 0, 'f'},
+    {"histogram", no_argument, 0, 'h'},
     {0, 0, 0, 0}
   };
 
@@ -432,6 +433,8 @@ void parse_ProgramOptions_whitelist(int argc, char **argv, Bustools_opt &opt) {
       case 'f':
         opt.threshold = atoi(optarg);
         break;
+      case 'h':
+        opt.type = 0xFF;
       default:
         break;
     }
@@ -578,11 +581,12 @@ void parse_ProgramOptions_linker(int argc, char **argv, Bustools_opt &opt) {
 void parse_ProgramOptions_extract(int argc, char **argv, Bustools_opt &opt) {
   
   /* Parse options. */
-  const char *opt_string = "o:f:p";
+  const char *opt_string = "o:f:N:p";
 
   static struct option long_options[] = {
     {"output", required_argument, 0, 'o'},
     {"fastq", required_argument, 0, 'f'},
+    {"nFastqs", required_argument, 0, 'N'},
     {"pipe", no_argument, 0, 'p'},
     {0, 0, 0, 0}
   };
@@ -599,6 +603,9 @@ void parse_ProgramOptions_extract(int argc, char **argv, Bustools_opt &opt) {
         for (auto &elt : opt.fastq) {
           elt = my_wordexp(elt.c_str());
         }
+        break;
+      case 'N':
+        opt.nFastqs = std::stoi(optarg);
         break;
       case 'p':
         opt.stream_out = true;
@@ -901,7 +908,6 @@ bool check_ProgramOptions_correct(Bustools_opt& opt) {
 bool check_ProgramOptions_count(Bustools_opt& opt) {
   bool ret = true;
 
-  /*
   if (opt.output.empty()) {
     std::cerr << "Error: missing output directory" << std::endl;
   } else {
@@ -922,7 +928,6 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
       }
     }
   }
-  */
 
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input files" << std::endl;
@@ -1199,6 +1204,16 @@ bool check_ProgramOptions_extract(Bustools_opt &opt) {
       }
     }
   }
+
+  if (opt.nFastqs == 0) {
+    std::cerr << "Error: nFastqs is zero" << std::endl;
+    ret = false;
+  } else {
+    if (opt.fastq.size() % opt.nFastqs != 0) {
+      std::cerr << "Error: incorrect number of FASTQ file(s)" << std::endl;
+      ret = false;
+    }
+  }
   
   return ret;
 }
@@ -1249,12 +1264,14 @@ void Bustools_capture_Usage() {
   << "-o, --output          File for captured output " << std::endl
   << "-x, --complement      Take complement of captured set" << std::endl
   << "-c, --capture         Capture list" << std::endl
-  << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
-  << "-t, --txnames         File with names of transcripts" << std::endl
+  << "-e, --ecmap           File for mapping equivalence classes to transcripts (for --transcripts)" << std::endl
+  << "-t, --txnames         File with names of transcripts (for --transcripts)" << std::endl
+  << "-p, --pipe            Write to standard output" << std::endl
+  << "Capture types: " << std::endl
+  << "-F, --flags           Capture list is a list of flags to capture" << std::endl
   << "-s, --transcripts     Capture list is a list of transcripts to capture" << std::endl
   << "-u, --umis            Capture list is a list of UMIs to capture" << std::endl
   << "-b, --barcode         Capture list is a list of barcodes to capture" << std::endl
-  << "-p, --pipe            Write to standard output" << std::endl
   << std::endl;
 }
 
@@ -1287,7 +1304,7 @@ void Bustools_correct_Usage() {
 void Bustools_count_Usage() {
   std::cout << "Usage: bustools count [options] sorted-bus-files" << std::endl << std::endl
   << "Options: " << std::endl
-  << "-o, --output          Directory and prefix for gene matrix files" << std::endl
+  << "-o, --output          Output directory gene matrix files" << std::endl
   << "-g, --genemap         File for mapping transcripts to genes" << std::endl
   << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
   << "-t, --txnames         File with names of transcripts" << std::endl
@@ -1341,7 +1358,7 @@ void Bustools_extract_Usage() {
     << "Options: " << std::endl
     << "-o, --output          Output directory for FASTQ files" << std::endl
     << "-f, --fastq           FASTQ file(s) from which to extract reads (comma-separated list)" << std::endl
-    << "-p, --pipe            Write to standard output" << std::endl
+    << "-N, --nFastqs         Number of FASTQ file(s) per run" << std::endl
     << std::endl;
 }
 
@@ -1592,7 +1609,7 @@ int main(int argc, char **argv) {
                 } else {
                   stat_white++;
                 }
-                bd.count = 1;
+                // bd.count = 1;
                 bus_out.write((char*) &bd, sizeof(bd));
               } else {
                 stat_uncorr++;
