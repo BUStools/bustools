@@ -75,7 +75,7 @@ void bustools_extract(const Bustools_opt &opt) {
       while (iRead < p[i].flags) {
         for (const auto &s : seq) {
           int err_kseq_read = kseq_read(s);
-          if (err_kseq_read == -1) {
+          if (err_kseq_read == -1) { // Reached EOF
             if (iFastq == opt.fastq.size()) { // Done with all files
               std::cerr << "Warning: number of reads in FASTQs was less than number of reads in BUS file" << std::endl;
               goto end_extract;

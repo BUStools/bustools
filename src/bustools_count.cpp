@@ -36,10 +36,10 @@ void bustools_count(Bustools_opt &opt) {
 
 
   std::ofstream of;
-  std::string mtx_ofn = opt.output + ".mtx";
-  std::string barcodes_ofn = opt.output + ".barcodes.txt";
-  std::string ec_ofn = opt.output + ".ec.txt";
-  std::string gene_ofn = opt.output + ".genes.txt";
+  std::string mtx_ofn = opt.output + "/genes.mtx";
+  std::string barcodes_ofn = opt.output + "/genes.barcodes.txt";
+  std::string ec_ofn = opt.output + "/genes.ec";
+  std::string gene_ofn = opt.output + "/genes.genes.txt";
   of.open(mtx_ofn); 
 
   // write out the initial header

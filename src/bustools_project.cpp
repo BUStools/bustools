@@ -57,7 +57,7 @@ void bustools_project(Bustools_opt &opt) {
   
 
   /* Write gene EC matrix. */
-  of.open(opt.output + ".ec");
+  of.open(opt.output + "/matrix.ec");
   for (int i = 0; i < geneEc2genes.size(); ++i) {
     of << i << '\t';
 
@@ -81,7 +81,7 @@ void bustools_project(Bustools_opt &opt) {
 
   
   /* Write gene table. */
-  of.open(opt.output + ".genes.txt");
+  of.open(opt.output + "/genes.txt");
   for (const auto & gene : genenamesinv) {
     of << gene << '\n';
   }
@@ -92,7 +92,7 @@ void bustools_project(Bustools_opt &opt) {
 
   std::streambuf *buf = nullptr;
   if (!opt.stream_out) {
-    of.open(opt.output + ".bus"); 
+    of.open(opt.output + "/output.bus"); 
     buf = of.rdbuf();
   } else {
     buf = std::cout.rdbuf();
