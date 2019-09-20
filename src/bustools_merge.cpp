@@ -144,7 +144,6 @@ void bustools_merge(const Bustools_opt &opt) {
     // Do I have to check the other fields?
     if (m.flags == curr.flags && m.barcode == curr.barcode && m.UMI == curr.UMI) {
       currec.insert(ectrans[i][m.ec]);
-      std::cout << "From file " << i << ": " << m.ec << " translated to " << ectrans[i][m.ec] << std::endl;
     } else {
       // Create new ec if necessary
       if (currec.size() == 1) {
@@ -154,20 +153,9 @@ void bustools_merge(const Bustools_opt &opt) {
         for (const auto &ec : currec) {
           const auto &v = ecmap[ec];
           tx.insert(tx.end(), v.begin(), v.end());
-          std::cout << "EC " << ec << ": contains " << std::flush;
-          for (const auto &giraffe : v) {
-            std::cout << giraffe << "," << std::flush;
-          }
-          std::cout << std::endl;
         }
         std::sort(tx.begin(), tx.end());
         tx.erase(std::unique(tx.begin(), tx.end()), tx.end());
-
-        std::cout << "Final EC contains " << std::flush;
-        for (const auto &giraffe : tx) {
-          std::cout << giraffe << "," << std::flush;
-        }
-        std::cout << std::endl;
 
         auto it = ecmapinv.find(tx);
         if (it == ecmapinv.end()) {
@@ -209,20 +197,9 @@ void bustools_merge(const Bustools_opt &opt) {
       for (const auto &ec : currec) {
         const auto &v = ecmap[ec];
         tx.insert(tx.end(), v.begin(), v.end());
-        std::cout << "EC " << ec << ": contains " << std::flush;
-        for (const auto &giraffe : v) {
-          std::cout << giraffe << "," << std::flush;
-        }
-        std::cout << std::endl;
       }
       std::sort(tx.begin(), tx.end());
       tx.erase(std::unique(tx.begin(), tx.end()), tx.end());
-
-      std::cout << "Final EC contains " << std::flush;
-      for (const auto &giraffe : tx) {
-        std::cout << giraffe << "," << std::flush;
-      }
-      std::cout << std::endl;
 
       auto it = ecmapinv.find(tx);
       if (it == ecmapinv.end()) {
@@ -247,6 +224,6 @@ void bustools_merge(const Bustools_opt &opt) {
   /* Master ec file. */
   writeECs(opt.output + "/matrix.ec", oh);
 
-  std::cout << "Read in " << nr << " BUS records, wrote " << nw << " BUS records" << std::endl;
+  std::cerr << "Read in " << nr << " BUS records, wrote " << nw << " BUS records" << std::endl;
 }
 
