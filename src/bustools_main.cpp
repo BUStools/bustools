@@ -121,8 +121,7 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt& opt) {
     {"umi",             no_argument,        0, 'u'},
     {"count",           no_argument,        0, 'c'},
     {"flags",           no_argument,        0, 'F'},
-    {"bam",             no_argument,        0, 'B'},
-    {"pipe",            no_argument, 0, 'p'},
+    {"pipe",            no_argument,        0, 'p'},
     {0,                 0,                  0,  0 }
   };
 
@@ -170,9 +169,6 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt& opt) {
       break;
     case 'c':
       opt.type = SORT_COUNT;
-      break;
-    case 'B':
-      opt.type = SORT_BAM;
       break;
     case 'u':
       opt.type = SORT_UMI;
@@ -419,7 +415,6 @@ void parse_ProgramOptions_whitelist(int argc, char **argv, Bustools_opt &opt) {
   static struct option long_options[] = {
     {"output", required_argument, 0, 'o'},
     {"threshold", required_argument, 0, 'f'},
-    {"histogram", no_argument, 0, 'h'},
     {0, 0, 0, 0}
   };
 
@@ -433,8 +428,6 @@ void parse_ProgramOptions_whitelist(int argc, char **argv, Bustools_opt &opt) {
       case 'f':
         opt.threshold = atoi(optarg);
         break;
-      case 'h':
-        opt.type = 0xFF;
       default:
         break;
     }
@@ -1254,7 +1247,6 @@ void Bustools_sort_Usage() {
   << "    --umi             Sort by UMI, barcode, then ec" << std::endl
   << "    --count           Sort by multiplicity, barcode, UMI, then ec" << std::endl
   << "    --flags           Sort by flag, barcode, UMI, then ec" << std::endl
-  << "    --bam             bus-files were generated from BAM files" << std::endl
   << std::endl;
 }
 

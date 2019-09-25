@@ -10,21 +10,10 @@
 #include <sstream>
 
 
-#define BUSTOOLS_VERSION "0.39.2"
-
-#if 0
-#define TYPE_NONE 0
-#define CAPTURE_TX  1
-#define CAPTURE_BC  2
-#define CAPTURE_UMI 3
-#define SORT_BC 0
-#define SORT_UMI 1
-#define SORT_F 2
-#define SORT_COUNT 3
-#endif
+#define BUSTOOLS_VERSION "0.39.3"
 
 enum CAPTURE_TYPE : char {CAPTURE_NONE = 0, CAPTURE_TX, CAPTURE_BC, CAPTURE_UMI, CAPTURE_F};
-enum SORT_TYPE : char {SORT_BC = 0, SORT_UMI, SORT_F, SORT_COUNT, SORT_BAM};
+enum SORT_TYPE : char {SORT_BC = 0, SORT_UMI, SORT_F, SORT_COUNT};
 
 struct Bustools_opt {
   int threads;
@@ -36,6 +25,8 @@ struct Bustools_opt {
   bool stream_in = false;
   bool stream_out = false;
 
+  /* extract */
+  int nFastqs;
   std::vector<std::string> fastq;
   
   char type;
@@ -45,18 +36,22 @@ struct Bustools_opt {
   size_t max_memory;
   std::string temp_files;
 
+  /* count, and other things */
   std::string count_genes;
   std::string count_ecs;
   std::string count_txp;
   bool count_collapse = false;
   bool count_gene_multimapping = false;
 
+  /* capture */
   std::string capture;
   bool complement = false;
   bool filter = false;
 
+  /* whitelist */
   int threshold;
 
+  /* linker */
   int start, end;
 
   Bustools_opt() : threads(1), max_memory(1ULL<<32), type(0),
