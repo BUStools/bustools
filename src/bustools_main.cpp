@@ -788,14 +788,22 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
     std::cerr << "Error: Missing output directory" << std::endl;
     ret = false;
   } else {
-    if (!checkDirectoryExists(opt.output)) {
-      if (checkFileExists(opt.output)) {
-        std::cerr << "Error: " << opt.output << " exists and is not a directory" << std::endl;
-        ret = false;
-      } else if (my_mkdir(opt.output.c_str(), 0777) == -1) {
-        std::cerr << "Error: could not create directory " << opt.output << std::endl;
-        ret = false;
-      }      
+    bool isDir = false;
+    if (checkDirectoryExists(opt.output)) {
+      isDir = true;
+    } else {
+      if (opt.output.at(opt.output.size()-1) == '/') {
+        if (my_mkdir(opt.output.c_str(), 0777) == -1) {
+          std::cerr << "Error: could not create directory " << opt.output << std::endl;
+          ret = false;
+        } else {
+          isDir = true;
+        }
+      }
+    }
+
+    if (isDir) {
+      opt.output += "output";
     }
   }
 
