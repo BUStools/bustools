@@ -1093,7 +1093,7 @@ void Bustools_count_Usage() {
   << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
   << "-t, --txnames         File with names of transcripts" << std::endl
   << "    --genecounts      Aggregate counts to genes only" << std::endl
-  << "    --em              Estimate gene abundances using EM algorithm" << std::endl
+  << "    --em              Estimate gene abundances using EM algorithm" << std::endl 
   << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl
   << std::endl;
 }
