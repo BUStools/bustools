@@ -98,7 +98,7 @@ struct SortedVectorHasher {
 std::vector<int32_t> intersect(std::vector<int32_t> &u, std::vector<int32_t> &v);
 std::vector<int32_t> union_vectors(const std::vector<std::vector<int32_t>> &v);
 std::vector<int32_t> intersect_vectors(const std::vector<std::vector<int32_t>> &v);
-int32_t intersect_ecs(const std::vector<int32_t> &ecs, std::vector<int32_t> &u, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv);
+int32_t intersect_ecs(const std::vector<int32_t> &ecs, std::vector<int32_t> &u, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes);
 void vt2gene(const std::vector<int32_t> &v, const std::vector<int32_t> &genemap, std::vector<int32_t> &glist);
 void intersect_genes_of_ecs(const std::vector<int32_t> &ecs, const  std::vector<std::vector<int32_t>> &ec2genes, std::vector<int32_t> &glist);
 int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes, bool assumeIntersectionIsEmpty = true);
