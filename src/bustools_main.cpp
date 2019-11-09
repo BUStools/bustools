@@ -260,6 +260,7 @@ void parse_ProgramOptions_capture(int argc, char **argv, Bustools_opt& opt) {
 void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
   const char* opt_string = "o:g:e:t:m";
   int gene_flag = 0;
+  int em_flag = 0;
   static struct option long_options[] = {
     {"output",          required_argument,  0, 'o'},
     {"genemap",          required_argument,  0, 'g'},
@@ -267,6 +268,7 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
     {"txnames",          required_argument,  0, 't'},
     {"genecounts", no_argument, &gene_flag, 1},
     {"multimapping", no_argument, 0, 'm'},
+    {"em", no_argument, &em_flag, 1},
     {0,                 0,                  0,  0 }
   };
 
@@ -296,6 +298,9 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
   }
   if (gene_flag) {
     opt.count_collapse = true;
+  }
+  if (em_flag) {
+    opt.count_em = true;
   }
 
   while (optind < argc) opt.files.push_back(argv[optind++]);
@@ -621,7 +626,7 @@ bool check_ProgramOptions_sort(Bustools_opt& opt) {
 
   if (opt.max_memory < 1ULL<<26) {
     if (opt.max_memory < 128) {
-      std::cerr << "Warning: low number supplied for maximum memory usage with out M og G suffix\n  interpreting this as " << opt.max_memory << "Gb" << std::endl;
+      std::cerr << "Warning: low number supplied for maximum memory usage without M or G suffix\n  interpreting this as " << opt.max_memory << "Gb" << std::endl;
       opt.max_memory <<= 30;
     } else {
       std::cerr << "Warning: low number supplied for maximum memory, defaulting to 64Mb" << std::endl;
@@ -911,15 +916,28 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
     std::cerr << "Error: Missing output directory" << std::endl;
     ret = false;
   } else {
-    if (!checkDirectoryExists(opt.output)) {
-      if (checkFileExists(opt.output)) {
-        std::cerr << "Error: " << opt.output << " exists and is not a directory" << std::endl;
-        ret = false;
-      } else if (my_mkdir(opt.output.c_str(), 0777) == -1) {
-        std::cerr << "Error: could not create directory " << opt.output << std::endl;
-        ret = false;
-      }      
+    bool isDir = false;
+    if (checkDirectoryExists(opt.output)) {
+      isDir = true;
+    } else {
+      if (opt.output.at(opt.output.size()-1) == '/') {
+        if (my_mkdir(opt.output.c_str(), 0777) == -1) {
+          std::cerr << "Error: could not create directory " << opt.output << std::endl;
+          ret = false;
+        } else {
+          isDir = true;
+        }
+      }
     }
+
+    if (isDir) {
+      opt.output += "output";
+    }
+  }
+
+  if (opt.count_em && opt.count_gene_multimapping) {
+    std::cerr << "Error: EM algorithm and counting multimapping reads are incompatible" << std::endl;
+    ret = false;
   }
 
   
@@ -949,7 +967,7 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
   }
 
   if (opt.count_ecs.size() == 0) {
-    std::cerr << "Error: missing equialence class mapping file" << std::endl;
+    std::cerr << "Error: missing equivalence class mapping file" << std::endl;
     ret = false;
   } else {
     if (!checkFileExists(opt.count_ecs)) {
@@ -1305,7 +1323,8 @@ void Bustools_count_Usage() {
   << "-g, --genemap         File for mapping transcripts to genes" << std::endl
   << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
   << "-t, --txnames         File with names of transcripts" << std::endl
-  << "--genecounts          Aggregate counts to genes only" << std::endl
+  << "    --genecounts      Aggregate counts to genes only" << std::endl
+  << "    --em              Estimate gene abundances using EM algorithm" << std::endl 
   << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl
   << std::endl;
 }

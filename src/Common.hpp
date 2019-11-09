@@ -11,7 +11,7 @@
 #include <sstream>
 
 
-#define BUSTOOLS_VERSION "0.39.3"
+#define BUSTOOLS_VERSION "0.39.4"
 
 enum CAPTURE_TYPE : char {CAPTURE_NONE = 0, CAPTURE_TX, CAPTURE_BC, CAPTURE_UMI, CAPTURE_F};
 enum SORT_TYPE : char {SORT_BC = 0, SORT_UMI, SORT_F, SORT_COUNT};
@@ -41,6 +41,7 @@ struct Bustools_opt {
   std::string count_genes;
   std::string count_ecs;
   std::string count_txp;
+  bool count_em = false;
   bool count_collapse = false;
   bool count_gene_multimapping = false;
 

@@ -85,47 +85,6 @@ void bustools_correct(Bustools_opt &opt) {
     correct[lb].first.add(ub);
   }
 
-
-  /*
-  //std::unordered_map<uint64_t, uint64_t> correct;
-  correct.reserve(wbc.size()*3*wc_bclen);
-  // whitelisted barcodes correct to themselves
-  for (uint64_t b : wbc) {
-    correct.insert({b,b});
-  }
-  // include hamming distance 1 to all codewords
-  std::vector<uint64_t> bad_y;
-  for (auto x : wbc) {
-    // insert all hamming distance one
-    size_t sh = wc_bclen-1;          
-
-    for (size_t i = 0; i < wc_bclen; ++i) {
-      for (uint64_t d = 1; d <= 3; d++) {
-        uint64_t y = x ^ (d << (2*sh));
-        if (correct.find(y) != correct.end()) {
-          bad_y.push_back(y);
-        } else {
-          correct.insert({y,x});
-        }
-      }                
-      sh--;
-    }
-  }
-
-  // paranoia about error correcting
-  int removed_ys = 0;
-  for (auto y : bad_y) {
-    if (wbc.find(y) == wbc.end()) {
-      if (correct.erase(y)>0) { // duplicates are fine
-        removed_ys++;
-      }
-    }
-  }
-
-  std::cerr << "Number of hamming dist 1 barcodes = " << correct.size() << std::endl;
-  */
-
-
   std::streambuf *buf = nullptr;
   std::ofstream busf_out;
   
@@ -213,21 +172,6 @@ void bustools_correct(Bustools_opt &opt) {
             bus_out.write((char*) &bd, sizeof(bd));     
           }
         }
-        /*
-        auto it = correct.find(bd.barcode);
-        if (it != correct.end()) {
-          if (bd.barcode != it->second) {
-            bd.barcode = it->second;
-            stat_corr++;
-          } else {
-            stat_white++;
-          }
-          bd.count = 1;
-          bus_out.write((char*) &bd, sizeof(bd));
-        } else {
-          stat_uncorr++;
-        }
-        */
       }
     }
   }
