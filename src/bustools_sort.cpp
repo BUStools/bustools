@@ -3,16 +3,22 @@
 #include <cstring>
 #include <algorithm>
 #include <queue>
+#include <functional>
 
 #include "Common.hpp"
 #include "BUSData.h"
 #include "bustools_sort.h"
 
+#define TP std::pair<BUSData, int>
 
-inline bool operator<(const BUSData& a, const BUSData &b) {
+inline bool cmp1(const BUSData &a, const BUSData &b) {
   if (a.barcode == b.barcode) {
     if (a.UMI == b.UMI) {
-      return a.ec < b.ec;
+      if (a.ec == b.ec) {
+        return a.flags < b.flags;
+      } else {
+        return a.ec < b.ec;
+      }
     } else {
       return a.UMI < b.UMI;
     } 
@@ -21,31 +27,126 @@ inline bool operator<(const BUSData& a, const BUSData &b) {
   }
 };
 
-
-inline bool operator<(const std::pair<BUSData,int>& a, const std::pair<BUSData,int> &b) {
+inline bool ncmp1(const TP &a, const TP &b) {
   if (a.first.barcode == b.first.barcode) {
-      if (a.first.UMI == b.first.UMI) {
-        if (a.first.ec == b.first.ec) {
-          return a.second < b.second;
+    if (a.first.UMI == b.first.UMI) {
+      if (a.first.ec == b.first.ec) {
+        if (a.first.flags == b.first.flags) {
+          return a.second > b.second;
         } else {
-          return a.first.ec < b.first.ec;
+          return a.first.flags > b.first.flags;
         }
       } else {
-        return a.first.UMI < b.first.UMI;
-      } 
-    } else { 
-      return a.first.barcode < b.first.barcode;
-    }
-  /*
-  if (a.first < b.first) {
-    return true;
-  } else if (b.first < a.first) {
-    return false;    
-  } else {
-    return a.second < b.second;
+        return a.first.ec > b.first.ec;
+      }
+    } else {
+      return a.first.UMI > b.first.UMI;
+    } 
+  } else { 
+    return a.first.barcode > b.first.barcode;
   }
-  */
-}
+};
+
+
+inline bool cmp2(const BUSData &a, const BUSData &b) {
+  if (a.UMI == b.UMI) {
+    if (a.barcode == b.barcode) {
+      return a.ec < b.ec;
+    } else {
+      return a.barcode < b.barcode;
+    } 
+  } else {
+    return a.UMI < b.UMI;
+  }
+};
+
+inline bool ncmp2(const TP &a, const TP &b) {
+  if (a.first.UMI == b.first.UMI) {
+    if (a.first.barcode == b.first.barcode) {
+      if (a.first.ec == b.first.ec) {
+        return a.second > b.second;
+      } else {
+        return a.first.ec > b.first.ec;
+      }
+    } else {
+      return a.first.barcode > b.first.barcode;
+    } 
+  } else { 
+    return a.first.UMI > b.first.UMI;
+  }
+};
+
+inline bool cmp3(const BUSData &a, const BUSData &b) {
+  if (a.flags == b.flags) {
+    if (a.barcode == b.barcode) {
+      if (a.UMI == b.UMI) {
+        return a.ec < b.ec;
+      } else {
+        return a.UMI < b.UMI;
+      }
+    } else {
+      return a.barcode < b.barcode;
+    } 
+  } else {
+    return a.flags < b.flags;
+  }
+};
+
+inline bool ncmp3(const TP &a, const TP &b) {
+  if (a.first.flags == b.first.flags) {
+    if (a.first.barcode == b.first.barcode) {
+      if (a.first.UMI == b.first.UMI) {
+        if (a.first.ec == b.first.ec) {
+          return a.second > b.second;
+        } else {
+          return a.first.ec > b.first.ec;
+        }
+      } else {
+        return a.first.UMI > b.first.UMI;
+      }
+    } else {
+      return a.first.barcode > b.first.barcode;
+    } 
+  } else { 
+    return a.first.flags > b.first.flags;
+  }
+};
+
+inline bool cmp4(const BUSData &a, const BUSData &b) {
+  if (a.count == b.count) {
+    if (a.barcode == b.barcode) {
+      if (a.UMI == b.UMI) {
+        return a.ec < b.ec;
+      } else {
+        return a.UMI < b.UMI;
+      }
+    } else {
+      return a.barcode < b.barcode;
+    } 
+  } else {
+    return a.count < b.count;
+  }
+};
+
+inline bool ncmp4(const TP &a, const TP &b) {
+  if (a.first.count == b.first.count) {
+    if (a.first.barcode == b.first.barcode) {
+        if (a.first.UMI == b.first.UMI) {
+          if (a.first.ec == b.first.ec) {
+            return a.second > b.second;
+          } else {
+            return a.first.ec > b.first.ec;
+          }
+        } else {
+          return a.first.UMI > b.first.UMI;
+        }
+    } else {
+      return a.first.barcode > b.first.barcode;
+    } 
+  } else { 
+    return a.first.count > b.first.count;
+  }
+};
 
 void bustools_sort(const Bustools_opt& opt) {
   BUSHeader h;
@@ -55,6 +156,30 @@ void bustools_sort(const Bustools_opt& opt) {
   uint32_t version = 0;
 
   int no_temp_files = 0;
+
+  bool (*cmp)(const BUSData&, const BUSData&);
+  bool (*ncmp)(const TP &a, const TP &b);
+  switch (opt.type) {
+    case SORT_BC:
+      cmp = &cmp1;
+      ncmp = &ncmp1;
+      break;
+    case SORT_UMI:
+      cmp = &cmp2;
+      ncmp = &ncmp2;
+      break;
+    case SORT_F:
+      cmp = &cmp3;
+      ncmp = &ncmp3;
+      break;
+    case SORT_COUNT:
+      cmp = &cmp4;
+      ncmp = &ncmp4;
+      break;
+    default:
+      std::cerr << "ERROR: Unknown sort type" << std::endl;
+      exit(1);
+  }
 
   
   size_t sc = 0;
@@ -84,7 +209,7 @@ void bustools_sort(const Bustools_opt& opt) {
         break;
       }
       // now sort the data
-      std::sort(p,p+rc);
+      std::sort(p,p+rc, cmp);
       sc += rc;
       
 
@@ -97,10 +222,12 @@ void bustools_sort(const Bustools_opt& opt) {
         uint32_t c = p[i].count;
         auto ec = p[i].ec;          
         for (; j < rc; j++) {
-          if (p[i].barcode != p[j].barcode || p[i].UMI != p[j].UMI || p[i].ec != p[j].ec) {
-              break;
+          if (p[i].barcode == p[j].barcode && p[i].UMI == p[j].UMI && p[i].ec == p[j].ec
+              && (opt.type != SORT_F || p[i].flags == p[j].flags)) {
+            c += p[j].count;
+          } else {
+            break;
           }
-          c += p[j].count;
         }
         // merge identical things
         p[i].count = c;
@@ -164,8 +291,7 @@ void bustools_sort(const Bustools_opt& opt) {
       parseHeader(bf[i],tmp);
     }
 
-    using TP = std::pair<BUSData, int>;
-    std::priority_queue<TP, std::vector<TP>, std::greater<TP>> pq;
+    std::priority_queue<TP, std::vector<TP>, std::function<bool(const TP &a, const TP &b)>> pq(ncmp);
     BUSData t;
     for (int i = 0; i < k; i++) {
       bf[i].read((char*) &t, sizeof(t));
@@ -181,12 +307,16 @@ void bustools_sort(const Bustools_opt& opt) {
       // process the data
       BUSData &m = min.first;
       int i = min.second;
-      if (m.barcode == curr.barcode && m.UMI == curr.UMI && m.ec == curr.ec) {
+      if (m.barcode == curr.barcode && m.UMI == curr.UMI && m.ec == curr.ec
+          && (opt.type != SORT_F || m.flags == curr.flags)) {
         // same data, increase count
         curr.count += m.count;
       } else {
+
         // new data let's output curr, new curr is m
-        busf_out.write((char*)&curr, sizeof(curr));
+        if (curr.count != 0) {
+          busf_out.write((char*)&curr, sizeof(curr));
+        }
         curr = m;
       }
       // read next from stream

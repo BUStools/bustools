@@ -1,7 +1,6 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
-#include <unordered_set>
 
 #include "Common.hpp"
 #include "BUSData.h"
@@ -161,6 +160,8 @@ void bustools_count(Bustools_opt &opt) {
     double val = 0.0;
     size_t n = v.size();
 
+    std::vector<std::vector<int32_t>> ambiguous_genes;
+
     for (size_t i = 0; i < n; ) {
       size_t j = i+1;
       for (; j < n; j++) {
@@ -185,6 +186,8 @@ void bustools_count(Bustools_opt &opt) {
         } else {
           if (gn==1) {
             column_vp.push_back({glist[0],1.0});
+          } else if (opt.count_em) {
+            ambiguous_genes.push_back(std::move(glist));
           }
         }
       }
@@ -192,6 +195,9 @@ void bustools_count(Bustools_opt &opt) {
     }
     std::sort(column_vp.begin(), column_vp.end());
     size_t m = column_vp.size();
+    std::unordered_map<int32_t, double> col_map(m);
+    std::vector<int32_t> cols;
+
     for (size_t i = 0; i < m; ) {
       size_t j = i+1;
       double val = column_vp[i].second;
@@ -201,10 +207,81 @@ void bustools_count(Bustools_opt &opt) {
         }
         val += column_vp[j].second;
       }
-      of << n_rows << " " << (column_vp[i].first+1) << " " << val << "\n";
+      col_map.insert({column_vp[i].first,val});
+      cols.push_back(column_vp[i].first);
+
       n_entries++;
       
       i = j; // increment
+    }
+
+    if (opt.count_em) {
+      //std::cerr << "Running EM algorithm" << std::endl;
+      std::unordered_map<int32_t, double> c1,c2;
+      // initialize with unique counts
+      for (const auto &x : cols) {
+        double val = 0;
+        auto it = col_map.find(x);
+        if (it != col_map.end()) {
+          val = it->second;
+        }
+        c1.insert({x,val});
+        c2.insert({x,0.0});
+      }
+
+      // c1 is from previous round, c2 is the new one
+      int round = 0;
+      double tol = 1e-3;
+      double err = 1.0;
+      if (!ambiguous_genes.empty()) {        
+        while (round < 100 && err >= tol) {
+          for (auto &x : col_map) {
+            c2[x.first] = x.second;
+          }
+
+          for (const auto &glist : ambiguous_genes) {
+            double s = 0.0;
+            for (const auto &x : glist) {
+              auto it = c1.find(x);
+              if (it != c1.end()) {
+                s += it->second;
+              }
+            }
+            if (s > 0.0) {
+              for (const auto &x : glist) {
+                auto it = c1.find(x);
+                if (it != c1.end()) {
+                  c2[x] += it->second/s;
+                }
+              }
+            }
+          }
+
+          err = 0.0;
+          for (const auto &x : c1) {
+            double a=x.second,b=c2[x.first];
+            if (a>0 && b > 0) {
+              err += std::abs((a-b)/(a+b));
+            }
+          }
+          //std::cerr << "Round " << round << " error = " << err << std::endl;
+          std::swap(c1,c2);
+          round++;
+        }
+        std::swap(col_map,c1);
+      }
+
+    }
+
+
+
+    for (const auto &x : cols) {
+      double val = 0;
+      auto it = col_map.find(x);
+      if (it != col_map.end()) {
+        val = it->second;
+      }
+      of << n_rows << " " << (x+1) << " " << val << "\n";
     }
   };
 

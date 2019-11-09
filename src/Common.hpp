@@ -11,44 +11,55 @@
 #include <sstream>
 
 
-#define BUSTOOLS_VERSION "0.39.3"
+#define BUSTOOLS_VERSION "0.39.4"
 
-#define TYPE_NONE 0
-#define CAPTURE_TX  1
-#define CAPTURE_BC  2
-#define CAPTURE_UMI 3
+enum CAPTURE_TYPE : char {CAPTURE_NONE = 0, CAPTURE_TX, CAPTURE_BC, CAPTURE_UMI, CAPTURE_F};
+enum SORT_TYPE : char {SORT_BC = 0, SORT_UMI, SORT_F, SORT_COUNT};
 
 struct Bustools_opt {
   int threads;
-  std::string ecf;
-  std::string output;
+  
   std::string whitelist;  
+  std::string output;
   std::vector<std::string> files;
+
+  bool stream_in = false;
+  bool stream_out = false;
+
+  /* extract */
+  int nFastqs;
+  std::vector<std::string> fastq;
+  
+  char type;
 
   int ec_d;
   int ec_dmin;
   size_t max_memory;
   std::string temp_files;
 
+  /* count, and other things */
   std::string count_genes;
   std::string count_ecs;
   std::string count_txp;
+  bool count_em = false;
   bool count_collapse = false;
   bool count_gene_multimapping = false;
 
+  /* capture */
   std::string capture;
-  char type;
   bool complement = false;
   bool filter = false;
 
-  bool stream_in = false;
-  bool stream_out = false;
-
+  /* whitelist */
   int threshold;
 
+  /* text */
+  bool text_dumpflags = false;
+
+  /* linker */
   int start, end;
 
-  Bustools_opt() : threads(1), max_memory(1ULL<<32), type(TYPE_NONE),
+  Bustools_opt() : threads(1), max_memory(1ULL<<32), type(0),
     threshold(0), start(-1), end(-1)  {}
 };
 

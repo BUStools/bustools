@@ -47,7 +47,8 @@ void bustools_project(Bustools_opt &opt) {
   for (int32_t ec = 0; ec < geneEc2genes.size(); ++ec) {
     geneEc2genesinv.insert({geneEc2genes[ec], ec});
   }
-  geneEc2genesinv.insert({{}, -1});
+  std::vector<int32_t> v;
+  geneEc2genesinv.insert({std::move(v), -1});
 
   std::vector<int32_t> txEc2geneEc;
   for (const auto &txEc : ec2genes) {
@@ -56,20 +57,26 @@ void bustools_project(Bustools_opt &opt) {
   
 
   /* Write gene EC matrix. */
-  of.open(opt.output + ".ec");
+  of.open(opt.output + "/matrix.ec");
   for (int i = 0; i < geneEc2genes.size(); ++i) {
-    std::string geneEc = "";
+    of << i << '\t';
+
+    int first = true;
     for (const auto &gene : geneEc2genes[i]) {
-      geneEc += ",";
-      geneEc += std::to_string(gene);
+      if (first) {
+        first = false;
+      } else {
+        of << ',';
+      }
+      of << std::to_string(gene);
     }
-    of << i << '\t' << geneEc.substr(1) << '\n';
+    of << '\n';
   }
   of.close();
 
   
   /* Write gene table. */
-  of.open(opt.output + ".genes.txt");
+  of.open(opt.output + "/genes.txt");
   for (const auto & gene : genenamesinv) {
     of << gene << '\n';
   }
@@ -80,7 +87,7 @@ void bustools_project(Bustools_opt &opt) {
 
   std::streambuf *buf = nullptr;
   if (!opt.stream_out) {
-    of.open(opt.output + ".bus"); 
+    of.open(opt.output + "/output.bus"); 
     buf = of.rdbuf();
   } else {
     buf = std::cout.rdbuf();
@@ -103,7 +110,7 @@ void bustools_project(Bustools_opt &opt) {
     h.transcripts.emplace_back(gene);
   }
 
-  h.ecs = geneEc2genes;
+  h.ecs = std::move(geneEc2genes);
 
   writeHeader(o, h);
  
@@ -112,7 +119,7 @@ void bustools_project(Bustools_opt &opt) {
   size_t nw = 0;
   size_t N = 100000;
   BUSData *p = new BUSData[N];
-  BUSData *currRec = new BUSData;
+  BUSData currRec;
   // Gene EC --> counts for current barcode/UMI pair
   std::unordered_map<uint32_t, uint32_t> counts;
   
@@ -125,17 +132,17 @@ void bustools_project(Bustools_opt &opt) {
     nr += rc;
 
     for (size_t i = 0; i < rc; i++) {
-      if (currRec->barcode != p[i].barcode || currRec->UMI != p[i].UMI) {
+      if (currRec.barcode != p[i].barcode || currRec.UMI != p[i].UMI) {
         // Output BUG record
         for (const auto &rec : counts) {
           ++nw;
-          currRec->ec = rec.first;
-          currRec->count = rec.second;
-          o.write((char *) currRec, sizeof(BUSData));
+          currRec.ec = rec.first;
+          currRec.count = rec.second;
+          o.write((char *) &currRec, sizeof(BUSData));
         }
         
-        currRec->barcode = p[i].barcode;
-        currRec->UMI = p[i].UMI;
+        currRec.barcode = p[i].barcode;
+        currRec.UMI = p[i].UMI;
         counts.clear();
       }
       // Get gene EC and add entry to map
@@ -155,13 +162,12 @@ void bustools_project(Bustools_opt &opt) {
 
   for (const auto &rec : counts) {
     ++nw;
-    currRec->ec = rec.first;
-    currRec->count = rec.second;
-    o.write((char *) currRec, sizeof(BUSData));
+    currRec.ec = rec.first;
+    currRec.count = rec.second;
+    o.write((char *) &currRec, sizeof(BUSData));
   }
 
   delete[] p; p = nullptr;
-  delete currRec; currRec = nullptr;
   of.close();
 
 
