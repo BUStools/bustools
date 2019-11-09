@@ -34,9 +34,11 @@ void bustools_capture(Bustools_opt &opt) {
     parseTxCaptureList(opt.capture, txnames, captures);
     std::cerr << "done" << std::endl;
   } else if (opt.type == CAPTURE_UMI || opt.type == CAPTURE_BC) {
-    parseUMIBcCaptureList(opt.capture, captures);
+    parseBcUmiCaptureList(opt.capture, captures);
+  } else if (opt.type == CAPTURE_F) {
+    parseFlagsCaptureList(opt.capture, captures);
   } else { // Should never happen
-    std::cerr << "error: unknown capture type" << std::endl;
+    std::cerr << "ERROR: Unknown capture type" << std::endl;
     exit(1);
   }
 
@@ -104,10 +106,12 @@ void bustools_capture(Bustools_opt &opt) {
             }
           }
 
-        } else if (opt.type == CAPTURE_UMI) {
-          capt = captures.count(bd.UMI) > 0;
         } else if (opt.type == CAPTURE_BC) {
           capt = captures.count(bd.barcode) > 0;
+        } else if (opt.type == CAPTURE_UMI) {
+          capt = captures.count(bd.UMI) > 0;
+        } else if (opt.type == CAPTURE_F) {
+          capt = captures.count(bd.flags) > 0;
         } else { // Should never happen
           std::cerr << "error: unknown capture type" << std::endl;
           exit(1);

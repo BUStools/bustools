@@ -203,13 +203,24 @@ bool parseTxCaptureList(const std::string &filename, std::unordered_map<std::str
   return true;
 }
 
-bool parseUMIBcCaptureList(const std::string &filename, std::unordered_set<uint64_t> &captures) {
+bool parseBcUmiCaptureList(const std::string &filename, std::unordered_set<uint64_t> &captures) {
   std::ifstream inf(filename.c_str());
 
   std::string inp;
   uint32_t flag; // Unused
   while (getline(inf, inp)) {
     captures.insert(stringToBinary(inp, flag));
+  }
+
+  return true;
+}
+
+bool parseFlagsCaptureList(const std::string &filename, std::unordered_set<uint64_t> &captures) {
+  std::ifstream inf(filename.c_str());
+  
+  std::string inp;
+  while (getline(inf, inp)) {
+    captures.insert(stoi(inp));
   }
 
   return true;
