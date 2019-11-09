@@ -104,7 +104,7 @@ void bustools_count(Bustools_opt &opt) {
         ecs.push_back(v[k].ec);
       }
 
-      int32_t ec = intersect_ecs(ecs, u, ecmap, ecmapinv);
+      int32_t ec = intersect_ecs(ecs, u, genemap, ecmap, ecmapinv, ec2genes);
       if (ec == -1) {
         ec = intersect_ecs_with_genes(ecs, genemap, ecmap, ecmapinv, ec2genes);              
         if (ec == -1) {
