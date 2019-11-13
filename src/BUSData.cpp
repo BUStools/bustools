@@ -215,6 +215,23 @@ bool parseBcUmiCaptureList(const std::string &filename, std::unordered_set<uint6
   return true;
 }
 
+bool parse_ProjectMap(const std::string &filename, std::unordered_map<uint64_t, uint64_t> &project_map) {
+  // This function occurs in 3 places: here, BUSData.h, and bustools_project.cpp
+  std::ifstream inf(filename.c_str());
+
+  std::string line, t; // whats the point of the t?
+  line.reserve(10000);
+  uint32_t flag; // unused
+  while (std::getline(inf, line)) {
+    std::stringstream ss(line);
+    std::string source, dest;
+
+    ss >> source >> dest; 
+    project_map[stringToBinary(source, flag)] = stringToBinary(dest, flag);
+  }
+  return true;
+}
+
 bool parseFlagsCaptureList(const std::string &filename, std::unordered_set<uint64_t> &captures) {
   std::ifstream inf(filename.c_str());
   

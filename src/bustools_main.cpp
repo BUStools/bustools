@@ -427,13 +427,17 @@ void parse_ProgramOptions_whitelist(int argc, char **argv, Bustools_opt &opt) {
 void parse_ProgramOptions_project(int argc, char **argv, Bustools_opt &opt) {
   
   /* Parse options. */
-  const char *opt_string = "o:g:e:t:p";
+  const char *opt_string = "o:m:e:t:s:Fbup";
 
   static struct option long_options[] = {
     {"output", required_argument, 0, 'o'},
-    {"genemap", required_argument, 0, 'g'},
+    {"map", required_argument, 0, 'm'},
     {"ecmap", required_argument, 0, 'e'},
     {"txnames", required_argument, 0, 't'},
+    {"flags", no_argument, 0, 'F'},
+    {"barcode", no_argument, 0, 'b'},
+    {"umi", no_argument, 0, 'u'},
+    {"transcripts", optional_argument, 0, 's'},
     {"pipe", no_argument, 0, 'p'},
     {0, 0, 0, 0}
   };
@@ -445,14 +449,27 @@ void parse_ProgramOptions_project(int argc, char **argv, Bustools_opt &opt) {
       case 'o':
         opt.output = optarg;
         break;
-      case 'g':
-        opt.count_genes = optarg;
+      case 'm':
+        opt.map = optarg;
         break;
       case 'e':
         opt.count_ecs = optarg;
         break;
       case 't':
         opt.count_txp = optarg;
+        break;
+      case 'F':
+        opt.type = PROJECT_F;
+        break;
+      case 'b':
+        opt.type = PROJECT_BC;
+        break;
+      case 'u':
+        opt.type = PROJECT_UMI;
+        break;
+      case 's':
+        opt.type = PROJECT_TX;
+        opt.output_folder = optarg;
         break;
       case 'p':
         opt.stream_out = true;
@@ -1029,22 +1046,31 @@ bool check_ProgramOptions_project(Bustools_opt &opt) {
   bool ret = true;
 
   if (opt.output.empty()) {
-    std::cerr << "Error: missing output directory" << std::endl;
-  } else {
-    // check if output directory exists or if we can create it
-    struct stat stFileInfo;
-    auto intStat = stat(opt.output.c_str(), &stFileInfo);
-    if (intStat == 0) {
-      // file/dir exits
-      if (!S_ISDIR(stFileInfo.st_mode)) {
-        std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
-        ret = false;
-      } 
+    std::cerr << "Error: Missing output file" << std::endl;
+  } 
+  else if (!checkOutputFileValid(opt.output)) {
+    std::cerr << "Error: unable to open output file" << std::endl;
+    ret = false;
+  }
+  if (opt.type == PROJECT_TX){
+    if (opt.output_folder.empty()) {
+      std::cerr << "Error: Missing output folder" << std::endl;
     } else {
-      // create directory
-      if (my_mkdir(opt.output.c_str(), 0777) == -1) {
-        std::cerr << "Error: could not create directory " << opt.output << std::endl;
-        ret = false;
+      // check if output directory exists or if we can create it
+      struct stat stFileInfo;
+      auto intStat = stat(opt.output_folder.c_str(), &stFileInfo);
+      if (intStat == 0) {
+        // file/dir exits
+        if (!S_ISDIR(stFileInfo.st_mode)) {
+          std::cerr << "Error: file " << opt.output_folder << " exists and is not a directory" << std::endl;
+          ret = false;
+        } 
+      } else {
+        // create directory
+        if (my_mkdir(opt.output_folder.c_str(), 0777) == -1) {
+          std::cerr << "Error: could not create directory " << opt.output_folder << std::endl;
+          ret = false;
+        }
       }
     }
   }
@@ -1066,11 +1092,11 @@ bool check_ProgramOptions_project(Bustools_opt &opt) {
     ret = false;
   }
 
-  if (opt.count_genes.size() == 0) {
-    std::cerr << "Error: missing gene mapping file" << std::endl;
+  if (opt.map.size() == 0) {
+    std::cerr << "Error: missing mapping file" << std::endl;
   } else {
-    if (!checkFileExists(opt.count_genes)) {
-      std::cerr << "Error: File not found " << opt.count_genes << std::endl;
+    if (!checkFileExists(opt.map)) {
+      std::cerr << "Error: File not found " << opt.map << std::endl;
       ret = false;
     }
   }
@@ -1087,7 +1113,7 @@ bool check_ProgramOptions_project(Bustools_opt &opt) {
   if (opt.count_txp.size() == 0) {
     std::cerr << "Error: missing transcript name file" << std::endl;
   } else {
-    if (!checkFileExists(opt.count_genes)) {
+    if (!checkFileExists(opt.map)) {
       std::cerr << "Error: File not found " << opt.count_txp << std::endl;
       ret = false;
     }
@@ -1341,10 +1367,15 @@ void Bustools_project_Usage() {
   std::cout << "Usage: bustools project [options] sorted-bus-file" << std::endl << std::endl
     << "Options: " << std::endl
     << "-o, --output          File for project bug output and list of genes (no extension)" << std::endl
-    << "-g, --genemap         File for mapping transcripts to genes" << std::endl
+    << "-m, --map             File for mapping source to destination" << std::endl
     << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
     << "-t, --txnames         File with names of transcripts" << std::endl
     << "-p, --pipe            Write to standard output" << std::endl
+    << "Project types: " << std::endl
+    << "-F, --flags           Map is a two column list of source flags to destination flags " << std::endl
+    << "-s, --transcripts     [Output folder needed] Map is a two column list of source transcripts to destination transcripts" << std::endl
+    << "-u, --umis            Map is a two column list of source umis to destination umis" << std::endl
+    << "-b, --barcode         Map is a two column list of source barcodes to destination barcodes" << std::endl
     << std::endl;
 }
 

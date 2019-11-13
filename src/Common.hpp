@@ -15,6 +15,7 @@
 
 enum CAPTURE_TYPE : char {CAPTURE_NONE = 0, CAPTURE_TX, CAPTURE_BC, CAPTURE_UMI, CAPTURE_F};
 enum SORT_TYPE : char {SORT_BC = 0, SORT_UMI, SORT_F, SORT_COUNT};
+enum PROJECT_TYPE : char {PROJECT_BC = 0, PROJECT_UMI, PROJECT_TX, PROJECT_F};
 
 struct Bustools_opt {
   int threads;
@@ -45,6 +46,10 @@ struct Bustools_opt {
   bool count_collapse = false;
   bool count_gene_multimapping = false;
 
+  /* project */
+  std::string map;
+  std::string output_folder;
+  
   /* capture */
   std::string capture;
   bool complement = false;

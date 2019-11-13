@@ -176,7 +176,7 @@ void bustools_correct(Bustools_opt &opt) {
     }
   }
 
-  std::cerr << "Processed " << nr << " bus records" << std::endl
+  std::cerr << "Processed " << nr << " BUS records" << std::endl
   << "In whitelist = " << stat_white << std::endl
   << "Corrected = " << stat_corr << std::endl
   << "Uncorrected = " << stat_uncorr << std::endl;

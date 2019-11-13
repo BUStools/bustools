@@ -52,6 +52,8 @@ bool parseBcUmiCaptureList(const std::string &filename, std::unordered_set<uint6
 bool parseFlagsCaptureList(const std::string &filename, std::unordered_set<uint64_t> &captures);
 bool parseTranscripts(const std::string &filename, std::unordered_map<std::string, int32_t> &txnames);
 
+bool parse_ProjectMap(const std::string &filename, std::unordered_map<uint64_t, uint64_t> &project_map);
+
 uint64_t stringToBinary(const std::string &s, uint32_t &flag);
 uint64_t stringToBinary(const char* s, const size_t len, uint32_t &flag);
 std::string binaryToString(uint64_t x, size_t len);
