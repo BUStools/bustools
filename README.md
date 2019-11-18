@@ -3,7 +3,7 @@
 __bustools__ is a program for manipulating [__BUS__](https://github.com/BUStools/BUS) files for single cell 
 RNA-Seq datasets. It can be used to error correct barcodes, collapse UMIs, produce gene count or transcript compatibility count matrices, and is useful for many other tasks. See the [__kallisto &#124; bustools website__](https://www.kallistobus.tools/) for examples and instructions on how to use __bustools__ as part of a single-cell RNA-seq workflow.
 
-If you use bustools please cite
+If you use __bustools__ please cite
 
 Melsted, Páll, Booeshaghi, A. Sina et al. [Modular and efficient pre-processing of single-cell RNA-seq.](https://www.biorxiv.org/content/10.1101/673285v2) BioRxiv (2019): 673285, doi.org/10.1101/673285.
 
