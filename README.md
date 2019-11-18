@@ -5,7 +5,7 @@ RNA-Seq datasets. It can be used to error correct barcodes, collapse UMIs, produ
 
 If you use bustools please cite
 
-Melsted, Páll, Booeshaghi, A. Sina et al. "Modular and efficient pre-processing of single-cell RNA-seq." BioRxiv (2019): 673285, doi.org/10.1101/673285.
+Melsted, Páll, Booeshaghi, A. Sina et al. [Modular and efficient pre-processing of single-cell RNA-seq.](https://www.biorxiv.org/content/10.1101/673285v2) BioRxiv (2019): 673285, doi.org/10.1101/673285.
 
 For some background on the design and motivation for the __BUS__ format and __bustools__ see 
 
