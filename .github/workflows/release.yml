@@ -1,0 +1,42 @@
+name: Build release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-linux:
+    name: Build linux
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@master
+      - name: Build
+        run: docker run -it --rm -v `pwd`:/io -e CC='ccache gcc' -e CXX='ccache g++' -e CCACHE_DIR='/io/cache' phusion/holy-build-box-64:latest cd io && make build_linux
+
+
+  # build-windows:
+  #
+  # build-macos:
+  #
+  # release-to-pypi:
+  #   name: Release to Pypi
+  #   runs-on: ubuntu-18.04
+  #   steps:
+  #     - name: Checkout branch
+  #       uses: actions/checkout@master
+  #     - name: Setup python
+  #       uses: actions/setup-python@v1
+  #       with:
+  #         python-version: '3.7'
+  #         architecture: x64
+  #     - name: Install dependencies
+  #       run: pip install -r dev-requirements.txt
+  #     - name: Build
+  #       run: python setup.py sdist bdist_wheel
+  #     - name: Upload
+  #       run: twine upload dist/*
+  #       env:
+  #         TWINE_REPOSITORY_URL: ${{ secrets.PYPI_URL }}
+  #         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+  #         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
