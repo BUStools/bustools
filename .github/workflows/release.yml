@@ -12,7 +12,7 @@ jobs:
       - name: Checkout branch
         uses: actions/checkout@master
       - name: Build
-        run: docker run --rm -v `pwd`:/io -e CC='ccache gcc' -e CXX='ccache g++' -e CCACHE_DIR='/io/cache' phusion/holy-build-box-64:latest cd io && make build_linux
+        run: docker run --rm -v `pwd`:/io -e CC='ccache gcc' -e CXX='ccache g++' -e CCACHE_DIR='/io/cache' phusion/holy-build-box-64:latest bash -c "source /hbb_exe/activate && cd io && make build_linux"
 
 
   # build-windows:
