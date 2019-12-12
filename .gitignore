@@ -1,3 +1,5 @@
 build
 cache
 CMakeFiles
+release
+.DS_Store

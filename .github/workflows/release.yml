@@ -8,11 +8,20 @@ jobs:
   build-linux:
     name: Build linux
     runs-on: ubuntu-18.04
+    env:
+      RELEASE_OS: linux
     steps:
       - name: Checkout branch
         uses: actions/checkout@master
       - name: Build
-        run: docker run --rm -v `pwd`:/io -e CC='ccache gcc' -e CXX='ccache g++' -e CCACHE_DIR='/io/cache' phusion/holy-build-box-64:latest bash -c "source /hbb_exe/activate && cd io && make build_linux"
+        run: docker run --rm -v `pwd`:/io -e RELEASE_VERSION='$GITHUB_REF' -e CC='ccache gcc' -e CXX='ccache g++' -e CCACHE_DIR='/io/cache' phusion/holy-build-box-64:latest bash -c "source /hbb_exe/activate && cd io && make build_linux && make compile_release"
+      - name: Upload to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: release/bustools_${RELEASE_OS}-${GITHUB_REF}.tar.gz
+          asset_name: bustools_${RELEASE_OS}-${GITHUB_REF}.tar.gz
+          tag: $GITHUB_REF
 
 
   # build-windows:
