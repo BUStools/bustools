@@ -5,7 +5,7 @@ RELEASE_VERSION ?= local
 
 build_linux build_mac:
 	mkdir -p build
-	cmake -S . -B build
+	cmake -S . -B build -DLINK=static
 	# This will fail.
 	- make -C build -j
 	g++ -std=c++11 -O3 -DNDEBUG -static-libgcc -static-libstdc++ -rdynamic \
