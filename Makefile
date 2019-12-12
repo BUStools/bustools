@@ -12,12 +12,18 @@ build_linux:
 	build/src/CMakeFiles/bustools.dir/bustools_main.cpp.o \
 	-o build/src/bustools build/src/libbustools_core.a -lpthread
 
-compile_release:
+compile_release_linux:
+	make compile_release_unix
+
+compile_release_unix:
 	mkdir -p release/bustools
 	cp -rf build/src/bustools release/bustools/
 	cp -rf LICENSE release/bustools/
 	cp -rf README.md release/bustools/
 	tar -czvf release/bustools_${RELEASE_OS}-${RELEASE_VERSION}.tar.gz -C release bustools
+
+compile_release_windows:
+	mkdir -p release/bustools
 
 clean:
 	rm -rf build
