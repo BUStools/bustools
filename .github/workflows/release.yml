@@ -21,7 +21,6 @@ jobs:
           docker run --rm -v `pwd`:/io \
           -e RELEASE_OS=$RELEASE_OS \
           -e RELEASE_VERSION=$RELEASE_VERSION \
-          -e CC='ccache gcc' -e CXX='ccache g++' -e CCACHE_DIR='/io/cache' \
           phusion/holy-build-box-64:latest /hbb_exe/activate-exec \
           bash -x -c "cd io && make build_$RELEASE_OS && make compile_release_$RELEASE_OS"
         env:
@@ -46,13 +45,7 @@ jobs:
         id: setup
         run: echo ::set-output name=RELEASE_VERSION::${GITHUB_REF##*/}
       - name: Build
-        run: |
-          docker run --rm -v `pwd`:/io \
-          -e RELEASE_OS=$RELEASE_OS \
-          -e RELEASE_VERSION=$RELEASE_VERSION \
-          -e CC='ccache gcc' -e CXX='ccache g++' -e CCACHE_DIR='/io/cache' \
-          phusion/holy-build-box-64:latest /hbb_exe/activate-exec \
-          bash -x -c "cd io && make build_$RELEASE_OS && make compile_release_$RELEASE_OS"
+        run: make build_$RELEASE_OS && make compile_release_$RELEASE_OS
         env:
           RELEASE_VERSION: ${{ steps.setup.outputs.RELEASE_VERSION }}
       - name: Upload to release
