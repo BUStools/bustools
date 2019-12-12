@@ -1,9 +1,9 @@
 RELEASE_OS ?= local
 RELEASE_VERSION ?= local
 
-.PHONY : build_linux build_mac build_windows compile_release clean
+.PHONY : build_linux build_mac build_windows compile_release_linux compile_release_mac compile_release_windows clean
 
-build_linux:
+build_linux build_mac:
 	mkdir -p build
 	cmake -S . -B build
 	# This will fail.
@@ -12,10 +12,7 @@ build_linux:
 	build/src/CMakeFiles/bustools.dir/bustools_main.cpp.o \
 	-o build/src/bustools build/src/libbustools_core.a -lpthread
 
-compile_release_linux:
-	make compile_release_unix
-
-compile_release_unix:
+compile_release_linux compile_release_mac:
 	mkdir -p release/bustools
 	cp -rf build/src/bustools release/bustools/
 	cp -rf LICENSE release/bustools/
