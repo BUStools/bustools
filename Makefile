@@ -15,7 +15,7 @@ compile_release_linux compile_release_mac:
 	cp -rf LICENSE release/bustools/
 	cp -rf README.md release/bustools/
 	cd release \
-	&& tar -czvf release/bustools_${RELEASE_OS}-${RELEASE_VERSION}.tar.gz bustools
+	&& tar -czvf bustools_${RELEASE_OS}-${RELEASE_VERSION}.tar.gz bustools
 
 compile_release_windows:
 	mkdir -p release/bustools
@@ -23,7 +23,7 @@ compile_release_windows:
 	cp -rf LICENSE release/bustools/
 	cp -rf README.md release/bustools/
 	cd release \
-	&& zip -r release/bustools_${RELEASE_OS}-${RELEASE_VERSION}.zip bustools
+	&& zip -r bustools_${RELEASE_OS}-${RELEASE_VERSION}.zip bustools
 
 clean:
 	rm -rf build
