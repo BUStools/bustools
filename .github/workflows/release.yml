@@ -20,7 +20,7 @@ jobs:
         run: |
           docker run --rm dockbuild/centos5:latest > ./dockbuild \
           && chmod +x ./dockbuild \
-          && ./dockbuild bash -c "make build && make compile_release_$RELEASE_OS"
+          && ./dockbuild -a "-e RELEASE_OS=$RELEASE_OS -e RELEASE_VERSION=$RELEASE_VERSION" bash -c "make build && make compile_release_$RELEASE_OS"
         env:
           RELEASE_VERSION: ${{ steps.setup.outputs.RELEASE_VERSION }}
       - name: Upload to release
@@ -69,7 +69,7 @@ jobs:
         run: |
           docker run --rm dockcross/windows-static-x64:20191127-92bdbca > ./dockcross \
           && chmod +x ./dockcross \
-          && ./dockcross bash -c "make build && make compile_release_$RELEASE_OS"
+          && ./dockcross -a "-e RELEASE_OS=$RELEASE_OS -e RELEASE_VERSION=$RELEASE_VERSION" bash -c "make build && make compile_release_$RELEASE_OS"
         env:
           RELEASE_VERSION: ${{ steps.setup.outputs.RELEASE_VERSION }}
       - name: Upload to release
