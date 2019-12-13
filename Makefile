@@ -3,6 +3,12 @@ RELEASE_VERSION ?= local
 
 .PHONY : build_linux build_mac build_windows compile_release_linux compile_release_mac compile_release_windows clean
 
+build:
+	mkdir -p build
+	cd build \
+	&& cmake .. -DLINK=static \
+	&& make -j
+
 build_linux:
 	mkdir -p build
 	cmake -S . -B build -DLINK=static
@@ -15,7 +21,11 @@ build_linux:
 build_mac:
 	mkdir -p build
 	cmake -S . -B build -DLINK=static
-	# This will fail.
+	make -C build -j
+
+build_windows:
+	mkdir -p build
+	cmake -S . -B build -DLINK=static
 	make -C build -j
 
 compile_release_linux compile_release_mac:
@@ -27,6 +37,10 @@ compile_release_linux compile_release_mac:
 
 compile_release_windows:
 	mkdir -p release/bustools
+	cp -rf build/src/bustools.exe release/bustools/
+	cp -rf LICENSE release/bustools/
+	cp -rf README.md release/bustools/
+	zip -r release/bustools_${RELEASE_OS}-${RELEASE_VERSION}.zip release/bustools
 
 clean:
 	rm -rf build
