@@ -1,7 +1,7 @@
 RELEASE_OS ?= local
 RELEASE_VERSION ?= local
 
-.PHONY : build_linux build_mac build_windows compile_release_linux compile_release_mac compile_release_windows clean
+.PHONY : build compile_release_linux compile_release_mac compile_release_windows clean
 
 build:
 	mkdir -p build
