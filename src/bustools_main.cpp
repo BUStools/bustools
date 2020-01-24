@@ -1265,17 +1265,19 @@ void Bustools_Usage() {
   std::cout << "bustools " << BUSTOOLS_VERSION << std::endl << std::endl  
   << "Usage: bustools <CMD> [arguments] .." << std::endl << std::endl
   << "Where <CMD> can be one of: " << std::endl << std::endl
-  << "capture         Capture records from a BUS file" << std::endl
+  << "sort            Sort a BUS file by barcodes and UMIs" << std::endl
   << "correct         Error correct a BUS file" << std::endl
   << "count           Generate count matrices from a BUS file" << std::endl
-  << "extract         Extract FASTQ reads correspnding to reads in BUS file" << std::endl
   << "inspect         Produce a report summarizing a BUS file" << std::endl
-  << "linker          Remove section of barcodes in BUS files" << std::endl
-  << "merge           Merge bus files from same experiment" << std::endl
-  << "project         Project a BUS file to gene sets" << std::endl
-  << "sort            Sort a BUS file by barcodes and UMIs" << std::endl
-  << "text            Convert a binary BUS file to a tab-delimited text file" << std::endl
   << "whitelist       Generate a whitelist from a BUS file" << std::endl
+  << "project         Project a BUS file to gene sets" << std::endl
+  << "capture         Capture records from a BUS file" << std::endl
+  << "merge           Merge bus files from same experiment" << std::endl
+  << "text            Convert a binary BUS file to a tab-delimited text file" << std::endl
+  << "extract         Extract FASTQ reads correspnding to reads in BUS file" << std::endl
+  << "linker          Remove section of barcodes in BUS files" << std::endl
+  << "version         Prints version number" << std::endl 
+  << "cite            Prints citation information" << std::endl
   << std::endl
   << "Running bustools <CMD> without arguments prints usage information for <CMD>"
   << std::endl << std::endl;
@@ -1409,7 +1411,17 @@ void Bustools_extract_Usage() {
     << std::endl;
 }
 
+void print_citation() {
+  std::cout << "When using this program in your research, please cite" << std::endl << std::endl
+       << "  Melsted, P., Booeshaghi, A. S., et al." << std::endl
+       << "  Modular and efficient pre-processing of single-cell RNA-seq, "<< std::endl
+       << "  bioRxiv doi:10.1101/673285" << std::endl
+       << std::endl;
+}
 
+void print_version() {
+  std::cout << "bustools, version " << 	BUSTOOLS_VERSION << std::endl;
+}
 
 
 int main(int argc, char **argv) {
@@ -1449,6 +1461,10 @@ int main(int argc, char **argv) {
         Bustools_merge_Usage();
         exit(1);
       }
+    } else if (cmd == "cite"){
+        print_citation();
+    } else if (cmd == "version"){
+        print_version();
     } else if (cmd == "dump" || cmd == "text") {
       if (disp_help) {
         Bustools_dump_Usage();
