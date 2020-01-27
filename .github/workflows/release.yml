@@ -69,8 +69,7 @@ jobs:
         run: |
           docker run --rm dockcross/windows-static-x64:20191127-92bdbca > ./dockcross \
           && chmod +x ./dockcross \
-          && ./dockcross -a "-e RELEASE_OS=$RELEASE_OS -e RELEASE_VERSION=$RELEASE_VERSION" \ 
-          bash -c "make -f Makefile.release install_zlib && make -f Makefile.release build && make -f Makefile.release compile_release_$RELEASE_OS"
+          && ./dockcross -a "-e RELEASE_OS=$RELEASE_OS -e RELEASE_VERSION=$RELEASE_VERSION" bash -c "make -f Makefile.release install_zlib && make -f Makefile.release build && make -f Makefile.release compile_release_$RELEASE_OS"
         env:
           RELEASE_VERSION: ${{ steps.setup.outputs.RELEASE_VERSION }}
       - name: Upload to release
