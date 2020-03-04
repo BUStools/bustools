@@ -41,7 +41,9 @@ void bustools_count(Bustools_opt &opt) {
   std::string ec_ofn = opt.output + ".ec.txt";
   std::string gene_ofn = opt.output + ".genes.txt";
   of.open(mtx_ofn); 
-
+  if (of.fail()) {
+    std::cerr << "Failed to open file for writing: " << mtx_ofn << std::endl; 
+  }
   // write out the initial header
   of << "%%MatrixMarket matrix coordinate real general\n%\n";
   // number of genes
