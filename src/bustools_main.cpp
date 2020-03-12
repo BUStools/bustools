@@ -33,6 +33,7 @@
 #include "bustools_correct.h"
 #include "bustools_merge.h"
 #include "bustools_extract.h"
+#include "bustools_text.h"
 
 
 int my_mkdir(const char *path, mode_t mode) {
@@ -1461,62 +1462,7 @@ int main(int argc, char **argv) {
       }
       parse_ProgramOptions_dump(argc-1, argv+1, opt);
       if (check_ProgramOptions_dump(opt)) { //Program options are valid
-        BUSHeader h;
-        size_t nr = 0;
-        size_t N = 100000;
-        BUSData* p = new BUSData[N];
-
-        std::streambuf *buf = nullptr;
-        std::ofstream of;
-
-        if (!opt.stream_out) {
-          of.open(opt.output); 
-          buf = of.rdbuf();
-        } else {
-          buf = std::cout.rdbuf();
-        }
-        std::ostream o(buf);
-
-
-        char magic[4];      
-        uint32_t version = 0;
-        for (const auto& infn : opt.files) {          
-          std::streambuf *inbuf;
-          std::ifstream inf;
-          if (!opt.stream_in) {
-            inf.open(infn.c_str(), std::ios::binary);
-            inbuf = inf.rdbuf();
-          } else {
-            inbuf = std::cin.rdbuf();
-          }
-          std::istream in(inbuf);
-
-
-          parseHeader(in, h);
-          uint32_t bclen = h.bclen;
-          uint32_t umilen = h.umilen;
-          int rc = 0;
-          while (true) {
-            in.read((char*)p, N*sizeof(BUSData));
-            size_t rc = in.gcount() / sizeof(BUSData);
-            if (rc == 0) {
-              break;
-            }
-            nr += rc;
-            for (size_t i = 0; i < rc; i++) {
-              o << binaryToString(p[i].barcode, bclen) << "\t" << binaryToString(p[i].UMI,umilen) << "\t" << p[i].ec << "\t" << p[i].count;
-              if (opt.text_dumpflags) {
-                o << "\t" << p[i].flags;
-              }
-              o << "\n";        
-            }
-          }
-        }
-        delete[] p; p = nullptr;
-        if (!opt.stream_out) {
-          of.close();
-        }
-        std::cerr << "Read in " << nr << " BUS records" << std::endl;
+	    bustools_text(opt);
       } else {
         Bustools_dump_Usage();
         exit(1);
