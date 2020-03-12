@@ -136,24 +136,25 @@ void bustools_fromtext(const Bustools_opt& opt) {
 		
 		while (std::getline(in, line)) {
 			std::stringstream ss(line);
-			ss >> bc >> umi >> ecstr >> count;
-			if (!out_header_written) {
-				h.bclen = (uint32_t)bc.size();
-				h.umilen = (uint32_t)umi.size();
-				h.version = BUSFORMAT_VERSION;
-				h.text = "converted from text format";
-				writeHeader(o, h);
-				out_header_written = true;
+			if (ss >> bc >> umi >> ecstr >> count) { //if the if is not here, empty lines at the end  of the file will add extra entries identical to the last one...
+				if (!out_header_written) {
+					h.bclen = (uint32_t)bc.size();
+					h.umilen = (uint32_t)umi.size();
+					h.version = BUSFORMAT_VERSION;
+					h.text = "converted from text format";
+					writeHeader(o, h);
+					out_header_written = true;
+				}
+				BUSData b;
+				b.barcode = stringToBinary(bc, f);
+				b.UMI = stringToBinary(umi, f);
+				b.count = count;
+				b.flags = 0;
+				//check for commas in ecstr
+				split_string(ecstr, ecs);
+				write_bug_entry(o, b, &ecs);
+				++nr;
 			}
-			BUSData b;
-			b.barcode = stringToBinary(bc, f);
-			b.UMI = stringToBinary(umi, f);
-			b.count = count;
-			b.flags = 0;
-			//check for commas in ecstr
-			split_string(ecstr, ecs);
-			write_bug_entry(o, b, &ecs);
-			++nr;
 		}
 	}
 	if (!opt.stream_out) {

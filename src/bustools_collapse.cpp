@@ -35,15 +35,26 @@ void bustools_collapse(Bustools_opt &opt) {
   create_ec2genes(ecmap, genemap, ec2genes);
 
 
-  std::ofstream bus_out;
   std::string bug_ofn = opt.output + ".bus";
   std::string barcodes_ofn = opt.output + ".barcodes.txt";
   std::string ec_ofn = opt.output + ".ec.txt";
   std::string gene_ofn = opt.output + ".genes.txt";
-  bus_out.open(bug_ofn, std::ios::binary);
-  if (bus_out.fail()) {
-    std::cerr << "Failed to open file for writing: " << bug_ofn << std::endl;
+
+  std::streambuf* buf = nullptr;
+  std::ofstream of;
+
+  if (!opt.stream_out) {
+	  of.open(bug_ofn, std::ios::binary);
+	  if (of.fail()) {
+		  std::cerr << "Failed to open file for writing: " << bug_ofn << std::endl;
+	  }
+	  buf = of.rdbuf();
   }
+  else {
+	  buf = std::cout.rdbuf();
+  }
+  std::ostream bus_out(buf);
+
 
   std::vector<BUSData> v;
   v.reserve(N);
@@ -144,8 +155,6 @@ void bustools_collapse(Bustools_opt &opt) {
     }
   }
   delete[] p; p = nullptr;
-
-  bus_out.close();
 
   //write the genes file:
   writeGenes(gene_ofn, genenames);

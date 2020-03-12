@@ -195,9 +195,7 @@ void bustools_predquant(const Bustools_opt& opt) {
 		
 	}
 	delete[] p; p = nullptr;
-	if (!opt.stream_out) {
-		of.close();
-	}
+	of.close();
 
 	std::stringstream ss;
 	ss << n_rows << " " << n_cols << " " << n_entries << "\n";
