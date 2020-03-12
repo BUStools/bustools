@@ -38,7 +38,7 @@ diff -w -B -s ./test/test_cases/tc0003ExpResult.txt ./tmp/tc0003output.txt
 rm ./tmp/*
 
 #Test predcount
-./build/src/bustools fromtext -p ./test/test_cases/tc0003.txt | ./build/src/bustools umicorrect -p  - | ./build/src/bustools text -o ./test/test_cases/tc0003output.txt -
+./build/src/bustools fromtext -p ./test/test_cases/tc0004.txt | ./build/src/bustools umicorrect -p  - | ./build/src/bustools predquant -o ./tmp/tc0004output -G -g ./test/test_cases/tc0004.genes.txt -I 4 -U 5 -N 2 -
 diff -w -B -s ./test/test_cases/tc0004ExpResultsCount.txt ./tmp/tc0004output.mtx
 diff -w -B -s ./test/test_cases/tc0004ExpResultsPred.txt ./tmp/tc0004output_pred.mtx
 rm ./tmp/*
