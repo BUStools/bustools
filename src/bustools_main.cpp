@@ -628,6 +628,136 @@ void parse_ProgramOptions_linker(int argc, char **argv, Bustools_opt &opt) {
   }
 }
 
+void parse_ProgramOptions_collapse(int argc, char** argv, Bustools_opt& opt) {
+	const char* opt_string = "o:g:e:t:m";
+	int gene_flag = 0;
+	int em_flag = 0;
+	static struct option long_options[] = {
+	  {"output",          required_argument,  0, 'o'},
+	  {"genemap",          required_argument,  0, 'g'},
+	  {"ecmap",          required_argument,  0, 'e'},
+	  {"txnames",          required_argument,  0, 't'},
+	  {0,                 0,                  0,  0 }
+	};
+	int option_index = 0, c;
+
+	while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
+
+		switch (c) {
+		case 'o':
+			opt.output = optarg;
+			break;
+		case 'g':
+			opt.count_genes = optarg;
+			break;
+		case 't':
+			opt.count_txp = optarg;
+			break;
+		case 'e':
+			opt.count_ecs = optarg;
+			break;
+		default:
+			break;
+		}
+	}
+
+	while (optind < argc) opt.files.push_back(argv[optind++]);
+
+	if (opt.files.size() == 1 && opt.files[0] == "-") {
+		opt.stream_in = true;
+	}
+}
+
+void parse_ProgramOptions_umicorrect(int argc, char** argv, Bustools_opt& opt) {
+
+	const char* opt_string = "o:p";
+	static struct option long_options[] = {
+	  {"output",          required_argument,  0, 'o'},
+	  {"pipe",            no_argument, 0, 'p'},
+	  {0,                 0,                  0,  0 }
+	};
+
+	int option_index = 0, c;
+
+	while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
+
+		switch (c) {
+		case 'o':
+			opt.output = optarg;
+			break;
+		case 'p':
+			opt.stream_out = true;
+			break;
+		default:
+			break;
+		}
+	}
+
+	// all other arguments are fast[a/q] files to be read
+	while (optind < argc) opt.files.push_back(argv[optind++]);
+
+	if (opt.files.size() == 1 && opt.files[0] == "-") {
+		opt.stream_in = true;
+	}
+}
+
+void parse_ProgramOptions_predquant(int argc, char** argv, Bustools_opt& opt) {
+	const char* opt_string = "o:g:e:t:m";
+	int gt_flag = 0;
+	static struct option long_options[] = {
+	  {"output",          required_argument,  0, 'o'},
+	  {"genenames",       required_argument,  0, 'g'},
+	  {"multimapping",    no_argument,  0, 'm'},
+	  {"goodtoulmin",     no_argument,  &gt_flag, 'G'},
+	  {"predtarget",      required_argument, 0, 'P'},
+	  {"incl_bucket_limit", required_argument, 0, 'I'},
+	  {"use_bucket_limit", required_argument, 0, 'U'},
+	  {"num_buckets", required_argument, 0, 'N'},
+//	  {"em", no_argument, &em_flag, 1},
+	  {0,                 0,                  0,  0 }
+	};
+
+	int option_index = 0, c;
+
+	while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
+
+		switch (c) {
+		case 'o':
+			opt.output = optarg;
+			break;
+		case 'g':
+			opt.predquant_genefile = optarg;
+			break;
+		case 'm':
+			opt.count_gene_multimapping = true;
+			break;
+		case 'P':
+			opt.predquant_pred_target = atoi(optarg);
+			break;
+		case 'U':
+			opt.predquant_use_bucket_limit = atoi(optarg);
+			break;
+		case 'N':
+			opt.predquant_num_buckets = atoi(optarg);
+			break;
+		default:
+			break;
+		}
+	}
+	if (gt_flag) {
+		opt.predquant_algorithm = PREDQUANT_ALG::GOOD_TOULMIN;
+	}
+//	if (em_flag) {
+//		opt.count_em = true;
+//	}
+
+	while (optind < argc) opt.files.push_back(argv[optind++]);
+
+	if (opt.files.size() == 1 && opt.files[0] == "-") {
+		opt.stream_in = true;
+	}
+}
+
 void parse_ProgramOptions_extract(int argc, char **argv, Bustools_opt &opt) {
   
   /* Parse options. */
@@ -1269,6 +1399,196 @@ bool check_ProgramOptions_linker(Bustools_opt &opt) {
   return ret;
 }
 
+bool check_ProgramOptions_collapse(Bustools_opt& opt) {
+	bool ret = true;
+
+	// check for output directory
+	if (opt.output.empty()) {
+		std::cerr << "Error: Missing output directory" << std::endl;
+		ret = false;
+	}
+	else {
+		bool isDir = false;
+		if (checkDirectoryExists(opt.output)) {
+			isDir = true;
+		}
+		else {
+			if (opt.output.at(opt.output.size() - 1) == '/') {
+				if (my_mkdir(opt.output.c_str(), 0777) == -1) {
+					std::cerr << "Error: could not create directory " << opt.output << std::endl;
+					ret = false;
+				}
+				else {
+					isDir = true;
+				}
+			}
+		}
+
+		if (isDir) {
+			opt.output += "output";
+		}
+	}
+
+	if (opt.files.size() == 0) {
+		std::cerr << "Error: Missing BUS input files" << std::endl;
+		ret = false;
+	}
+	else {
+		if (!opt.stream_in) {
+			for (const auto& it : opt.files) {
+				if (!checkFileExists(it)) {
+					std::cerr << "Error: File not found, " << it << std::endl;
+					ret = false;
+				}
+			}
+		}
+	}
+
+	if (opt.count_genes.size() == 0) {
+		std::cerr << "Error: missing gene mapping file" << std::endl;
+		ret = false;
+	}
+	else {
+		if (!checkFileExists(opt.count_genes)) {
+			std::cerr << "Error: File not found " << opt.count_genes << std::endl;
+			ret = false;
+		}
+	}
+
+	if (opt.count_ecs.size() == 0) {
+		std::cerr << "Error: missing equivalence class mapping file" << std::endl;
+		ret = false;
+	}
+	else {
+		if (!checkFileExists(opt.count_ecs)) {
+			std::cerr << "Error: File not found " << opt.count_ecs << std::endl;
+			ret = false;
+		}
+	}
+
+	if (opt.count_txp.size() == 0) {
+		std::cerr << "Error: missing transcript name file" << std::endl;
+		ret = false;
+	}
+	else {
+		if (!checkFileExists(opt.count_txp)) {
+			std::cerr << "Error: File not found " << opt.count_txp << std::endl;
+			ret = false;
+		}
+	}
+
+	return ret;
+}
+
+bool check_ProgramOptions_umicorrect(Bustools_opt& opt) {
+	bool ret = true;
+
+	if (!opt.stream_out) {
+		if (opt.output.empty()) {
+			std::cerr << "Error: missing output file" << std::endl;
+			ret = false;
+		}
+		else if (!checkOutputFileValid(opt.output)) {
+			std::cerr << "Error: unable to open output file" << std::endl;
+			ret = false;
+		}
+	}
+
+
+	if (opt.files.size() == 0) {
+		std::cerr << "Error: Missing BUS input files" << std::endl;
+		ret = false;
+	}
+	else {
+		if (!opt.stream_in) {
+			for (const auto& it : opt.files) {
+				if (!checkFileExists(it)) {
+					std::cerr << "Error: File not found, " << it << std::endl;
+					ret = false;
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+
+
+bool check_ProgramOptions_predquant(Bustools_opt& opt) {
+	bool ret = true;
+
+	// check for output directory
+	if (opt.output.empty()) {
+		std::cerr << "Error: Missing output directory" << std::endl;
+		ret = false;
+	}
+	else {
+		bool isDir = false;
+		if (checkDirectoryExists(opt.output)) {
+			isDir = true;
+		}
+		else {
+			if (opt.output.at(opt.output.size() - 1) == '/') {
+				if (my_mkdir(opt.output.c_str(), 0777) == -1) {
+					std::cerr << "Error: could not create directory " << opt.output << std::endl;
+					ret = false;
+				}
+				else {
+					isDir = true;
+				}
+			}
+		}
+
+		if (isDir) {
+			opt.output += "output";
+		}
+	}
+
+//unclear if EM should be in here
+//	if (opt.count_em && opt.count_gene_multimapping) {
+//		std::cerr << "Error: EM algorithm and counting multimapping reads are incompatible" << std::endl;
+//		ret = false;
+//	}
+
+
+
+	if (opt.files.size() == 0) {
+		std::cerr << "Error: Missing BUS input files" << std::endl;
+		ret = false;
+	}
+	else {
+		if (!opt.stream_in) {
+			for (const auto& it : opt.files) {
+				if (!checkFileExists(it)) {
+					std::cerr << "Error: File not found, " << it << std::endl;
+					ret = false;
+				}
+			}
+		}
+	}
+
+	if (opt.predquant_genefile.size() == 0) {
+		std::cerr << "Error: missing genenames file" << std::endl;
+		ret = false;
+	}
+	else {
+		if (!checkFileExists(opt.predquant_genefile)) {
+			std::cerr << "Error: File not found " << opt.predquant_genefile << std::endl;
+			ret = false;
+		}
+	}
+	
+	//Good-Toulmin is incompatible with predtarg, always predicts to 2 - not sure how to solve that though, skip this for now
+	//TODO: Don't do any checks on these params for now, fix later
+	//{"goodtoulmin", no_argument, 0, 'G'},
+	//{ "predtarg",        required_argument,  0, 'P' },
+	//{ "incl_bucket_limit",  required_argument, 0, 'I' },
+	//{ "use_bucket_limit",  required_argument, 0, 'U' },
+	//{ "num_buckets",     required_argument, 0, 'N' },
+
+	return ret;
+}
+
 bool check_ProgramOptions_extract(Bustools_opt &opt) {
   bool ret = true;
   
@@ -1351,6 +1671,9 @@ void Bustools_Usage() {
   << "text            Convert a binary BUS file to a tab-delimited text file" << std::endl
   << "extract         Extract FASTQ reads correspnding to reads in BUS file" << std::endl
   << "linker          Remove section of barcodes in BUS files" << std::endl
+  << "collapse        Turn BUS files into a BUG file" << std::endl
+  << "umicorrect      Correct read errors in UMIs in BUG files" << std::endl
+  << "predquant       Quantifies the counts in BUG files with unseen species prediction" << std::endl
   << "version         Prints version number" << std::endl 
   << "cite            Prints citation information" << std::endl
   << std::endl
@@ -1484,6 +1807,40 @@ void Bustools_linker_Usage() {
     << std::endl;
 }
 
+void Bustools_collapse_Usage() {
+  std::cout << "Usage: bustools collapse [options] sorted-bus-files" << std::endl << std::endl
+  << "Options: " << std::endl
+  << "-o, --output          Output directory gene matrix files" << std::endl
+  << "-g, --genemap         File for mapping transcripts to genes" << std::endl
+  << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
+  << "-t, --txnames         File with names of transcripts" << std::endl
+  << "-p, --pipe            Write to standard output" << std::endl
+  << std::endl;
+}
+
+void Bustools_umicorrect_Usage() {
+  std::cout << "Usage: bustools count [options] sorted-bus-files" << std::endl << std::endl
+  << "Options: " << std::endl
+  << "-o, --output          Output directory gene matrix files" << std::endl
+  << "-p, --pipe            Write to standard output" << std::endl
+  << std::endl;
+}
+
+void Bustools_predquant_Usage() {
+  std::cout << "Usage: bustools count [options] sorted-bus-files" << std::endl << std::endl
+  << "Options: " << std::endl
+  << "-o, --output            Output directory gene matrix files" << std::endl
+  << "-g, --genesnames        File containing gene names, output from collapse" << std::endl
+  << "-m, --multimapping      Include bus records that pseudoalign to multiple genes" << std::endl
+  << "-G, --goodtoulmin       Base prediction on the Good-Toulmin algorithm" << std::endl
+  << "-P, --predtarget        The number of times to increase the counts for prediction" << std::endl
+  << "-I, --incl_bucket_limit The number of counts needed for a gene to be included in buckets" << std::endl
+  << "-U, --use_bucket_limit  Genes below this count will be predicted using buckets" << std::endl
+  << "-N, --num_buckets	      Number of buckets used" << std::endl
+  << std::endl;
+}
+
+
 void Bustools_extract_Usage() {
   std::cout << "Usage: bustools extract [options] sorted-bus-file" << std::endl
     << "  Note: BUS file should be sorted by flag using bustools sort --flag" << std::endl << std::endl
@@ -1573,6 +1930,10 @@ int main(int argc, char **argv) {
         exit(1);
       }
     } else if (cmd == "fromtext") {
+      if (disp_help) {
+        Bustools_fromtext_Usage();
+        exit(0);        
+      }
       parse_ProgramOptions_fromtext(argc-1, argv+1, opt);
       if (check_ProgramOptions_fromtext(opt)) { //Program options are valid
 	    bustools_fromtext(opt);
@@ -1650,6 +2011,42 @@ int main(int argc, char **argv) {
         bustools_linker(opt);
       } else {
         Bustools_linker_Usage();
+        exit(1);
+      }
+    } else if (cmd == "collapse") {
+      if (disp_help) {
+        Bustools_collapse_Usage();
+        exit(0);        
+      }
+      parse_ProgramOptions_collapse(argc-1, argv+1, opt);
+      if (check_ProgramOptions_collapse(opt)) { //Program options are valid
+	    bustools_collapse(opt);
+      } else {
+        Bustools_collapse_Usage();
+        exit(1);
+      }
+    } else if (cmd == "umicorrect") {
+      if (disp_help) {
+        Bustools_umicorrect_Usage();
+        exit(0);        
+      }
+      parse_ProgramOptions_umicorrect(argc-1, argv+1, opt);
+      if (check_ProgramOptions_umicorrect(opt)) { //Program options are valid
+	    bustools_umicorrect(opt);
+      } else {
+        Bustools_umicorrect_Usage();
+        exit(1);
+      }
+    } else if (cmd == "predquant") {
+      if (disp_help) {
+        Bustools_predquant_Usage();
+        exit(0);        
+      }
+      parse_ProgramOptions_predquant(argc-1, argv+1, opt);
+      if (check_ProgramOptions_predquant(opt)) { //Program options are valid
+	    bustools_predquant(opt);
+      } else {
+        Bustools_predquant_Usage();
         exit(1);
       }
     } else if (cmd == "extract") {
