@@ -260,28 +260,6 @@ void parse_ProgramOptions_capture(int argc, char **argv, Bustools_opt& opt) {
     opt.stream_in = true;
   }
 }
-/*
-    {"goodtoulmin",     no_argument,        0, 'G'},
-    {"predtarg",        required_argument,  0, 'P'},
-    {"incl_bucket_limit",  required_argument, 0, 'I'},
-    {"use_bucket_limit",  required_argument, 0, 'U'},
-    {"num_buckets",     required_argument, 0, 'N'},
-    case 'G':
-      opt. = true;
-      break;
-    case 'P':
-      opt.predquant_pred_target = optarg;
-      break;
-    case 'I':
-      opt.stream_out = true;
-      break;
-    case 'U':
-      opt.predquant_use_bucket_limit = optarg;
-      break;
-    case 'N':
-      opt.predquant_num_buckets = optarg;
-      break;
-*/
 
 void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
   const char* opt_string = "o:g:e:t:m";
@@ -709,7 +687,7 @@ void parse_ProgramOptions_umicorrect(int argc, char** argv, Bustools_opt& opt) {
 }
 
 void parse_ProgramOptions_predquant(int argc, char** argv, Bustools_opt& opt) {
-	const char* opt_string = "o:g:e:t:m";
+	const char* opt_string = "o:g:mGP:I:U:N:";
 	int gt_flag = 0;
 	static struct option long_options[] = {
 	  {"output",          required_argument,  0, 'o'},
