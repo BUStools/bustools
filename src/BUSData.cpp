@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 
 uint64_t stringToBinary(const std::string &s, uint32_t &flag) {
   return stringToBinary(s.c_str(), s.size(), flag);
@@ -282,4 +283,72 @@ bool writeHeader(std::ostream &outf, const BUSHeader &header) {
   outf.write((char*)header.text.c_str(), tlen);
 
   return true;
+}
+
+void write_ecs_block(std::ostream& o, const std::vector<int32_t>& v)
+{
+	static char zeros[32] = { 0 };
+	o.write((char*)&v[0], sizeof(int32_t) * v.size());
+	const size_t numsPerBug = sizeof(BUSData) / sizeof(int32_t);
+	size_t numodd = v.size() % numsPerBug;
+	if (numodd > 0) {
+		size_t padding = numsPerBug - numodd;
+		o.write(zeros, sizeof(int32_t) * padding);
+	}
+}
+
+//If pGeneList is not null, the value in bd.ec will be ignored and controlled by the gene list.
+//Otherwise, the bd.ec value will be written as is
+void write_bug_entry(std::ostream& o, const BUSData& bd, const std::vector<int32_t>* pGeneList)
+{
+	if (pGeneList) {
+		auto bdc = bd;//must copy it to be able to modify it. Direct modification would be unexpected.
+		auto ecs = *pGeneList;
+		//if no commas, just write ec, otherwise write negative number of ecs and thereafter a list
+		if (ecs.size() == 1) {
+			bdc.ec = *ecs.begin();
+			o.write((char*)&bdc, sizeof(bd));
+		} else {
+			//This is where it gets a little more complicated. If we have multiple genes,
+			//we write the negative number of genes (i.e. if 3 genes, we write -3)
+			//We then write blocks of the same size as the BUS entry, as many as we need
+
+			bdc.ec = -int32_t(ecs.size());
+			o.write((char*)&bdc, sizeof(bd));
+
+			write_ecs_block(o, ecs);
+		}
+	} else {
+		o.write((char*)&bd, sizeof(bd));
+	}
+}
+
+
+void add_ecs_from_block(const BUSData& bd, std::vector<int32_t>& v, size_t& leftToRead) {
+	const size_t numsPerBug = sizeof(BUSData) / sizeof(int32_t);
+	auto numToGrab = std::min(leftToRead, numsPerBug);
+	leftToRead -= numToGrab;
+	auto p = (int32_t*)(&bd);
+	for (size_t i = 0; i < numToGrab; ++i) {
+		v.push_back(p[i]);
+	}
+}
+
+bool parseBugGenes(const std::string& filename, std::vector<std::string>& genes)
+{
+	std::ifstream inf(filename.c_str());
+	if (!inf) {
+		std::cerr << "Failed to load gene file: " << filename << std::endl;
+		return false;
+	}
+
+	std::string line, t;
+	line.reserve(10000);
+
+	int i = 0;
+	while (std::getline(inf, line)) {
+		genes.push_back(line);
+	}
+
+	return true;
 }

@@ -15,7 +15,8 @@
 
 enum CAPTURE_TYPE : char {CAPTURE_NONE = 0, CAPTURE_TX, CAPTURE_BC, CAPTURE_UMI, CAPTURE_F};
 enum SORT_TYPE : char {SORT_BC = 0, SORT_UMI, SORT_F, SORT_COUNT};
-enum PROJECT_TYPE : char {PROJECT_BC = 0, PROJECT_UMI, PROJECT_TX, PROJECT_F};
+enum PROJECT_TYPE : char { PROJECT_BC = 0, PROJECT_UMI, PROJECT_TX, PROJECT_F };
+enum class PREDQUANT_ALG { GOOD_TOULMIN, PRESEQ };
 
 struct Bustools_opt {
   int threads;
@@ -63,6 +64,14 @@ struct Bustools_opt {
 
   /* linker */
   int start, end;
+
+  // predquant
+  std::string predquant_genefile;
+  PREDQUANT_ALG predquant_algorithm = PREDQUANT_ALG::PRESEQ;
+  int predquant_pred_target = 10;
+  int predquant_num_buckets = 100;
+  double predquant_use_bucket_limit = 200; //if the prediction should be mapped to a bucket or not (number of UMIs in total per gene)
+  double predquant_include_bucket_limit = 200;//if gene should be used in buckets for other genes or not (number of UMIs in total per gene)
 
   Bustools_opt() : threads(1), max_memory(1ULL<<32), type(0),
     threshold(0), start(-1), end(-1)  {}
@@ -120,7 +129,7 @@ void intersect_genes_of_ecs(const std::vector<int32_t> &ecs, const  std::vector<
 int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes, bool assumeIntersectionIsEmpty = true);
 void create_ec2genes(const std::vector<std::vector<int32_t>> &ecmap, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ec2gene);
 
-
+void split_string(const std::string& str, std::vector<int32_t>& res);
 
 
 #endif // BUSTOOLS_COMMON_HPP
