@@ -720,7 +720,7 @@ void parse_ProgramOptions_predquant(int argc, char** argv, Bustools_opt& opt) {
 			opt.predquant_pred_target = atoi(optarg);
 			break;
 		case 'I':
-			opt.predquant_incl_bucket_limit = atoi(optarg);
+			opt.predquant_include_bucket_limit = atoi(optarg);
 			break;
 		case 'U':
 			opt.predquant_use_bucket_limit = atoi(optarg);
