@@ -34,6 +34,9 @@
 #include "bustools_merge.h"
 #include "bustools_extract.h"
 #include "bustools_text.h"
+#include "bustools_collapse.h"
+#include "bustools_umicorrect.h"
+#include "bustools_predquant.h"
 
 
 int my_mkdir(const char *path, mode_t mode) {
