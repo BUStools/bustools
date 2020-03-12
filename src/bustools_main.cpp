@@ -632,14 +632,15 @@ void parse_ProgramOptions_linker(int argc, char **argv, Bustools_opt &opt) {
 }
 
 void parse_ProgramOptions_collapse(int argc, char** argv, Bustools_opt& opt) {
-	const char* opt_string = "o:g:e:t:m";
+	const char* opt_string = "o:pg:e:t:";
 	int gene_flag = 0;
 	int em_flag = 0;
 	static struct option long_options[] = {
 	  {"output",          required_argument,  0, 'o'},
-	  {"genemap",          required_argument,  0, 'g'},
-	  {"ecmap",          required_argument,  0, 'e'},
-	  {"txnames",          required_argument,  0, 't'},
+	  {"pipe",            no_argument, 0, 'p'},
+	  {"genemap",         required_argument,  0, 'g'},
+	  {"ecmap",           required_argument,  0, 'e'},
+	  {"txnames",         required_argument,  0, 't'},
 	  {0,                 0,                  0,  0 }
 	};
 	int option_index = 0, c;
@@ -649,6 +650,9 @@ void parse_ProgramOptions_collapse(int argc, char** argv, Bustools_opt& opt) {
 		switch (c) {
 		case 'o':
 			opt.output = optarg;
+			break;
+		case 'p':
+			opt.stream_out = true;
 			break;
 		case 'g':
 			opt.count_genes = optarg;
