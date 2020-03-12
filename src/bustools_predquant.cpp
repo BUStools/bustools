@@ -142,7 +142,7 @@ void bustools_predquant(const Bustools_opt& opt) {
 		else {
 			inbuf = std::cin.rdbuf();
 		}
-		std::istream in(inbuf, std::ios::binary);
+		std::istream in(inbuf);
 
 		parseHeader(in, h);
 		
