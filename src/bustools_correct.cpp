@@ -145,7 +145,7 @@ void bustools_correct(Bustools_opt &opt) {
         auto it = wbc.find(bd.barcode);
         if (it != wbc.end()) { 
           stat_white++;
-          bd.count = 1;
+          //bd.count = 1;
           bus_out.write((char*) &bd, sizeof(bd));
         } else {  
           uint64_t b = bd.barcode;
@@ -168,7 +168,7 @@ void bustools_correct(Bustools_opt &opt) {
               bd.barcode = b_corrected;
               stat_corr++;
             }       
-            bd.count = 1;
+            // bd.count = 1;
             bus_out.write((char*) &bd, sizeof(bd));     
           }
         }
