@@ -50,6 +50,7 @@ void bustools_correct(Bustools_opt &opt) {
   uint32_t version = 0;
   size_t stat_white = 0;
   size_t stat_corr = 0;
+  size_t stat_corr_2 = 0;
   size_t stat_uncorr = 0;
 
   std::ifstream wf(opt.whitelist, std::ios::in);
@@ -155,7 +156,8 @@ void bustools_correct(Bustools_opt &opt) {
           int correct_lower = search_for_mismatch(correct[ub].second,bc2,lb,lbc);
           int correct_upper = search_for_mismatch(correct[lb].first,wc_bclen - bc2,ub,ubc);
           int nc = correct_lower + correct_upper;
-          if (nc != 1) {
+
+          if (nc == 0 || nc > 2) {
             stat_uncorr++;
           } else if (nc==1) {
             if (correct_lower == 1) {
@@ -167,9 +169,16 @@ void bustools_correct(Bustools_opt &opt) {
               uint64_t b_corrected = (ubc << (2*bc2)) | lb; 
               bd.barcode = b_corrected;
               stat_corr++;
-            }       
+            } 
             // bd.count = 1;
-            bus_out.write((char*) &bd, sizeof(bd));     
+            bus_out.write((char*) &bd, sizeof(bd));   
+          } else if (nc==2) {
+            if (correct_upper == 1 && correct_lower == 1) {
+              uint64_t b_corrected = (ubc << (2*bc2)) | lbc; 
+              bd.barcode = b_corrected;
+              stat_corr_2++;
+            }
+            bus_out.write((char*) &bd, sizeof(bd));
           }
         }
       }
@@ -178,8 +187,9 @@ void bustools_correct(Bustools_opt &opt) {
 
   std::cerr << "Processed " << nr << " BUS records" << std::endl
   << "In whitelist = " << stat_white << std::endl
-  << "Corrected = " << stat_corr << std::endl
-  << "Uncorrected = " << stat_uncorr << std::endl;
+  << "Corrected 1  = " << stat_corr << std::endl
+  << "Corrected 2  = " << stat_corr_2 << std::endl
+  << "Uncorrected  = " << stat_uncorr << std::endl;
 
 
   if (!opt.stream_out) {
