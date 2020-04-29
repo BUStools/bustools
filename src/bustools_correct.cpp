@@ -52,6 +52,11 @@ void bustools_correct(Bustools_opt &opt) {
   size_t stat_corr = 0;
   size_t stat_corr_2 = 0;
   size_t stat_uncorr = 0;
+  uint64_t old_barcode;
+
+  bool dump_bool = opt.dump_bool;
+
+  std::ofstream of(opt.dump);
 
   std::ifstream wf(opt.whitelist, std::ios::in);
   std::string line;
@@ -161,12 +166,26 @@ void bustools_correct(Bustools_opt &opt) {
             stat_uncorr++;
           } else if (nc==1) {
             if (correct_lower == 1) {
-              uint64_t b_corrected = (ub << (2*bc2)) | lbc;          
+              uint64_t b_corrected = (ub << (2*bc2)) | lbc;
+              if (dump_bool){
+                if (bd.barcode != old_barcode) {
+                  of << binaryToString(bd.barcode, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
+                  old_barcode = bd.barcode;
+                }
+              }
+                        
               bd.barcode = b_corrected;
               stat_corr++;
               
             } else if (correct_upper == 1) {
               uint64_t b_corrected = (ubc << (2*bc2)) | lb; 
+
+              if (dump_bool){
+                if (bd.barcode != old_barcode) {
+                  of << binaryToString(bd.barcode, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
+                  old_barcode = bd.barcode;
+                }
+              }
               bd.barcode = b_corrected;
               stat_corr++;
             } 
@@ -175,6 +194,13 @@ void bustools_correct(Bustools_opt &opt) {
           } else if (nc==2) {
             if (correct_upper == 1 && correct_lower == 1) {
               uint64_t b_corrected = (ubc << (2*bc2)) | lbc; 
+
+              if (dump_bool){
+                if (bd.barcode != old_barcode) {
+                  of << binaryToString(bd.barcode, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
+                  old_barcode = bd.barcode;
+                }
+              }
               bd.barcode = b_corrected;
               stat_corr_2++;
             }
@@ -195,6 +221,7 @@ void bustools_correct(Bustools_opt &opt) {
   if (!opt.stream_out) {
     busf_out.close();
   }
+  of.close();
 
   delete[] p; p = nullptr;
 }

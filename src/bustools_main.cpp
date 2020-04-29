@@ -350,10 +350,11 @@ void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt& opt) {
 
 void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt& opt) {
 
-  const char* opt_string = "o:w:p";
+  const char* opt_string = "o:w:d:p";
   static struct option long_options[] = {
     {"output",          required_argument,  0, 'o'},
     {"whitelist",       required_argument,  0, 'w'},
+    {"dump",            required_argument, 0, 'd'},
     {"pipe",            no_argument, 0, 'p'},
     {0,                 0,                  0,  0 }
   };
@@ -368,6 +369,10 @@ void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt& opt) {
       break;
     case 'w':
       opt.whitelist = optarg;
+      break;
+    case 'd':
+      opt.dump = optarg;
+      opt.dump_bool = true;
       break;
     case 'p':
       opt.stream_out = true;
@@ -887,6 +892,7 @@ bool check_ProgramOptions_capture(Bustools_opt& opt) {
 bool check_ProgramOptions_correct(Bustools_opt& opt) {
   bool ret = true;
 
+
   if (!opt.stream_out) {
     if (opt.output.empty()) {
       std::cerr << "Error: missing output file" << std::endl;
@@ -894,7 +900,7 @@ bool check_ProgramOptions_correct(Bustools_opt& opt) {
     } else if (!checkOutputFileValid(opt.output)) {
       std::cerr << "Error: unable to open output file" << std::endl;
       ret = false;
-    }
+    } 
   } 
 
 
@@ -921,6 +927,13 @@ bool check_ProgramOptions_correct(Bustools_opt& opt) {
       ret = false;
     }
   }
+  if (opt.dump_bool){
+    if (opt.dump.empty()){
+      std::cerr << "Error: dump file not specified"<<std::endl;
+      ret = false;
+    } 
+  }
+
 
   return ret;
 }
@@ -1102,7 +1115,7 @@ bool check_ProgramOptions_project(Bustools_opt &opt) {
   }
   
   if (opt.count_ecs.size() == 0) {
-    std::cerr << "Error: missing equialence class mapping file" << std::endl;
+    std::cerr << "Error: missing equivalence class mapping file" << std::endl;
   } else {
     if (!checkFileExists(opt.count_ecs)) {
       std::cerr << "Error: File not found " << opt.count_ecs << std::endl;
@@ -1341,6 +1354,7 @@ void Bustools_correct_Usage() {
   << "-o, --output          File for corrected bus output" << std::endl
   << "-w, --whitelist       File of whitelisted barcodes to correct to" << std::endl
   << "-p, --pipe            Write to standard output" << std::endl
+  << "-d, --dump            Dump uncorrected to corrected barcodes (optional)" << std::endl
   << std::endl;
 }
 

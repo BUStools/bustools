@@ -46,6 +46,10 @@ struct Bustools_opt {
   bool count_collapse = false;
   bool count_gene_multimapping = false;
 
+  /* correct */
+  std::string dump;
+  bool dump_bool = false;
+
   /* project */
   std::string map;
   std::string output_folder;
