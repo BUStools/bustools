@@ -91,6 +91,7 @@ void bustools_correct(Bustools_opt &opt)
     }
     uint64_t bc = stringToBinary(line, f);
     wbc.insert(bc);
+
   }
   wf.close();
 
@@ -283,6 +284,7 @@ void bustools_correct(Bustools_opt &opt)
           }
 
           uint64_t b_corrected = upper_corrected << (2 * bc2) | lower_corrected;
+          auto it = wbc.find(b_corrected);
 
           // int correct_lower = search_for_mismatch(correct[upper_corrected].second,bc2,lb,lbc);
           // int correct_upper = search_for_mismatch(correct[lower_corrected].first,wc_bclen - bc2,ub,ubc);
@@ -299,51 +301,61 @@ void bustools_correct(Bustools_opt &opt)
           {
             if (dump_bool)
             {
-              if (bd.barcode != old_barcode)
+              if (it != wbc.end())
               {
-                of << binaryToString(bd.barcode, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
-                old_barcode = bd.barcode;
-              }
-            }
+                bd.barcode = b_corrected;
+                stat_corr++;
+                bus_out.write((char *)&bd, sizeof(bd));
 
-            bd.barcode = b_corrected;
-            stat_corr++;
-            bus_out.write((char *)&bd, sizeof(bd));
-          }
-          else if (nc == 2)
-          {
-            if (dump_bool)
-            {
-              if (bd.barcode != old_barcode)
-              {
-                of << binaryToString(bd.barcode, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
-                old_barcode = bd.barcode;
+                if (bd.barcode != old_barcode)
+                {
+                  of << binaryToString(bd.barcode, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
+                  old_barcode = bd.barcode;
+                }
               }
             }
-            bd.barcode = b_corrected;
-            stat_corr_2++;
-            bus_out.write((char *)&bd, sizeof(bd));
+          }
+            else if (nc == 2)
+            {
+              if (nc_lower==1 & nc_upper==1)
+              {
+                if (dump_bool)
+                {
+                  if (it != wbc.end())
+                  {
+                    bd.barcode = b_corrected;
+                    stat_corr_2++;
+                    bus_out.write((char *)&bd, sizeof(bd));
+
+                    if (bd.barcode != old_barcode)
+                    {
+                      of << binaryToString(bd.barcode, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
+                      old_barcode = bd.barcode;
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     }
-  }
 
-  std::cerr << "Processed " << nr << " BUS records" << std::endl
-            << "In whitelist = " << stat_white << std::endl
-            << "Corrected 1  = " << stat_corr << std::endl
-            << "Corrected 2  = " << stat_corr_2 << std::endl
-            << "Uncorrected  = " << stat_uncorr << std::endl;
+    std::cerr << "Processed " << nr << " BUS records" << std::endl
+              << "In whitelist = " << stat_white << std::endl
+              << "Corrected 1  = " << stat_corr << std::endl
+              << "Corrected 2  = " << stat_corr_2 << std::endl
+              << "Uncorrected  = " << stat_uncorr << std::endl;
 
-  if (!opt.stream_out)
-  {
-    busf_out.close();
-  }
-  if (opt.dump_bool)
-  {
-    of.close(); // if of is open
-  }
+    if (!opt.stream_out)
+    {
+      busf_out.close();
+    }
+    if (opt.dump_bool)
+    {
+      of.close(); // if of is open
+    }
 
-  delete[] p;
-  p = nullptr;
-}
+    delete[] p;
+    p = nullptr;
+  }
