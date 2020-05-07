@@ -80,43 +80,92 @@ void bustools_correct(Bustools_opt &opt)
   std::ifstream wf(opt.whitelist, std::ios::in);
   std::string line;
   line.reserve(100);
+
+  uint32_t f = 0;
+
   std::unordered_set<uint64_t> wbc;
   wbc.reserve(100000);
-  uint32_t f = 0;
+
+  std::unordered_set<uint64_t> wbc_34;
+  wbc_34.reserve(100000);
+
+  std::unordered_set<uint64_t> wbc_12;
+  wbc_12.reserve(100000);
+
+  // split barcode into upper and lower half
+  // If even
+  // AGCC AAGA GAGG GCAT
+  // UU   LU    UL  LL
+  // AGCC AAGA GAGG GCAT
+  // 4    3    2    1
+  // if odd
+  // AGCC AAGA GAGG GCA
+
+  // note integer division discards the decimal
+  // let wc_bclen = 14, 15, 16,
+
+  //
+  size_t len_12; // = wc_bclen/2 ; // = 7,7, 8
+  size_t len_34; // = wc_bclen-len_12; // = 7, 8, 8
+
+  size_t len_1; // = len_12/2; // = 3, 3, 4
+  size_t len_2; // = len_12 - len_1; // =4, 4, 4
+  size_t len_3; // = len_34/2; //3, 4,4
+  size_t len_4; // = len_34 - len_3; //4, 4,4
+
+  // uint64_t mask_size = (1ULL << (2 * bc2));
+  uint64_t mask_12; // = (1ULL << (2 * len_12)) - 1;
+  uint64_t mask_34; // = (1ULL << (2 * (len_34))) - 1;
+
+  uint64_t mask_1 = (1ULL << (2 * len_1)) - 1;
+  uint64_t mask_2 = (1ULL << (2 * len_2)) - 1;
+  uint64_t mask_3 = (1ULL << (2 * len_3)) - 1;
+  uint64_t mask_4 = (1ULL << (2 * len_4)) - 1;
+
   while (std::getline(wf, line))
   {
     if (wc_bclen == 0)
     {
       wc_bclen = line.size();
+
+      len_12 = wc_bclen / 2;      // = 7,7, 8
+      len_34 = wc_bclen - len_12; // = 7, 8, 8
+
+      // uint64_t mask_size = (1ULL << (2 * bc2));
+      mask_12 = (1ULL << (2 * len_12)) - 1;
+      mask_34 = (1ULL << (2 * (len_34))) - 1;
     }
     uint64_t bc = stringToBinary(line, f);
-    wbc.insert(bc);
+    //wbc.insert(bc);
 
+    uint64_t bc_12 = bc & mask_12;
+    uint64_t bc_34 = (bc >> (2 * len_12)) & mask_34;
+
+    wbc_12.insert(bc_12);
+    wbc_34.insert(bc_34);
+
+    //std::cout << line<< "\t"<<binaryToString(bc_34, len_34) << "\t" << binaryToString(bc_12, len_12) << "\n";
   }
   wf.close();
 
-  std::cerr << "Found " << wbc.size() << " barcodes in the whitelist" << std::endl;
+  std::cerr << "Found " << wbc_12.size() << "," << wbc_34.size() << " barcodes in the half whitelists" << std::endl;
 
-  // split barcode into upper and lower half
-  size_t bc2 = (wc_bclen + 1) / 2;
-  size_t bc4 = (bc2 / 2);
+  len_1 = len_12 / 2;     // = 3, 3, 4
+  len_2 = len_12 - len_1; // =4, 4, 4
+  len_3 = len_34 / 2;     //3, 4,4
+  len_4 = len_34 - len_3; //4, 4,4
 
-  std::vector<size_t> split_bclen(4);
+  mask_1 = (1ULL << (2 * len_1)) - 1;
+  mask_2 = (1ULL << (2 * len_2)) - 1;
+  mask_3 = (1ULL << (2 * len_3)) - 1;
+  mask_4 = (1ULL << (2 * len_4)) - 1;
 
-  std::vector<std::pair<Roaring, Roaring>> correct(1ULL << (2 * bc2)); // 4^(bc/2) possible barcodes
+  // std::vector<std::pair<Roaring, Roaring>> correct(1ULL << (2 * bc2)); // 4^(bc/2) possible barcodes
 
-  std::vector<std::pair<Roaring, Roaring>> lower_correct(1ULL << (2 * bc4)); // 4^(bc/4) possible barcodes
-  std::vector<std::pair<Roaring, Roaring>> upper_correct(1ULL << (2 * bc4)); // 4^(bc/4) possible barcodes
+  std::vector<std::pair<Roaring, Roaring>> correct_12(1ULL << (2 * len_12)); // 4^(bc/4) possible barcodes
+  std::vector<std::pair<Roaring, Roaring>> correct_34(1ULL << (2 * len_34)); // 4^(bc/4) possible barcodes
 
-  uint64_t mask_size = (1ULL << (2 * bc2));
-  uint64_t lower_mask = (1ULL << (2 * bc2)) - 1;
-  uint64_t upper_mask = (1ULL << (2 * (wc_bclen - bc2))) - 1;
-
-  uint64_t l_lower_mask = (1ULL << (2 * bc4)) - 1;
-  uint64_t u_lower_mask = (1ULL << (2 * bc4)) - 1;
-
-  uint64_t l_upper_mask = (1ULL << (2 * (bc2 - bc4))) - 1;
-  uint64_t u_upper_mask = (1ULL << (2 * (bc2 - bc4))) - 1;
+  // std::vector<uint64_t> masks = {};
 
   // barcode is split into 4 peices of equal size, check each half in the following way:
   // AGCC AAGA GAGG GCAT
@@ -126,27 +175,29 @@ void bustools_correct(Bustools_opt &opt)
   // any one of those variants (concatenated with the UL) is in the "half"-whitelist
   // Do the same for the UU and LU half.
 
-  for (uint64_t b : wbc)
+  for (uint64_t b : wbc_12)
   {
-    uint64_t lb = b & lower_mask;
-    uint64_t ub = (b >> (2 * bc2)) & upper_mask;
+    
+    uint64_t bc1 = b & mask_1;
+    uint64_t bc2 = (b >> (2 * len_1)) & mask_2;
 
-    uint64_t llb = b & l_lower_mask;
-    uint64_t ulb = (b >> (2 * bc4)) & u_lower_mask;
+    // std::cout << binaryToString(b, len_12) << "\t" << binaryToString(bc2, len_2) << "\t" << binaryToString(bc1 , len_1) << "\n";
 
-    uint64_t lub = (b >> (2 * (2 * bc4))) & l_upper_mask;
-    uint64_t uub = (b >> (3 * (2 * bc4))) & u_upper_mask;
+    correct_12[bc2].second.add(bc1);
+    correct_12[bc1].first.add(bc2);
+  }
 
-    // std::cout << "ub: " << binaryToString(ub, wc_bclen/2) << "\t" << "lb: " << binaryToString(lb, wc_bclen/2) << "\n";
+  for (uint64_t b : wbc_34)
+  {
+    uint64_t bc3 = b & mask_3;
+    uint64_t bc4 = (b >> (2 * len_3)) & mask_4;
 
-    correct[ub].second.add(lb);
-    correct[lb].first.add(ub);
+    // if (binaryToString(bc4, len_4) == "CGCC" || binaryToString(bc3, len_3)=="AAGA"){
+    //   std::cout << binaryToString(bc4, len_4) << "\t" << binaryToString(bc3, len_3) << "\n";
+    // }
 
-    lower_correct[ulb].second.add(llb);
-    lower_correct[llb].first.add(ulb);
-
-    upper_correct[uub].second.add(lub);
-    upper_correct[lub].first.add(uub);
+    correct_34[bc4].second.add(bc3);
+    correct_34[bc3].first.add(bc4);
   }
 
   std::streambuf *buf = nullptr;
@@ -193,9 +244,9 @@ void bustools_correct(Bustools_opt &opt)
     {
       bclen = h.bclen;
 
-      if (bclen != wc_bclen)
+      if (bclen != len_12 + len_34)
       {
-        std::cerr << "Error: barcode length and whitelist length differ, barcodes = " << bclen << ", whitelist = " << wc_bclen << std::endl
+        std::cerr << "Error: barcode length and whitelist length differ, barcodes = " << bclen << ", whitelist = " << len_12 + len_34 << std::endl
                   << "       check that your whitelist matches the technology used" << std::endl;
 
         exit(1);
@@ -219,143 +270,147 @@ void bustools_correct(Bustools_opt &opt)
 
       for (size_t i = 0; i < rc; i++)
       {
+
+        int n_12;
+        int n_34;
+
         bd = p[i];
-        auto it = wbc.find(bd.barcode);
-        if (it != wbc.end())
+
+        uint64_t b = bd.barcode;
+        uint64_t bc12 = b & mask_12;
+        uint64_t bc34 = (b >> (2 * len_12)) & mask_34;
+
+        auto it_12 = wbc_12.find(bc12);
+        auto it_34 = wbc_34.find(bc34);
+
+        it_12 != wbc_12.end() ? n_12 = 1 : n_12 = 0;
+        it_34 != wbc_34.end() ? n_34 = 1 : n_34 = 0;
+
+        if (n_12 == 1 && n_34 == 1)
         {
           stat_white++;
           bus_out.write((char *)&bd, sizeof(bd));
         }
-        else
-        { // TODO: there is code redundancy in this else statement, fix.
-          uint64_t b = bd.barcode;
+        else if (n_12 + n_34 == 0 or n_12 + n_34 == 1) // either 12 or 34 == 0 or both ==0
+        {                                              // TODO: there is code redundancy in this else statement, fix.
+                                                       // CGCCAAGA GAGGGCAT top most
+                                                       // CGCCAAGA AAGGGCAT next top most
+                                                       // if (binaryToString(b, bclen) == "CGCCAAGAAAGGGCAT" || binaryToString(b, bclen) == "CGCCAAGAGAGGGCAT"){
+                                                       //   std::cout << binaryToString(b, bclen) << "\t" << n_34 << "\t" << n_12 << "\n";
+                                                       // }
+          uint64_t bc12_corrected = bc12;
+          uint64_t bc34_corrected = bc34;
 
-          uint64_t lb = b & lower_mask;
-          uint64_t ub = (b >> (2 * bc2)) & upper_mask;
+          bool corrected_12_flag = false;
+          bool corrected_34_flag = false;
 
-          uint64_t upper_corrected = ub;
-          uint64_t lower_corrected = lb;
-
-          uint64_t llb = b & l_lower_mask;
-          uint64_t ulb = (b >> (2 * bc4)) & u_lower_mask;
-
-          uint64_t lub = (b >> (2 * (2 * bc4))) & l_upper_mask;
-          uint64_t uub = (b >> (3 * (2 * bc4))) & u_upper_mask;
-
-          uint64_t lbc = 0, ubc = 0;
-          uint64_t llbc = 0, ulbc = 0;
-          uint64_t lubc = 0, uubc = 0;
-
-          // std::cout << binaryToString(uub, bc4) << "\t" << binaryToString(lub, bc4) << "\t"
-          //           << binaryToString(ulb, bc4) << "\t" << binaryToString(llb, bc4) << "\n";
-
-          int correct_l_lower = search_for_mismatch(lower_correct[ulb].second, bc4, llb, llbc);
-          int correct_u_lower = search_for_mismatch(lower_correct[llb].first, bc4, ulb, ulbc);
-
-          int nc_lower = correct_l_lower + correct_u_lower;
-
-          if (nc_lower == 1)
+          if (n_12 == 0)
           {
-            if (correct_l_lower == 1)
+            uint64_t bc1 = b & mask_1;
+            uint64_t bc2 = (b >> (2 * len_1)) & mask_2;
+
+            uint64_t bc1_c = 0;
+            uint64_t bc2_c = 0;
+
+            int correct_1 = search_for_mismatch(correct_12[bc2].second, len_1, bc1, bc1_c);
+            int correct_2 = search_for_mismatch(correct_12[bc1].first, len_2, bc2, bc2_c);
+
+            int check_12 = correct_1 + correct_2;
+
+            if (check_12 == 1)
             {
-              lower_corrected = (ulb << (2 * bc4)) | llbc;
-            }
-            else if (correct_u_lower == 1)
-            {
-              lower_corrected = (ulbc << (2 * bc4)) | llb;
+              n_12 = 1;
+              corrected_12_flag = true;
+              if (correct_1 == 1)
+              { 
+                bc12_corrected = (bc2 << (2 * len_1)) | bc1_c; // 1 has been corrected, 2 is the same
+              }
+              else if (correct_2 == 1)
+              {
+                bc12_corrected = (bc2_c << (2 * len_1)) | bc1; // 2 has been corrected, 1 is the same
+              }
             }
           }
 
-          int correct_l_upper = search_for_mismatch(upper_correct[uub].second, bc4, lub, lubc);
-          int correct_u_upper = search_for_mismatch(upper_correct[lub].first, bc4, uub, uubc);
-
-          int nc_upper = correct_l_upper + correct_u_upper;
-
-          if (nc_upper == 1)
+          if (n_34 == 0)
           {
-            if (correct_l_upper == 1)
+            uint64_t bc3 = bc34 & mask_3;
+            uint64_t bc4 = (bc34 >> (2*len_3)) & mask_4;
+
+            uint64_t bc3_c = 0;
+            uint64_t bc4_c = 0;
+
+            int correct_3 = search_for_mismatch(correct_34[bc4].second, len_3, bc3, bc3_c);
+            int correct_4 = search_for_mismatch(correct_34[bc3].first, len_4, bc4, bc4_c);
+
+            int check_34 = correct_3 + correct_4;
+
+            if (check_34 == 1)
             {
-              upper_corrected = (uub << (2 * bc4)) | lubc;
-            }
-            else if (correct_u_upper == 1)
-            {
-              upper_corrected = (uubc << (2 * bc4)) | lub;
+              n_34 = 1;
+              corrected_34_flag = true;
+              if (correct_3 == 1)
+              { 
+                bc34_corrected = (bc4 << (2 * len_3)) | bc3_c; // 3 has been corrected, 4 is the same
+              }
+              else if (correct_4 == 1)
+              {
+                bc34_corrected = (bc4_c << (2 * len_3)) | bc3; // 4 has been corrected, 3 is the same
+              }
             }
           }
 
-          uint64_t b_corrected = upper_corrected << (2 * bc2) | lower_corrected;
-          auto it = wbc.find(b_corrected);
+          if (n_12 == 1 && n_34 == 1)
+          {
+            uint64_t b_corrected = bc34_corrected << (2 * len_12) | bc12_corrected;
 
-          // int correct_lower = search_for_mismatch(correct[upper_corrected].second,bc2,lb,lbc);
-          // int correct_upper = search_for_mismatch(correct[lower_corrected].first,wc_bclen - bc2,ub,ubc);
-          // int nc = correct_lower + correct_upper;
+            if (dump_bool)
+            {
+              if (bd.barcode != old_barcode)
+              {
+                of << binaryToString(bd.barcode, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
+                old_barcode = bd.barcode;
+              }
+            }
 
-          int nc = nc_lower + nc_upper;
-          // AGCCAAGA GAGGGCAT
+            bd.barcode = b_corrected;
+            bus_out.write((char *)&bd, sizeof(bd));
 
-          if (nc == 0 || nc > 2)
+            if (corrected_12_flag && corrected_34_flag)
+            { // if both were corrected once
+              stat_corr_2++;
+            }
+            else if (corrected_12_flag || corrected_34_flag)
+            { // if only one was corrected once
+              stat_corr++;
+            }
+          }
+          else
           {
             stat_uncorr++;
           }
-          else if (nc == 1)
-          {
-            if (dump_bool)
-            {
-              if (it != wbc.end())
-              {
-                bd.barcode = b_corrected;
-                stat_corr++;
-                bus_out.write((char *)&bd, sizeof(bd));
 
-                if (bd.barcode != old_barcode)
-                {
-                  of << binaryToString(bd.barcode, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
-                  old_barcode = bd.barcode;
-                }
-              }
-            }
-          }
-            else if (nc == 2)
-            {
-              if (nc_lower==1 & nc_upper==1)
-              {
-                if (dump_bool)
-                {
-                  if (it != wbc.end())
-                  {
-                    bd.barcode = b_corrected;
-                    stat_corr_2++;
-                    bus_out.write((char *)&bd, sizeof(bd));
-
-                    if (bd.barcode != old_barcode)
-                    {
-                      of << binaryToString(bd.barcode, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
-                      old_barcode = bd.barcode;
-                    }
-                  }
-                }
-              }
-            }
-          }
+          // AGCCAAGA GAGGGCAT
         }
       }
     }
-
-    std::cerr << "Processed " << nr << " BUS records" << std::endl
-              << "In whitelist = " << stat_white << std::endl
-              << "Corrected 1  = " << stat_corr << std::endl
-              << "Corrected 2  = " << stat_corr_2 << std::endl
-              << "Uncorrected  = " << stat_uncorr << std::endl;
-
-    if (!opt.stream_out)
-    {
-      busf_out.close();
-    }
-    if (opt.dump_bool)
-    {
-      of.close(); // if of is open
-    }
-
-    delete[] p;
-    p = nullptr;
   }
+
+  std::cerr << "Processed " << nr << " BUS records" << std::endl
+            << "In whitelist = " << stat_white << std::endl
+            << "Corrected 1  = " << stat_corr << std::endl
+            << "Corrected 2  = " << stat_corr_2 << std::endl
+            << "Uncorrected  = " << stat_uncorr << std::endl;
+
+  if (!opt.stream_out)
+  {
+    busf_out.close();
+  }
+  if (opt.dump_bool)
+  {
+    of.close(); // if of is open
+  }
+
+  delete[] p;
+  p = nullptr;
+}
