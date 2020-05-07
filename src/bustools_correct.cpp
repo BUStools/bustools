@@ -599,7 +599,6 @@ void bustools_correct(Bustools_opt &opt)
               bus_out.write((char *)&bd, sizeof(bd));
               stat_corr++;
             }
-            bus_out.write((char *)&bd, sizeof(bd));
           }
         }
       }
