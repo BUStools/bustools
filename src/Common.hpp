@@ -49,6 +49,7 @@ struct Bustools_opt {
   /* correct */
   std::string dump;
   bool dump_bool = false;
+  bool split_correct = false;
 
   /* project */
   std::string map;

@@ -350,11 +350,12 @@ void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt& opt) {
 
 void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt& opt) {
 
-  const char* opt_string = "o:w:d:p";
+  const char* opt_string = "o:w:d:sp";
   static struct option long_options[] = {
     {"output",          required_argument,  0, 'o'},
     {"whitelist",       required_argument,  0, 'w'},
     {"dump",            required_argument, 0, 'd'},
+    {"split",           no_argument, 0, 's'},
     {"pipe",            no_argument, 0, 'p'},
     {0,                 0,                  0,  0 }
   };
@@ -373,6 +374,9 @@ void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt& opt) {
     case 'd':
       opt.dump = optarg;
       opt.dump_bool = true;
+      break;
+    case 's':
+      opt.split_correct = true;
       break;
     case 'p':
       opt.stream_out = true;
@@ -1355,6 +1359,7 @@ void Bustools_correct_Usage() {
   << "-w, --whitelist       File of whitelisted barcodes to correct to" << std::endl
   << "-p, --pipe            Write to standard output" << std::endl
   << "-d, --dump            Dump uncorrected to corrected barcodes (optional)" << std::endl
+  << "-s, --split           Split the whitelist and correct each half independently (optional)" << std::endl
   << std::endl;
 }
 
@@ -1553,7 +1558,12 @@ int main(int argc, char **argv) {
       }
       parse_ProgramOptions_correct(argc-1, argv+1, opt);
       if (check_ProgramOptions_correct(opt)) { //Program options are valid
-        bustools_correct(opt);        
+        if (opt.split_correct){
+          bustools_split_correct(opt);
+        } else{
+          bustools_correct(opt);  
+        }
+              
       } else {
         Bustools_dump_Usage();
         exit(1);
