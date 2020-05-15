@@ -40,7 +40,8 @@ void bustools_count(Bustools_opt &opt) {
   std::string barcodes_ofn = opt.output + ".barcodes.txt";
   std::string ec_ofn = opt.output + ".ec.txt";
   std::string gene_ofn = opt.output + ".genes.txt";
-  of.open(mtx_ofn); 
+  std::string hist_ofn = opt.output + ".hist.txt";
+  of.open(mtx_ofn, std::ios::binary); //do not change this to text mode, will mess things up for Windows since \n becomes \r\n in text mode, taking extra bytes
 
   // write out the initial header
   of << "%%MatrixMarket matrix coordinate real general\n%\n";
@@ -73,6 +74,16 @@ void bustools_count(Bustools_opt &opt) {
     column_vp.reserve(N);
     glist.reserve(100);
   }
+
+  //Allocate histograms
+  //Indexed as gene*histmax + histIndex
+  size_t n_genes = genenames.size();
+  const uint32_t histmax = 100;//set molecules with more than histmax copies to histmax 
+  std::vector<double> histograms;
+  if (opt.count_gen_hist) {
+	  histograms = std::vector<double>(n_genes * histmax, 0);
+  }
+
   //barcodes 
   std::vector<uint64_t> barcodes;
   int bad_count = 0;
@@ -172,8 +183,10 @@ void bustools_count(Bustools_opt &opt) {
 
       // v[i..j-1] share the same UMI
       ecs.resize(0);
+	  uint32_t counts = 0;
       for (size_t k = i; k < j; k++) {
         ecs.push_back(v[k].ec);
+		counts += v[k].count;
       }
 
       intersect_genes_of_ecs(ecs,ec2genes, glist);
@@ -182,13 +195,42 @@ void bustools_count(Bustools_opt &opt) {
         if (opt.count_gene_multimapping) {
           for (auto x : glist) {
             column_vp.push_back({x, 1.0/gn});
+
+			//Fill in histograms for prediction.
+			if (opt.count_gen_hist) {
+				if (x < n_genes) { //crasches with an invalid gene file otherwise
+					histograms[x * histmax + std::min(counts - 1, histmax - 1)] += 1.0 / gn; //histmax-1 since histograms[g][0] is the histogram value for 1 copy and so forth
+				}
+				else {
+					std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
+				}
+			}
           }
         } else {
           if (gn==1) {
             column_vp.push_back({glist[0],1.0});
+			//Fill in histograms for prediction.
+			if (opt.count_gen_hist) {
+				if (glist[0] < n_genes) { //crasches with an invalid gene file otherwise
+					histograms[glist[0] * histmax + std::min(counts - 1, histmax - 1)] += 1.0; //histmax-1 since histograms[g][0] is the histogram value for 1 copy and so forth
+				} else {
+					std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
+				}
+			}
+
           } else if (opt.count_em) {
             ambiguous_genes.push_back(std::move(glist));
-          }
+			//Fill in histograms for prediction. This is a simplification. TODO: should be fixed for the em algorithm!
+			if (opt.count_gen_hist) {
+				for (auto x : glist) {
+					if (x < n_genes) { //crasches with an invalid gene file otherwise
+						histograms[x * histmax + std::min(counts - 1, histmax - 1)] += 1.0 / gn; //histmax-1 since histograms[g][0] is the histogram value for 1 copy and so forth
+					} else {
+						std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
+					}
+				}
+			}
+		  }
         }
       }
       i = j; // increment
@@ -375,6 +417,35 @@ void bustools_count(Bustools_opt &opt) {
     bcof << binaryToString(x, bclen) << "\n";
   }
   bcof.close();
+
+  //write histogram file
+  if (opt.count_gen_hist) {
+	std::ofstream histof;
+	histof.open(hist_ofn);
+
+	for (size_t g = 0; g < genenames.size(); ++g) {
+		//Indexed as gene*histmax + histIndex
+		unsigned int offs = g * histmax;
+		
+		//first figure out the length of the histogram, don't write that to make the file smaller
+		unsigned int histEnd = histmax - 1;
+		for (; histEnd != 0; --histEnd) {
+			if (histograms[offs + histEnd] != 0) {
+				break;
+			}
+		}
+		for (size_t c = 0; c <= histEnd; ++c) {
+			if (c != 0) {
+				histof << '\t';
+			}
+			histof << histograms[offs + c];
+		}
+
+		histof << "\n";
+	}
+	histof.close();
+  }
+
   //std::cerr << "bad counts = " << bad_count <<", rescued  =" << rescued << ", compacted = " << compacted << std::endl;
 
   //std::cerr << "Read in " << nr << " BUS records" << std::endl;

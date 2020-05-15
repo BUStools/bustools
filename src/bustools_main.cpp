@@ -261,6 +261,7 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
   const char* opt_string = "o:g:e:t:m";
   int gene_flag = 0;
   int em_flag = 0;
+  int hist_flag = 0;
   static struct option long_options[] = {
     {"output",          required_argument,  0, 'o'},
     {"genemap",          required_argument,  0, 'g'},
@@ -269,6 +270,7 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
     {"genecounts", no_argument, &gene_flag, 1},
     {"multimapping", no_argument, 0, 'm'},
     {"em", no_argument, &em_flag, 1},
+    {"hist", no_argument, &hist_flag, 1},
     {0,                 0,                  0,  0 }
   };
 
@@ -301,6 +303,9 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
   }
   if (em_flag) {
     opt.count_em = true;
+  }
+  if (hist_flag) {
+    opt.count_gen_hist = true;
   }
 
   while (optind < argc) opt.files.push_back(argv[optind++]);
@@ -1342,6 +1347,7 @@ void Bustools_count_Usage() {
   << "-t, --txnames         File with names of transcripts" << std::endl
   << "    --genecounts      Aggregate counts to genes only" << std::endl
   << "    --em              Estimate gene abundances using EM algorithm" << std::endl 
+  << "    --hist            Output copy per UMI histograms for all genes" << std::endl 
   << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl
   << std::endl;
 }
