@@ -33,6 +33,9 @@
 #include "bustools_correct.h"
 #include "bustools_merge.h"
 #include "bustools_extract.h"
+#include "bustools_text.h"
+#include "bustools_umicorrect.h"
+
 
 
 int my_mkdir(const char *path, mode_t mode) {
@@ -306,6 +309,49 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
   }
   if (hist_flag) {
     opt.count_gen_hist = true;
+  }
+
+  while (optind < argc) opt.files.push_back(argv[optind++]);
+
+  if (opt.files.size() == 1 && opt.files[0] == "-") {
+    opt.stream_in = true;
+  }
+}
+
+void parse_ProgramOptions_umicorrect(int argc, char **argv, Bustools_opt& opt) {
+  const char* opt_string = "o:g:e:t:m";
+  int gene_flag = 0;
+  int em_flag = 0;
+  int hist_flag = 0;
+  static struct option long_options[] = {
+    {"output",          required_argument,  0, 'o'},
+    {"genemap",          required_argument,  0, 'g'},
+    {"ecmap",          required_argument,  0, 'e'},
+    {"txnames",          required_argument,  0, 't'},
+    {0,                 0,                  0,  0 }
+  };
+
+  int option_index = 0, c;
+
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
+
+    //reuse the same flags as for count
+	switch (c) {
+    case 'o':
+      opt.output = optarg;
+      break;
+    case 'g':
+      opt.count_genes = optarg;
+      break;
+    case 't':
+      opt.count_txp = optarg;
+      break;
+    case 'e':
+      opt.count_ecs = optarg;
+      break;
+    default:
+      break;
+    }
   }
 
   while (optind < argc) opt.files.push_back(argv[optind++]);
@@ -1000,6 +1046,80 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
   return ret;
 }
 
+bool check_ProgramOptions_umicorrect(Bustools_opt& opt) {
+  bool ret = true;
+
+  // check for output directory
+  if (opt.output.empty()) {
+    std::cerr << "Error: Missing output directory" << std::endl;
+    ret = false;
+  } else {
+    bool isDir = false;
+    if (checkDirectoryExists(opt.output)) {
+      isDir = true;
+    } else {
+      if (opt.output.at(opt.output.size()-1) == '/') {
+        if (my_mkdir(opt.output.c_str(), 0777) == -1) {
+          std::cerr << "Error: could not create directory " << opt.output << std::endl;
+          ret = false;
+        } else {
+          isDir = true;
+        }
+      }
+    }
+
+    if (isDir) {
+      opt.output += "output";
+    }
+  }
+
+  if (opt.files.size() == 0) {
+    std::cerr << "Error: Missing BUS input files" << std::endl;
+    ret = false;
+  } else {
+    if (!opt.stream_in) {
+      for (const auto& it : opt.files) {  
+        if (!checkFileExists(it)) {
+          std::cerr << "Error: File not found, " << it << std::endl;
+          ret = false;
+        }
+      }
+    }
+  }
+
+  if (opt.count_genes.size() == 0) {
+    std::cerr << "Error: missing gene mapping file" << std::endl;
+    ret = false;
+  } else {
+    if (!checkFileExists(opt.count_genes)) {
+      std::cerr << "Error: File not found " << opt.count_genes << std::endl;
+      ret = false;
+    }
+  }
+
+  if (opt.count_ecs.size() == 0) {
+    std::cerr << "Error: missing equivalence class mapping file" << std::endl;
+    ret = false;
+  } else {
+    if (!checkFileExists(opt.count_ecs)) {
+      std::cerr << "Error: File not found " << opt.count_ecs << std::endl;
+      ret = false;
+    }
+  }
+
+  if (opt.count_txp.size() == 0) {
+    std::cerr << "Error: missing transcript name file" << std::endl;
+    ret = false;
+  } else {
+    if (!checkFileExists(opt.count_txp)) {
+      std::cerr << "Error: File not found " << opt.count_txp << std::endl;
+      ret = false;
+    }
+  }
+
+  return ret;
+}
+
 bool check_ProgramOptions_whitelist(Bustools_opt &opt) {
   bool ret = true;
 
@@ -1261,6 +1381,7 @@ void Bustools_Usage() {
   << "Where <CMD> can be one of: " << std::endl << std::endl
   << "sort            Sort a BUS file by barcodes and UMIs" << std::endl
   << "correct         Error correct a BUS file" << std::endl
+  << "umicorrect      Error correct the UMIs in a BUS file" << std::endl
   << "count           Generate count matrices from a BUS file" << std::endl
   << "inspect         Produce a report summarizing a BUS file" << std::endl
   << "whitelist       Generate a whitelist from a BUS file" << std::endl
@@ -1349,6 +1470,16 @@ void Bustools_count_Usage() {
   << "    --em              Estimate gene abundances using EM algorithm" << std::endl 
   << "    --hist            Output copy per UMI histograms for all genes" << std::endl 
   << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl
+  << std::endl;
+}
+
+void Bustools_umicorrect_Usage() {
+  std::cout << "Usage: bustools umicorrect [options] sorted-bus-files" << std::endl << std::endl
+  << "Options: " << std::endl
+  << "-o, --output          Output directory gene matrix files" << std::endl
+  << "-g, --genemap         File for mapping transcripts to genes" << std::endl
+  << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
+  << "-t, --txnames         File with names of transcripts" << std::endl
   << std::endl;
 }
 
@@ -1467,62 +1598,7 @@ int main(int argc, char **argv) {
       }
       parse_ProgramOptions_dump(argc-1, argv+1, opt);
       if (check_ProgramOptions_dump(opt)) { //Program options are valid
-        BUSHeader h;
-        size_t nr = 0;
-        size_t N = 100000;
-        BUSData* p = new BUSData[N];
-
-        std::streambuf *buf = nullptr;
-        std::ofstream of;
-
-        if (!opt.stream_out) {
-          of.open(opt.output); 
-          buf = of.rdbuf();
-        } else {
-          buf = std::cout.rdbuf();
-        }
-        std::ostream o(buf);
-
-
-        char magic[4];      
-        uint32_t version = 0;
-        for (const auto& infn : opt.files) {          
-          std::streambuf *inbuf;
-          std::ifstream inf;
-          if (!opt.stream_in) {
-            inf.open(infn.c_str(), std::ios::binary);
-            inbuf = inf.rdbuf();
-          } else {
-            inbuf = std::cin.rdbuf();
-          }
-          std::istream in(inbuf);
-
-
-          parseHeader(in, h);
-          uint32_t bclen = h.bclen;
-          uint32_t umilen = h.umilen;
-          int rc = 0;
-          while (true) {
-            in.read((char*)p, N*sizeof(BUSData));
-            size_t rc = in.gcount() / sizeof(BUSData);
-            if (rc == 0) {
-              break;
-            }
-            nr += rc;
-            for (size_t i = 0; i < rc; i++) {
-              o << binaryToString(p[i].barcode, bclen) << "\t" << binaryToString(p[i].UMI,umilen) << "\t" << p[i].ec << "\t" << p[i].count;
-              if (opt.text_dumpflags) {
-                o << "\t" << p[i].flags;
-              }
-              o << "\n";        
-            }
-          }
-        }
-        delete[] p; p = nullptr;
-        if (!opt.stream_out) {
-          of.close();
-        }
-        std::cerr << "Read in " << nr << " BUS records" << std::endl;
+        bustools_text(opt);
       } else {
         Bustools_dump_Usage();
         exit(1);
@@ -1540,32 +1616,7 @@ int main(int argc, char **argv) {
         exit(1);
       }
     } else if (cmd == "fromtext") {
-      BUSHeader h;
-      uint32_t f;
-      bool out_header_written = false;
-      std::string line, bc, umi;
-      int32_t ec,count;
-
-      while(std::getline(std::cin, line)) {
-        std::stringstream ss(line);
-        ss >> bc >> umi >> ec >> count;
-        if (!out_header_written) {
-          h.bclen = bc.size();
-          h.umilen = umi.size();
-          h.version = BUSFORMAT_VERSION;
-          h.text = "converted from text format";
-          writeHeader(std::cout, h);
-          out_header_written = true;
-        }
-        BUSData b;
-        b.barcode = stringToBinary(bc, f);
-        b.UMI = stringToBinary(umi, f);
-        b.ec = ec;
-        b.count = count;
-        b.flags = 0;
-        std::cout.write((char*)&b, sizeof(b));
-      }
-
+		bustools_fromtext(opt); //found in the bustools_text files
     } else if (cmd == "count") {
       if (disp_help) {
         Bustools_count_Usage();
@@ -1576,6 +1627,18 @@ int main(int argc, char **argv) {
         bustools_count(opt);
       } else {
         Bustools_count_Usage();
+        exit(1);
+      }
+    } else if (cmd == "umicorrect") {
+      if (disp_help) {
+        Bustools_umicorrect_Usage();
+        exit(0);        
+      }
+      parse_ProgramOptions_umicorrect(argc-1, argv+1, opt);
+      if (check_ProgramOptions_umicorrect(opt)) { //Program options are valid
+        bustools_umicorrect(opt);
+      } else {
+        Bustools_umicorrect_Usage();
         exit(1);
       }
     } else if (cmd == "capture") {

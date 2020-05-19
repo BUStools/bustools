@@ -1,0 +1,44 @@
+#hamm dist 1, should be joined
+AAACCTGAGAAGCCCA	ATGAAAATTT	1	1 #gene 1, transcript 1, uniquely mapped
+AAACCTGAGAAGCCCA	ATGGAAATTT	1	31 #gene 1, transcript 1, uniquely mapped
+
+#distance 2, should not be joined since they are not connected
+AAACCTGAGAAGCCCA	AAAAAAAATT	1	1 #gene 1, transcript 1, uniquely mapped
+AAACCTGAGAAGCCCA	AAAAAAAAAA	1	31 #gene 1, transcript 1, uniquely mapped
+
+#distance 2, connected, but not neighbors, should be two copies. A bit random which is chosen
+AAACCTGAGAAGCCCA	TTTAAAAATT	1	31 #gene 1, transcript 1, uniquely mapped
+AAACCTGAGAAGCCCA	TTTAAAAAAT	1	3  #gene 1, transcript 1, uniquely mapped
+AAACCTGAGAAGCCCA	TTTAAAAAAA	1	3  #gene 1, transcript 1, uniquely mapped
+
+#uncertain gene, should be joined (however as 2 separate ECs, meaning that only the UMI will be changed, the records will remain)
+AAACCTGAGAAGCCCA	TTTTTTTTTA	1	31 #gene 1, transcript 1, uniquely mapped
+AAACCTGAGAAGCCCA	TTTTTTTTTT	8	1 #gene 1 or 2, transcript 1 or 7
+
+#gene set mismatch, all but one (or two) should be joined. A bit random which is chosen. Only one record will disappear.
+AAACCTGAGAAGCCCA	CCCCCCCCCA	1	1 #gene 1, transcript 1, uniquely mapped
+AAACCTGAGAAGCCCA	CCCCCCCCCC	8	31 #gene 1 or 2, transcript 1 or 7
+AAACCTGAGAAGCCCA	CACCCCCCCC	6	1 #gene 2, transcript 6, uniquely mapped, excluded
+AAACCTGAGAAGCCCA	CCCACCCCCC	1	2 #gene 1, transcript 1, uniquely mapped
+
+#two connected different original molecules. A bit random how it is resolved
+AAACCTGAGAAGCCCA	CCTTCCCCCC	1	16 #gene 1, transcript 1, uniquely mapped
+AAACCTGAGAAGCCCA	CCTTCCCCCA	1	1 #gene 1, transcript 1, uniquely mapped
+AAACCTGAGAAGCCCA	CCTTCCCCAA	1	1 #gene 1, transcript 1, uniquely mapped
+AAACCTGAGAAGCCCA	CCTTCCCAAA	1	2 #gene 1, transcript 1, uniquely mapped
+
+#One original molecule, many ones. 
+AAACCTGAGAAGCCCA	CCTTCGGGCC	1	1 #gene 1, transcript 1, uniquely mapped
+AAACCTGAGAAGCCCA	GCTTCGGGCC	1	1 #gene 1, transcript 1, uniquely mapped
+AAACCTGAGAAGCCCA	GGTTCGGGCC	1	3 #gene 1, transcript 1, uniquely mapped
+AAACCTGAGAAGCCCA	GGGTCGGGCC	1	1 #gene 1, transcript 1, uniquely mapped
+
+#results in more than one gene
+AAACCTGAGAAGCCCA	CCTTCGAACC	21  1 #gene 1, 2 or 3, transcript 1, 6 or 11
+AAACCTGAGAAGCCCA	GCTTCGAACC	22	1 #gene 2, 3 or 4, transcript 6, 11 or 12
+
+#another barcode but same UMI, should not be joined with the ones above (but with eachother)
+CCACCTGAGAAGCCCA	CCTTCGAACC	21	1 #gene 1, 2 or 3, transcript 1, 6 or 11
+CCACCTGAGAAGCCCA	GCTTCGAACC	22	1 #gene 2, 3 or 4, transcript 6, 11 or 12
+
+
