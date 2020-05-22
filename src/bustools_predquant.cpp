@@ -81,19 +81,20 @@ void bustools_predquant(const Bustools_opt& opt) {
 
 		for (size_t i = 0; i < n; ++i) {
 			size_t gn = rows[i].genes.size();
-			for (auto x : rows[i].genes) {
-				column_vp.push_back({ x, 1.0 / gn });
+			if (opt.count_gene_multimapping || gn == 1) {
+				for (auto x : rows[i].genes) {
+					column_vp.push_back({ x, 1.0 / gn });
 
-				//Fill in histograms for prediction later.
-				//Also fill in multimapped reads for now
-				if (x < n_cols) { //crasches with an invalid gene file otherwise
-					histograms[x][std::min(rows[i].bd.count-1, histmax - 1)] += 1.0 / gn; //histmax-1 since histograms[g][0] is the histogram value for 1 copy and so forth
-				} else {
-					std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
+					//Fill in histograms for prediction later.
+					//Also fill in multimapped reads for now
+					if (x < n_cols) { //crasches with an invalid gene file otherwise
+						histograms[x][std::min(rows[i].bd.count-1, histmax - 1)] += 1.0 / gn; //histmax-1 since histograms[g][0] is the histogram value for 1 copy and so forth
+					} else {
+						std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
+					}
 				}
+				++n_totcounts;
 			}
-
-			++n_totcounts;
 		}
 
 		std::sort(column_vp.begin(), column_vp.end());
