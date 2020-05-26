@@ -274,6 +274,7 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
     {"multimapping", no_argument, 0, 'm'},
     {"em", no_argument, &em_flag, 1},
     {"hist", no_argument, &hist_flag, 1},
+    {"downsample", no_argument, 0, 'd'},
     {0,                 0,                  0,  0 }
   };
 
@@ -293,6 +294,9 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
       break;
     case 'e':
       opt.count_ecs = optarg;
+      break;
+    case 'd':
+      opt.count_downsampling_factor = atof(optarg);
       break;
     case 'm':
       opt.count_gene_multimapping = true;
@@ -1470,6 +1474,7 @@ void Bustools_count_Usage() {
   << "    --em              Estimate gene abundances using EM algorithm" << std::endl 
   << "    --hist            Output copy per UMI histograms for all genes" << std::endl 
   << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl
+  << "-d  --downsample      Specify a factor between 0 and 1 specifying how much to downsample" << std::endl 
   << std::endl;
 }
 

@@ -46,6 +46,7 @@ struct Bustools_opt {
   bool count_collapse = false;
   bool count_gene_multimapping = false;
   bool count_gen_hist = false;
+  double count_downsampling_factor = 1.0;
 
 
   /* project */

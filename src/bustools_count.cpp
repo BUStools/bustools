@@ -6,6 +6,7 @@
 #include "BUSData.h"
 
 #include "bustools_count.h"
+#include <random>
 
 
 void bustools_count(Bustools_opt &opt) {
@@ -41,17 +42,17 @@ void bustools_count(Bustools_opt &opt) {
   std::string ec_ofn = opt.output + ".ec.txt";
   std::string gene_ofn = opt.output + ".genes.txt";
   std::string hist_ofn = opt.output + ".hist.txt";
-  of.open(mtx_ofn, std::ios::binary); //do not change this to text mode, will mess things up for Windows since \n becomes \r\n in text mode, taking extra bytes
+  of.open(mtx_ofn); 
 
   // write out the initial header
-  of << "%%MatrixMarket matrix coordinate real general\n%\n";
-  // number of genes
-  auto mat_header_pos = of.tellp();
-  std::string dummy_header(66, '\n');
-  for (int i = 0; i < 33; i++) {
-    dummy_header[2*i] = '%';
-  }
-  of.write(dummy_header.c_str(), dummy_header.size());
+  // keep the number of newlines constant, this way it will work for both Windows and Linux
+  std::string headerBuf;
+  std::stringstream ssHeader(headerBuf);
+  std::string headerComments = "%%MatrixMarket matrix coordinate real general\n%\n";
+  ssHeader << headerComments;
+  ssHeader << std::string(66, '%') << '\n';
+  size_t headerLength = ssHeader.str().length();
+  of << ssHeader.str();
 
 
   size_t n_cols = 0;
@@ -83,6 +84,12 @@ void bustools_count(Bustools_opt &opt) {
   if (opt.count_gen_hist) {
 	  histograms = std::vector<double>(n_genes * histmax, 0);
   }
+
+  //set up random number generator for downsampling
+  std::random_device						rand_dev;
+  std::mt19937							generator(rand_dev());
+  std::uniform_real_distribution<double>  distr(0.0, 1.0);
+
 
   //barcodes 
   std::vector<uint64_t> barcodes;
@@ -191,6 +198,19 @@ void bustools_count(Bustools_opt &opt) {
 
       intersect_genes_of_ecs(ecs,ec2genes, glist);
       int gn = glist.size();
+	  if (opt.count_downsampling_factor != 1.0) {
+		  uint32_t newCounts = 0;
+		  for (uint32_t c = 0; c < counts; ++c) {
+			  if (distr(generator) <= opt.count_downsampling_factor) {
+				  ++newCounts;
+			  }
+		  }
+		  counts = newCounts;
+		  if (newCounts == 0) {
+			  gn = 0;//trick to skip quantification below
+		  }
+
+	  }
       if (gn > 0) {
         if (opt.count_gene_multimapping) {
           for (auto x : glist) {
@@ -390,17 +410,14 @@ void bustools_count(Bustools_opt &opt) {
 
   of.close();
   
+  //Rewrite header in a way that works for both Windows and Linux
   std::stringstream ss;
-  ss << n_rows << " " << n_cols << " " << n_entries << "\n";
+  ss << n_rows << " " << n_cols << " " << n_entries;
   std::string header = ss.str();
   int hlen = header.size();
-  assert(hlen < 66);
-  of.open(mtx_ofn, std::ios::binary | std::ios::in | std::ios::out);
-  of.seekp(mat_header_pos);
-  of.write("%",1);
-  of.write(std::string(66-hlen-2,' ').c_str(),66-hlen-2);
-  of.write("\n",1);
-  of.write(header.c_str(), hlen);
+  header = header + std::string(66 - hlen, ' ') + '\n';
+  of.open(mtx_ofn, std::ios::in | std::ios::out);
+  of << headerComments << header;
   of.close();
 
   // write updated ec file
