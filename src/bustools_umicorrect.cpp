@@ -7,7 +7,7 @@
 
 #include "Common.hpp"
 #include "BUSData.h"
-#include "bustools_text.h"
+#include "bustools_umicorrect.h"
 #include <set>
 
 typedef std::vector<int32_t> GeneSet;
@@ -225,7 +225,7 @@ void bustools_umicorrect(const Bustools_opt& opt) {
 	BUSHeader h;
 	size_t nr = 0;
 	size_t N = 100000;
-	size_t nCells = 10000;
+	size_t molecules = 10000;
 	uint32_t bclen = 0;
 	BUSData* p = new BUSData[N];
 
@@ -266,7 +266,7 @@ void bustools_umicorrect(const Bustools_opt& opt) {
 	v.reserve(N);
 
 	Rows rows;//vector of Row
-	rows.reserve(nCells);
+	rows.reserve(molecules);
 
 
 	uint64_t current_bc = 0xFFFFFFFFFFFFFFFFULL;
