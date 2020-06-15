@@ -324,7 +324,7 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
 }
 
 void parse_ProgramOptions_umicorrect(int argc, char **argv, Bustools_opt& opt) {
-  const char* opt_string = "o:g:e:t:m";
+  const char* opt_string = "o:g:e:t:";
   int gene_flag = 0;
   int em_flag = 0;
   int hist_flag = 0;
@@ -367,7 +367,7 @@ void parse_ProgramOptions_umicorrect(int argc, char **argv, Bustools_opt& opt) {
 }
 
 void parse_ProgramOptions_predict(int argc, char **argv, Bustools_opt& opt) {
-  const char* opt_string = "o:g:e:t:m";
+  const char* opt_string = "o:t:";
   int gene_flag = 0;
   int em_flag = 0;
   int hist_flag = 0;
@@ -424,6 +424,41 @@ void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt& opt) {
       break;
     case 'f':
       opt.text_dumpflags = true;
+      break;
+    default:
+      break;
+    }
+  }
+
+  // all other arguments are fast[a/q] files to be read
+  while (optind < argc) opt.files.push_back(argv[optind++]);
+
+  if (opt.files.size() == 1 && opt.files[0] == "-") {
+    opt.stream_in = true;
+  }
+}
+
+void parse_ProgramOptions_fromtext(int argc, char **argv, Bustools_opt& opt) {
+
+  const char* opt_string = "o:p";
+
+  static struct option long_options[] = {
+    {"output",          required_argument,  0, 'o'},
+    {"pipe",            no_argument, 0, 'p'},
+    {"flags",           no_argument, 0, 'f'},
+    {0,                 0,                  0,  0 }
+  };
+
+  int option_index = 0, c;
+
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
+
+    switch (c) {
+    case 'o':
+      opt.output = optarg;
+      break;
+    case 'p':
+      opt.stream_out = true;
       break;
     default:
       break;
@@ -869,6 +904,35 @@ bool check_ProgramOptions_dump(Bustools_opt& opt) {
 
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input files" << std::endl;
+    ret = false;
+  } else if (!opt.stream_in) {    
+    for (const auto& it : opt.files) {  
+      if (!checkFileExists(it)) {
+        std::cerr << "Error: File not found, " << it << std::endl;
+        ret = false;
+      }
+    }
+  }
+
+  return ret;
+}
+
+bool check_ProgramOptions_fromtext(Bustools_opt& opt) {
+  bool ret = true;
+
+  if (!opt.stream_out) {
+    if (opt.output.empty()) {
+      std::cerr << "Error: missing output file" << std::endl;
+      ret = false;
+    } else if (!checkOutputFileValid(opt.output)) {
+      std::cerr << "Error: unable to open output file" << std::endl;
+      ret = false;
+    }
+  } 
+
+
+  if (opt.files.size() == 0) {
+    std::cerr << "Error: Missing input files" << std::endl;
     ret = false;
   } else if (!opt.stream_in) {    
     for (const auto& it : opt.files) {  
@@ -1561,6 +1625,14 @@ void Bustools_dump_Usage() {
   << std::endl;
 }
 
+void Bustools_fromtext_Usage() {
+  std::cout << "Usage: bustools fromtext [options] text-files" << std::endl << std::endl
+  << "Options: " << std::endl
+  << "-o, --output          File for BUS output" << std::endl
+  << "-p, --pipe            Write to standard output" << std::endl
+  << std::endl;
+}
+
 void Bustools_correct_Usage() {
   std::cout << "Usage: bustools correct [options] bus-files" << std::endl << std::endl
   << "Options: " << std::endl
@@ -1723,6 +1795,18 @@ int main(int argc, char **argv) {
         Bustools_dump_Usage();
         exit(1);
       }
+    } else if (cmd == "fromtext") {
+      if (disp_help) {
+        Bustools_fromtext_Usage();
+        exit(0);        
+      }
+      parse_ProgramOptions_fromtext(argc-1, argv+1, opt);
+      if (check_ProgramOptions_fromtext(opt)) { //Program options are valid
+		bustools_fromtext(opt); //found in the bustools_text.cpp file
+      } else {
+        Bustools_fromtext_Usage();
+        exit(1);
+      }
     } else if (cmd == "correct") {      
       if (disp_help) {
         Bustools_correct_Usage();
@@ -1735,8 +1819,6 @@ int main(int argc, char **argv) {
         Bustools_dump_Usage();
         exit(1);
       }
-    } else if (cmd == "fromtext") {
-		bustools_fromtext(opt); //found in the bustools_text files
     } else if (cmd == "count") {
       if (disp_help) {
         Bustools_count_Usage();
