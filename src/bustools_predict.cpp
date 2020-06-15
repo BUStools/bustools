@@ -10,7 +10,7 @@
 #include <fstream>
 #include <cmath>
 
-#include <Eigen/Core>
+#include "Eigen/Core"
 #include <unsupported/Eigen/SpecialFunctions>
 #include <LBFGSB.h>
 #include <cppoptlib/meta.h>
