@@ -10,7 +10,7 @@
 #include <fstream>
 #include <cmath>
 
-#include "Eigen/Core"
+#include <Eigen/Core>
 #include <unsupported/Eigen/SpecialFunctions>
 #include <LBFGSB.h>
 #include <cppoptlib/meta.h>
@@ -250,6 +250,10 @@ double PredictZTNBEmAlg1(const double* hist, size_t histLen, double& size, doubl
 		if (x[0] > 10000.0) {
 			x[0] = 10000.0;
 		}
+		if (x[0] < 0.0001) {
+			x[0] = 0.0001;
+		}
+
 
 		int numIter = solver.minimize(op, x, fx, lb, ub);
 
@@ -385,6 +389,9 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 		//avoid printing of warning text in console
 		if (x[0] > 10000.0) {
 			x[0] = 10000.0;
+		}
+		if (x[0] < 0.0001) {
+			x[0] = 0.0001;
 		}
 
 		solver.minimize(op, x);
