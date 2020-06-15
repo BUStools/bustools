@@ -48,6 +48,10 @@ struct Bustools_opt {
   bool count_gen_hist = false;
   double count_downsampling_factor = 1.0;
 
+  /* predict */
+  std::string predict_input; //specified the same way as the output for count - count and histogram filenames will be created from this
+  double predict_t = -1; //this is how far to predict, t=10 means that we will predict the change in expression at 10 times the number of reads
+
 
   /* project */
   std::string map;
@@ -123,7 +127,7 @@ void intersect_genes_of_ecs(const std::vector<int32_t> &ecs, const  std::vector<
 int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes, bool assumeIntersectionIsEmpty = true);
 void create_ec2genes(const std::vector<std::vector<int32_t>> &ecmap, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ec2gene);
 
-
+void copy_file(std::string src, std::string dest);
 
 
 #endif // BUSTOOLS_COMMON_HPP

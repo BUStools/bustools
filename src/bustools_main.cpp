@@ -35,6 +35,7 @@
 #include "bustools_extract.h"
 #include "bustools_text.h"
 #include "bustools_umicorrect.h"
+#include "bustools_predict.h"
 
 
 
@@ -364,6 +365,40 @@ void parse_ProgramOptions_umicorrect(int argc, char **argv, Bustools_opt& opt) {
     opt.stream_in = true;
   }
 }
+
+void parse_ProgramOptions_predict(int argc, char **argv, Bustools_opt& opt) {
+  const char* opt_string = "o:g:e:t:m";
+  int gene_flag = 0;
+  int em_flag = 0;
+  int hist_flag = 0;
+  static struct option long_options[] = {
+    {"output",          required_argument,  0, 'o'},
+    {"predict_t",          required_argument,  0, 't'},
+    {0,                 0,                  0,  0 }
+  };
+
+  int option_index = 0, c;
+
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
+
+    switch (c) {
+    case 'o':
+      opt.output = optarg;
+      break;
+    case 't':
+      opt.predict_t = optarg;
+      break;
+    default:
+      break;
+    }
+  }
+
+  if (optind < argc) {
+	  opt.predict_input = argv[optind++];
+  }
+}
+
+
 
 void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt& opt) {
 
@@ -1050,6 +1085,76 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
   return ret;
 }
 
+bool check_ProgramOptions_predict(Bustools_opt& opt) {
+  bool ret = true;
+
+  // check for output directory
+  if (opt.output.empty()) {
+    std::cerr << "Error: Missing output directory" << std::endl;
+    ret = false;
+  } else {
+    bool isDir = false;
+    if (checkDirectoryExists(opt.output)) {
+      isDir = true;
+    } else {
+      if (opt.output.at(opt.output.size()-1) == '/') {
+        if (my_mkdir(opt.output.c_str(), 0777) == -1) {
+          std::cerr << "Error: could not create directory " << opt.output << std::endl;
+          ret = false;
+        } else {
+          isDir = true;
+        }
+      }
+    }
+
+    if (isDir) {
+      opt.output += "output";
+    }
+  }
+
+  // check for input directory
+  if (opt.output.empty()) {
+    std::cerr << "Error: Missing input" << std::endl;
+    ret = false;
+  } else {
+    bool isDir = false;
+    if (checkDirectoryExists(opt.predict_input)) {
+      isDir = true;
+    } else {
+      if (opt.predict_input.at(opt.predict_input.size()-1) == '/') {
+      isDir = true;
+    }
+
+    if (isDir) {
+      opt.predict_input += "output"; //to match the output from count
+    }
+	
+	if ( !checkFileExists(opt.predict_input + ".mtx") ) {
+		std::cerr << "Error: Matrix file missing: " << opt.predict_input + ".mtx" << std::endl;
+		ret = false;
+	}
+	if ( !checkFileExists(opt.predict_input + ".genes.txt") ) {
+		std::cerr << "Error: Genes file missing: " << opt.predict_input + ".genes.txt" << std::endl;
+		ret = false;
+	}
+	if ( !checkFileExists(opt.predict_input + ".barcodes.txt") ) {
+		std::cerr << "Error: Barcodes file missing: " << opt.predict_input + ".barcodes.txt" << std::endl;
+		ret = false;
+	}
+	if ( !checkFileExists(opt.predict_input + ".hist.txt") ) {
+		std::cerr << "Error: CPU histograms file missing: " << opt.predict_input + ".hist.txt. Did you forget the --hist flag when running count?" << std::endl;
+		ret = false;
+	}
+  }
+
+  if (opt.predict_t == -1.0) {
+    std::cerr << "Error: Prediction range not set." << std::endl;
+    ret = false;
+  }
+
+  return ret;
+}
+
 bool check_ProgramOptions_umicorrect(Bustools_opt& opt) {
   bool ret = true;
 
@@ -1394,6 +1499,7 @@ void Bustools_Usage() {
   << "merge           Merge bus files from same experiment" << std::endl
   << "text            Convert a binary BUS file to a tab-delimited text file" << std::endl
   << "extract         Extract FASTQ reads correspnding to reads in BUS file" << std::endl
+  << "predict         Correct the count matrix using prediction of unseen species" << std::endl
   << "linker          Remove section of barcodes in BUS files" << std::endl
   << "version         Prints version number" << std::endl 
   << "cite            Prints citation information" << std::endl
@@ -1475,6 +1581,14 @@ void Bustools_count_Usage() {
   << "    --hist            Output copy per UMI histograms for all genes" << std::endl 
   << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl
   << "-d  --downsample      Specify a factor between 0 and 1 specifying how much to downsample" << std::endl 
+  << std::endl;
+}
+
+void Bustools_predict_Usage() {
+  std::cout << "Usage: bustools predict [options] count_output_dir" << std::endl << std::endl
+  << "Options: " << std::endl
+  << "-o, --output          Output directory" << std::endl
+  << "-t, --predict_t       Specifies prediction range, will at predict t times the number of reads" << std::endl
   << std::endl;
 }
 
@@ -1632,6 +1746,18 @@ int main(int argc, char **argv) {
         bustools_count(opt);
       } else {
         Bustools_count_Usage();
+        exit(1);
+      }
+    } else if (cmd == "predict") {
+      if (disp_help) {
+        Bustools_predict_Usage();
+        exit(0);        
+      }
+      parse_ProgramOptions_predict(argc-1, argv+1, opt);
+      if (check_ProgramOptions_predict(opt)) { //Program options are valid
+        bustools_predict(opt);
+      } else {
+        Bustools_predict_Usage();
         exit(1);
       }
     } else if (cmd == "umicorrect") {
