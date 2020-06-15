@@ -1122,7 +1122,8 @@ bool check_ProgramOptions_predict(Bustools_opt& opt) {
       isDir = true;
     } else {
       if (opt.predict_input.at(opt.predict_input.size()-1) == '/') {
-      isDir = true;
+		isDir = true;
+	  }
     }
 
     if (isDir) {
