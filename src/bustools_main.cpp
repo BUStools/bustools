@@ -324,12 +324,13 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
 }
 
 void parse_ProgramOptions_umicorrect(int argc, char **argv, Bustools_opt& opt) {
-  const char* opt_string = "o:g:e:t:";
+  const char* opt_string = "o:g:e:t:p";
   int gene_flag = 0;
   int em_flag = 0;
   int hist_flag = 0;
   static struct option long_options[] = {
     {"output",          required_argument,  0, 'o'},
+    {"pipe",            no_argument,        0, 'p'},
     {"genemap",          required_argument,  0, 'g'},
     {"ecmap",          required_argument,  0, 'e'},
     {"txnames",          required_argument,  0, 't'},
@@ -344,6 +345,9 @@ void parse_ProgramOptions_umicorrect(int argc, char **argv, Bustools_opt& opt) {
 	switch (c) {
     case 'o':
       opt.output = optarg;
+      break;
+    case 'p':
+      opt.stream_out = true;
       break;
     case 'g':
       opt.count_genes = optarg;
@@ -1223,29 +1227,15 @@ bool check_ProgramOptions_predict(Bustools_opt& opt) {
 bool check_ProgramOptions_umicorrect(Bustools_opt& opt) {
   bool ret = true;
 
-  // check for output directory
-  if (opt.output.empty()) {
-    std::cerr << "Error: Missing output directory" << std::endl;
-    ret = false;
-  } else {
-    bool isDir = false;
-    if (checkDirectoryExists(opt.output)) {
-      isDir = true;
-    } else {
-      if (opt.output.at(opt.output.size()-1) == '/') {
-        if (my_mkdir(opt.output.c_str(), 0777) == -1) {
-          std::cerr << "Error: could not create directory " << opt.output << std::endl;
-          ret = false;
-        } else {
-          isDir = true;
-        }
-      }
+  if (!opt.stream_out) {
+    if (opt.output.empty()) {
+      std::cerr << "Error: missing output file" << std::endl;
+      ret = false;
+    } else if (!checkOutputFileValid(opt.output)) {
+      std::cerr << "Error: unable to open output file" << std::endl;
+      ret = false;
     }
-
-    if (isDir) {
-      opt.output += "output";
-    }
-  }
+  } 
 
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input files" << std::endl;
@@ -1669,6 +1659,7 @@ void Bustools_umicorrect_Usage() {
   std::cout << "Usage: bustools umicorrect [options] sorted-bus-files" << std::endl << std::endl
   << "Options: " << std::endl
   << "-o, --output          Output directory gene matrix files" << std::endl
+  << "-p, --pipe            Write to standard output" << std::endl
   << "-g, --genemap         File for mapping transcripts to genes" << std::endl
   << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
   << "-t, --txnames         File with names of transcripts" << std::endl
