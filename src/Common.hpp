@@ -46,7 +46,7 @@ struct Bustools_opt {
   bool count_collapse = false;
   bool count_gene_multimapping = false;
   bool count_gen_hist = false;
-  double count_downsampling_factor = 1.0;
+  double count_downsampling_factor = 0.0;
 
   /* predict */
   std::string predict_input; //specified the same way as the output for count - count and histogram filenames will be created from this

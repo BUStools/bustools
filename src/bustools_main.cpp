@@ -386,7 +386,7 @@ void parse_ProgramOptions_predict(int argc, char **argv, Bustools_opt& opt) {
       opt.output = optarg;
       break;
     case 't':
-      opt.predict_t = optarg;
+      opt.predict_t = atof(optarg);
       break;
     default:
       break;
@@ -1147,7 +1147,7 @@ bool check_ProgramOptions_predict(Bustools_opt& opt) {
 	}
   }
 
-  if (opt.predict_t == -1.0) {
+  if (opt.predict_t == 0.0) {
     std::cerr << "Error: Prediction range not set." << std::endl;
     ret = false;
   }
