@@ -272,6 +272,17 @@ bool parseGenes(const std::string &filename, const std::unordered_map<std::strin
   return true;
 }
 
+bool parseGenesList(const std::string& filename, std::vector<std::string>& geneNames) {
+	std::ifstream inf(filename.c_str());
+	geneNames.clear();
+	geneNames.reserve(10000);
+	std::string str;
+	while (inf >> str) {
+		geneNames.push_back(str);
+	}
+	return true;
+}
+
 bool writeHeader(std::ostream &outf, const BUSHeader &header) {
   outf.write("BUS\0", 4);
   outf.write((char*)(&header.version), sizeof(header.version));
