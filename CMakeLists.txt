@@ -25,6 +25,3 @@ else(CMAKE_BUILD_TYPE MATCHES Debug)
 endif(CMAKE_BUILD_TYPE MATCHES Debug)
 
 add_subdirectory(src)
-include_directories(../dependencies/CppNumericalSolvers-v1/include)
-include_directories(../dependencies/eigen-3.3.7)
-include_directories(../dependencies/LBFGSpp-2020-03-06/include)
