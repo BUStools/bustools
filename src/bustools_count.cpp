@@ -87,8 +87,8 @@ void bustools_count(Bustools_opt &opt) {
 
   //set up random number generator for downsampling
   std::random_device						rand_dev;
-  std::mt19937							generator(rand_dev());
-  std::uniform_real_distribution<double>  distr(0.0, 1.0);
+  std::mt19937								generator(rand_dev());
+  std::uniform_real_distribution<double>	distr(0.0, 1.0);
 
 
   //barcodes 

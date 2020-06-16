@@ -61,7 +61,6 @@ inline double NegBinLogLikelihood(const double* hist, size_t histLen, double siz
 }
 
 //using LBFGSpp
-
 class Optimizer
 {
 public:
@@ -75,6 +74,7 @@ public:
 
 	//returns objective function value. The grad vector should be modified (i.e. set gradients)
 	//the vector x is the in parameters, in this case the size (i.e. r) parameter in the distribution
+	//The math here is the same as in preseqR
 	double operator()(const Eigen::VectorXd& x, Eigen::VectorXd& grad) {
 		double firstTerm = Eigen::numext::digamma(x[0]) * zeroCounts;
 		for (size_t i = 0; i < histLen; ++i) {
@@ -102,7 +102,8 @@ public:
 	const double* hist = nullptr;
 	size_t histLen = 0;
 
-	//double value(const cppoptlib::BoundedProblem<double>::TVector& x) {
+	//The math here is the same as in preseqR
+
 	double value(const TVector& x) {
 		return -NegBinLogLikelihood(hist, histLen, x[0], mean, zeroCounts) / totMol;
 	}
@@ -126,6 +127,7 @@ public:
 //size and mu are both in and out parameters - the in parameters are the inital values in the expectation maximization algorithm
 //the hist is just a pointer into the large hist vector to avoid unnecessary copying
 //returns the log likelihood
+//This function uses LBFGSpp
 double PredictZTNBEmAlg1(const double* hist, size_t histLen, double& size, double& mu) {
 
 	double zeroProbability = DensityNegBin(0, size, mu);
@@ -154,7 +156,6 @@ double PredictZTNBEmAlg1(const double* hist, size_t histLen, double& size, doubl
 
 	Optimizer op;
 
-	//Optimizer2 op;
 	// set all params
 	op.mean = mean;
 	op.zeroCounts = zeroCounts;
@@ -271,6 +272,7 @@ double PredictZTNBEmAlg1(const double* hist, size_t histLen, double& size, doubl
 	return -currNegLL;
 }
 
+//Similar to above, but uses CppOptimizationLibrary
 double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, double& mu) {
 
 	double zeroProbability = DensityNegBin(0, size, mu);
@@ -296,8 +298,6 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 		variance += *(hist + i) * pow(double(i + 1) - mean, 2);
 	}
 	variance = (variance + mean * mean * zeroCounts) / (totMol - 1);
-
-	//Optimizer op;
 
 	Optimizer2 op;
 	// set all params
@@ -423,6 +423,8 @@ double PredictZTNBForGene(const double* hist, size_t histLen, double t) {
 	double size = 1.0;
 	double mu = 0.5;
 	//fit the ZTNB (will update size and mu)
+	//So, the trick here is to first use Alg1 - it is faster, but fails sometimes. If it fails,
+	//use Alg2
 	try {
 		PredictZTNBEmAlg1(hist, histLen, size, mu);
 	}
@@ -497,17 +499,6 @@ private:
 	const uint32_t m_histmax;
 	std::vector<std::shared_ptr<std::thread>> m_threads;
 };
-//not used
-void PredictZTNB(const std::vector<double>& hists, const std::vector<size_t>& histLengths, double t, std::vector<double>& predVals, const uint32_t histmax) {
-	size_t i = 6135;
-//	for (size_t i = 0; i < histLengths.size(); ++i) {
-		std::cout << "Gene: " << i << "\n";
-		predVals[i] = PredictZTNBForGene(&hists[i* histmax], histLengths[i], t);
-		if (i % 100 == 0) {
-			std::cout << "Genes handled: " << i << "\n";
-		}
-//	}
-}
 
 void bustools_predict(Bustools_opt &opt) {
 
@@ -589,55 +580,10 @@ void bustools_predict(Bustools_opt &opt) {
 
 	//Predict
 	//////////////////
-
-	/*
-	//test negative binomial
-	double mu = 0.67;
-	double r = 0.13;
-	std::vector<double> res;
-	
-	for (size_t i = 0; i < 3; ++i) {
-		std::cout << DensityNegBin(double(i), r, mu) << "\t";
-	}
-	std::cout << "\t"; 
-	//output from r nbinom: 0.7896069 0.08596845 0.0406792
-	//output from test above: 0.789607        0.0859685       0.0406792
-	//looks good!
-	*/
-	//test the prediction
-	//std::vector<double> testHist = { 28, 16, 5, 1 };
-	//std::vector<double> testHist = { 28, 16, 5, 1 };
-	//std::vector<size_t> lengths = { 4 };
-	//std::vector<double> testHist = { 1,0,0,0,0,0,0,0,0,1 };
-	//std::vector<size_t> lengths = { 10 };
-	//double d = PredictZTNBForGene(&testHist[0], lengths[0], 10);
-	//std::vector<double> testHist = { 1,0,0,0,0,0,0,0,1,0,0,1,0,1,1,1,3,0,1,0,0,0,0,0,0,1,0,0,0,1 };
-	//double d = PredictZTNBForGene(&testHist[0], testHist.size(), 10);
-	//std::vector<double> testHist = { 3, 3, 2, 3, 3, 3, 2, 0, 0, 3, 0, 2, 3, 5, 3, 3, 3, 4, 0, 1, 0, 2, 3, 1, 1, 0, 1 };
-	//double d = PredictZTNBForGene(&testHist[0], testHist.size(), 10);
-	
-
-	//int i = 13;
-
-	/*Optimizer op;
-	op.hist = testHist;
-	op.histLen = 4;
-	op.mean = 0.5266667;
-	op.totMol = 150;
-	op.zeroCounts = 100;
-	Eigen::VectorXd x = Eigen::VectorXd::Zero(1);
-	x[0] = 1.255446;
-	Eigen::VectorXd grad = Eigen::VectorXd::Zero(1);
-	auto funval = op(x, grad);
-	auto gradient = grad[0];
-	*/
-	//std::cout << "Test predict: the R code produced 80.1079, the cpp code gives: " << PredictZTNBForGene(testHist, 4, 10);
-	//they differ by one percent here, but it seems to work...
 	
 	std::vector<double> predVals(n_genes, 0);
 	int numThreads = std::thread::hardware_concurrency();
 	std::cout << "Using " << numThreads << " threads\n";
-	//PredictZTNB(histograms, histogramLengths, opt.predict_t, predVals, histmax);
 	PredictionExecuter pe(histograms, histogramLengths, opt.predict_t, predVals, histmax);
 	pe.Execute(numThreads);
 	
