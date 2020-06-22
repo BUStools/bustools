@@ -261,6 +261,7 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
   const char* opt_string = "o:g:e:t:m";
   int gene_flag = 0;
   int em_flag = 0;
+  int cm_flag = 0; 
   static struct option long_options[] = {
     {"output",          required_argument,  0, 'o'},
     {"genemap",          required_argument,  0, 'g'},
@@ -269,6 +270,7 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
     {"genecounts", no_argument, &gene_flag, 1},
     {"multimapping", no_argument, 0, 'm'},
     {"em", no_argument, &em_flag, 1},
+    {"cm", no_argument, &cm_flag, 1},
     {0,                 0,                  0,  0 }
   };
 
@@ -301,6 +303,9 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
   }
   if (em_flag) {
     opt.count_em = true;
+  }
+  if (cm_flag) {
+    opt.count_cm = true;
   }
 
   while (optind < argc) opt.files.push_back(argv[optind++]);
@@ -974,6 +979,11 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
     ret = false;
   }
 
+  if (opt.count_em && opt.count_cm) {
+    std::cerr << "Error: EM algorithm and counting multiplicites are incompatible"<< std::endl;
+    ret = false;
+  }
+
   
 
   if (opt.files.size() == 0) {
@@ -1372,6 +1382,7 @@ void Bustools_count_Usage() {
   << "-t, --txnames         File with names of transcripts" << std::endl
   << "    --genecounts      Aggregate counts to genes only" << std::endl
   << "    --em              Estimate gene abundances using EM algorithm" << std::endl 
+  << "    --cm              Count multiplicites instead of UMIs" << std::endl
   << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl
   << std::endl;
 }
@@ -1602,7 +1613,11 @@ int main(int argc, char **argv) {
       }
       parse_ProgramOptions_count(argc-1, argv+1, opt);
       if (check_ProgramOptions_count(opt)) { //Program options are valid
-        bustools_count(opt);
+        if (opt.count_cm){
+          bustools_count_mult(opt);
+        } else {
+          bustools_count(opt);
+        }
       } else {
         Bustools_count_Usage();
         exit(1);
