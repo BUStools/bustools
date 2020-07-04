@@ -1,0 +1,31 @@
+#hamm dist 1, should be joined
+AAACCTGAGAAGCCCA	ATGGAAATTT	1	32
+
+#distance 2, should not be joined since they are not connected
+AAACCTGAGAAGCCCA	AAAAAAAATT	1	1
+AAACCTGAGAAGCCCA	AAAAAAAAAA	1	31
+
+#distance 2, connected, but not neighbors, should be two copies. A bit random which is chosen
+AAACCTGAGAAGCCCA	TTTAAAAATT	1	34
+AAACCTGAGAAGCCCA	TTTAAAAAAA	1	3
+
+#uncertain gene, should be joined
+AAACCTGAGAAGCCCA	TTTTTTTTTA	1	32
+
+#gene set mismatch, all but one (or two) should be joined. A bit random which is chosen
+AAACCTGAGAAGCCCA	CCCCCCCCCC	1	34
+AAACCTGAGAAGCCCA	CACCCCCCCC	2	1 #excluded
+
+#two connected different original molecules. A bit random how it is resolved
+AAACCTGAGAAGCCCA	CCTTCCCCCC	1	18
+AAACCTGAGAAGCCCA	CCTTCCCAAA	1	2
+
+#One original molecule, many ones. 
+AAACCTGAGAAGCCCA	GGTTCGGGCC	1	6
+
+#results in more than one gene
+AAACCTGAGAAGCCCA	CCTTCGAACC	2,3	2
+
+#another barcode but same UMI, should not be joined with the ones above
+CCACCTGAGAAGCCCA	CCTTCGAACC	2	2
+

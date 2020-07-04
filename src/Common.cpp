@@ -326,3 +326,18 @@ void create_ec2genes(const std::vector<std::vector<int32_t>> &ecmap, const std::
     ec2gene.push_back(std::move(u));
   }
 }
+
+void split_string(const std::string& str, std::vector<int32_t>& res)
+{
+	res.clear();
+	size_t lastcomma = -1;
+	auto buf = str.c_str();
+	auto len = str.length();
+	for (size_t i = 0; i < len; ++i) {
+		if (buf[i] == ',') {
+			res.push_back(atoi(str.substr(lastcomma + 1, i - lastcomma - 1).c_str()));
+			lastcomma = i;
+		}
+	}
+	res.push_back(atoi(str.substr(lastcomma + 1, len - lastcomma - 1).c_str()));
+}

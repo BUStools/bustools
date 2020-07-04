@@ -1,0 +1,52 @@
+#to run my test cases (from the bustools folder)
+#to be able to run this file, you need to run the line chmod +x ./test/test_cases/runtests.txt
+mkdir tmp
+
+#Test text:
+./build/src/bustools fromtext -p ./test/test_cases/tc0001.txt | ./build/src/bustools text -o ./tmp/tc0001output.txt -
+diff -w -B -s ./test/test_cases/tc0001.txt ./tmp/tc0001output.txt
+rm ./tmp/*
+#or separately
+./build/src/bustools fromtext -o ./tmp/tc1mid.bus ./test/test_cases/tc0001.txt
+./build/src/bustools text -o ./tmp/tc0001output.txt ./tmp/tc1mid.bus
+#check that the files are identical
+diff -w -B -s ./test/test_cases/tc0001.txt ./tmp/tc0001output.txt
+rm ./tmp/*
+
+#Test collapse
+./build/src/bustools fromtext -p ./test/test_cases/tc0002CollapseInput.txt | ./build/src/bustools collapse -o ./tmp/tc2mid2 -p -t ./test/test_cases/transcripts.txt -g ./test/test_cases/transcripts_to_genes.txt -e ./test/test_cases/matrix.ec - | ./build/src/bustools text -o ./tmp/tc0002output.txt -
+diff -w -B -s ./test/test_cases/tc0002ExpResult.txt ./tmp/tc0002output.txt
+rm ./tmp/*
+#or separately
+./build/src/bustools fromtext -o ./tmp/tc2mid.bus ./test/test_cases/tc0002CollapseInput.txt
+./build/src/bustools collapse -o ./tmp/tc2mid2 -t ./test/test_cases/transcripts.txt -g ./test/test_cases/transcripts_to_genes.txt -e ./test/test_cases/matrix.ec ./tmp/tc2mid.bus
+./build/src/bustools text -o ./tmp/tc0002output.txt ./tmp/tc2mid2.bus
+#check that the files are identical
+diff -w -B -s ./test/test_cases/tc0002ExpResult.txt ./tmp/tc0002output.txt
+rm ./tmp/*
+
+#Test umicorrect
+./build/src/bustools fromtext -p ./test/test_cases/tc0003.txt | ./build/src/bustools umicorrect -p  - | ./build/src/bustools text -o ./tmp/tc0003output.txt -
+diff -w -B -s ./test/test_cases/tc0003ExpResult.txt ./tmp/tc0003output.txt
+rm ./tmp/*
+#or separately
+./build/src/bustools fromtext -o ./tmp/tc3mid.bus ./test/test_cases/tc0003.txt
+./build/src/bustools umicorrect -o ./tmp/tc3mid2.bus ./tmp/tc3mid.bus
+./build/src/bustools text -o ./tmp/tc0003output.txt ./tmp/tc3mid2.bus
+#check that the files are identical
+diff -w -B -s ./test/test_cases/tc0003ExpResult.txt ./tmp/tc0003output.txt
+rm ./tmp/*
+
+#Test predcount
+./build/src/bustools fromtext -p ./test/test_cases/tc0004.txt | ./build/src/bustools umicorrect -p  - | ./build/src/bustools predquant -o ./tmp/tc0004output -G -g ./test/test_cases/tc0004.genes.txt -I 4 -U 5 -N 2 -
+diff -w -B -s ./test/test_cases/tc0004ExpResultsCount.txt ./tmp/tc0004output.mtx
+diff -w -B -s ./test/test_cases/tc0004ExpResultsPred.txt ./tmp/tc0004output_pred.mtx
+rm ./tmp/*
+#or separately
+./build/src/bustools fromtext -o ./tmp/tc4mid.bus ./test/test_cases/tc0004.txt
+./build/src/bustools predquant -o ./tmp/tc0004output -G -g ./test/test_cases/tc0004.genes.txt -I 4 -U 5 -N 2 ./tmp/tc4mid.bus
+#check that the files are identical
+diff -w -B -s ./test/test_cases/tc0004ExpResultsCount.txt ./tmp/tc0004output.mtx
+diff -w -B -s ./test/test_cases/tc0004ExpResultsPred.txt ./tmp/tc0004output_pred.mtx
+rm ./tmp/*
+rmdir tmp

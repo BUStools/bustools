@@ -58,4 +58,58 @@ uint64_t stringToBinary(const std::string &s, uint32_t &flag);
 uint64_t stringToBinary(const char* s, const size_t len, uint32_t &flag);
 std::string binaryToString(uint64_t x, size_t len);
 int hamming(uint64_t a, uint64_t b, size_t len);
+
+void write_ecs_block(std::ostream& o, const std::vector<int32_t>& v);
+void write_bug_entry(std::ostream& o, const BUSData& bd, const std::vector<int32_t>* pGeneList = nullptr);
+void add_ecs_from_block(const BUSData& bd, std::vector<int32_t>& v, size_t& leftToRead);
+
+bool parseBugGenes(const std::string& filename, std::vector<std::string>& genes);
+/*
+class BUGReader {
+public:
+	BUGReader(const std::vector<std::string>& filenames, bool bUseStdIn) : m_filenames(filenames), m_bUseStdIn(bUseStdIn){
+		openNextFile();
+	}
+
+	//For performance reasons (to avoid copying data), this class returns a pointer to the data
+	//it only uses the vector in case of multiple genes, so the vector should only be used if the
+	//ec field is negative
+	BUSData* getBug(std::vector<int32_t>& genes) {
+
+	}
+
+private:
+	size_t m_nextFile = 0;
+	size_t pos = 0;
+	std::vector<std::string> m_filenames;
+	bool m_bUseStdIn = false;
+	std::shared_ptr<std::istream> m_pIn;
+	std::shared_ptr<std::ifstream> m_pInf;
+
+	bool openNextFile() {
+		std::streambuf* inbuf;
+		if (!m_bUseStdIn) {
+			if (m_nextFile >= m_filenames.size()) {
+				return false;
+			}
+			m_pInf.reset(new std::ifstream());
+			m_pInf->open(m_filenames[m_nextFile].c_str(), std::ios::binary);
+			inbuf = m_pInf->rdbuf();
+			if (!*m_pInf) {
+				std::cerr << "Failed to read file: " << m_filenames[m_nextFile].c_str() << std::endl;
+			}
+		}
+		else {
+			if (m_nextFile > 0) {
+				return false;
+			}
+			inbuf = std::cin.rdbuf();
+		}
+		m_pIn.reset(new std::istream(inbuf));
+		m_nextFile++;
+		return true;
+	}
+
+};
+*/
 #endif // KALLISTO_BUSDATA_H
