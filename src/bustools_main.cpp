@@ -772,17 +772,17 @@ bool check_ProgramOptions_merge(Bustools_opt& opt) {
       }
     }
 
-    // check if output directory exists or if we can create it
-    if (checkDirectoryExists(opt.output.c_str())) {
-      std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
-      ret = false;
-    } else {
-      // create directory
-      if (my_mkdir(opt.output.c_str(), 0777) == -1) {
-        std::cerr << "Error: could not create directory " << opt.output << std::endl;
-        ret = false;
-      }
-    }
+//     // check if output directory exists or if we can create it
+//     if (checkDirectoryExists(opt.output.c_str())) {
+//       std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
+//       ret = false;
+//     } else {
+//       // create directory
+//       if (my_mkdir(opt.output.c_str(), 0777) == -1) {
+//         std::cerr << "Error: could not create directory " << opt.output << std::endl;
+//         ret = false;
+//       }
+//     }
   }
 
   return ret;
