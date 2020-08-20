@@ -69,6 +69,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   // iterate through each file and populate txn_tid, tids perfile
   for (int i = 0; i < nf; i++)
   {
+    tids.clear();
     std::ifstream ifn(opt.files[i] + "/transcripts.txt");
     std::string txn;
 
@@ -79,7 +80,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
       {
         tids.push_back(tid); // add the index to tids (this is a list of new index)
         ofn << txn << "\n";  // write to file
-        ++tid;               // increment transcript index
+        tid += 1;            // increment transcript index
       }
       else
       {
@@ -104,45 +105,54 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   oh.umilen = vh[0].umilen;
 
   std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv; // set{tids} (ec) to eid it came from
-  // for (int i = 0; i < tid; i++)
-  // {
-  //   oh.ecs.push_back({i});
-  //   ecmapinv.insert({{i}, i});
-  // }
+  for (int i = 0; i < tid; i++)
+  {
+    oh.ecs.push_back({i});
+    ecmapinv.insert({{i}, i});
+  }
 
   std::vector<std::vector<int32_t>> eids_per_file;
   std::vector<int32_t> eids;
+  int32_t eid = ecmapinv.size();
+
   for (int i = 0; i < nf; i++)
   {
     eids.clear();
+
     BUSHeader h = vh[i];
     const auto &tids = tids_per_file[i]; // new index of tids for that file of the length of that file
 
-    for (const auto &ecs : h.ecs)
+    for (const auto &ecs : h.ecs) // ecs is a set of tids std::vector<int32_t>
     {
       std::vector<int32_t> new_ecs(ecs.size());
-      // convert tid to new coordinates
-      int32_t eid = -1;
+      if (ecs.size() == 1)
+      {
+        eid = tids[ecs[0]];
+        eids.push_back(eid);
+      }
+      else if (ecs.size() > 1)
+      {
+        // convert tid to new coordinates
+        for (int j = 0; j < ecs.size(); j++)
+        {
+          new_ecs[j] = tids[ecs[j]];
+        }
 
-      for (int j = 0; j < ecs.size(); j++)
-      {
-        new_ecs[j] = tids[ecs[j]];
+        // check to see if the set exists in ecmapinv
+        std::sort(new_ecs.begin(), new_ecs.end());
+        auto it = ecmapinv.find(new_ecs); // see if new_ecs exists
+        if (it != ecmapinv.end())
+        {
+          eid = it->second; // return the eid that it corresponds to
+        }
+        else
+        {
+          eid++;                     // make new eid
+          oh.ecs.push_back(new_ecs); // add the set of tids (new ref)
+          ecmapinv.insert({new_ecs, eid});
+        }
+        eids.push_back(eid);
       }
-
-      // check to see if the set exists in ecmapinv
-      std::sort(new_ecs.begin(), new_ecs.end());
-      auto it = ecmapinv.find(new_ecs); // see if new_ecs exists
-      if (it != ecmapinv.end())
-      {
-        eid = it->second; // return the eid that it corresponds to
-      }
-      else
-      {
-        eid = ecmapinv.size();     // make new eid
-        oh.ecs.push_back(new_ecs); // add the set of tids (new ref)
-        ecmapinv.insert({new_ecs, eid});
-      }
-      eids.push_back(eid);
     }
     eids_per_file.push_back(std::move(eids));
   }
@@ -201,7 +211,6 @@ void bustools_merge_different_index(const Bustools_opt &opt)
       // only one eid in prev_eids
       if (prev_eids.size() == 1)
       {
-
         prev.ec = *prev_eids.begin();
       }
       else // merge the ecs and see if it exists, else add it
