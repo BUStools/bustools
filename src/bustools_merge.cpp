@@ -104,11 +104,11 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   oh.umilen = vh[0].umilen;
 
   std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv; // set{tids} (ec) to eid it came from
-  for (int i = 0; i < tid; i++)
-  {
-    oh.ecs.push_back({i});
-    ecmapinv.insert({{i}, i});
-  }
+  // for (int i = 0; i < tid; i++)
+  // {
+  //   oh.ecs.push_back({i});
+  //   ecmapinv.insert({{i}, i});
+  // }
 
   std::vector<std::vector<int32_t>> eids_per_file;
   std::vector<int32_t> eids;
@@ -116,42 +116,33 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   {
     eids.clear();
     BUSHeader h = vh[i];
-    const auto &tids = tids_per_file[i];
+    const auto &tids = tids_per_file[i]; // new index of tids for that file of the length of that file
 
     for (const auto &ecs : h.ecs)
     {
-      if (ecs.size() == 1)
-      {
-        int32_t eid = *ecs.begin();
-        eids.push_back(eid);
-        // something else?
-      }
-      else if (ecs.size() > 1)
-      {
+      std::vector<int32_t> new_ecs(ecs.size());
+      // convert tid to new coordinates
+      int32_t eid = -1;
 
-        // convert tid to new coordinates
-        int32_t eid = -1;
-        std::vector<int32_t> new_ecs(ecs.size());
-        for (int j = 0; j < ecs.size(); j++)
-        {
-          new_ecs[j] = tids[ecs[j]];
-        }
-
-        // check to see if the set exists in ecmapinv
-        std::sort(new_ecs.begin(), new_ecs.end());
-        auto it = ecmapinv.find(new_ecs); // see if new_ecs exists
-        if (it != ecmapinv.end())
-        {
-          eid = it->second; // return the eid that it corresponds to
-        }
-        else
-        {
-          eid = ecmapinv.size();     // make new eid
-          oh.ecs.push_back(new_ecs); // add the set of tids (new ref)
-          ecmapinv.insert({new_ecs, eid});
-        }
-        eids.push_back(eid);
+      for (int j = 0; j < ecs.size(); j++)
+      {
+        new_ecs[j] = tids[ecs[j]];
       }
+
+      // check to see if the set exists in ecmapinv
+      std::sort(new_ecs.begin(), new_ecs.end());
+      auto it = ecmapinv.find(new_ecs); // see if new_ecs exists
+      if (it != ecmapinv.end())
+      {
+        eid = it->second; // return the eid that it corresponds to
+      }
+      else
+      {
+        eid = ecmapinv.size();     // make new eid
+        oh.ecs.push_back(new_ecs); // add the set of tids (new ref)
+        ecmapinv.insert({new_ecs, eid});
+      }
+      eids.push_back(eid);
     }
     eids_per_file.push_back(std::move(eids));
   }
@@ -166,6 +157,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   // Process the busfiles
   std::ofstream outf(opt.output + "/merged.bus");
   writeHeader(outf, oh);
+  writeECs(opt.output + "/raw.ec", oh); // prior to reading bus records
 
   size_t nr = 0, nw = 0;
 
@@ -189,8 +181,10 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   BUSData prev = pq.top().first;
 
   std::unordered_set<int32_t> prev_eids;
+  bool keep_record;
   while (!pq.empty())
   {
+    keep_record = true;
     BP min = pq.top(); // top of heap
     pq.pop();          // remove min
 
@@ -200,13 +194,14 @@ void bustools_merge_different_index(const Bustools_opt &opt)
     // check curr vs min
     if (m.flags == prev.flags && m.barcode == prev.barcode && m.UMI == prev.UMI)
     {
-      prev_eids.insert(eids_per_file[i][prev.ec]); // insert
+      prev_eids.insert(eids_per_file[i][prev.ec]); // insert new eid index
     }
     else
     {
       // only one eid in prev_eids
       if (prev_eids.size() == 1)
       {
+
         prev.ec = *prev_eids.begin();
       }
       else // merge the ecs and see if it exists, else add it
@@ -220,8 +215,10 @@ void bustools_merge_different_index(const Bustools_opt &opt)
         std::sort(ecs.begin(), ecs.end());
         ecs.erase(std::unique(ecs.begin(), ecs.end()), ecs.end()); // keep only one of the duplicates
         auto it = ecmapinv.find(ecs);                              // see if the set exists
-        if (it == ecmapinv.end())                                  // if it doesnt
+
+        if (it == ecmapinv.end()) // if it doesnt
         {
+          keep_record = false;
           prev.ec = ecmapinv.size();       // make a new ec
           oh.ecs.push_back(ecs);           // add it to the matrix.ec
           ecmapinv.insert({ecs, prev.ec}); // insert into ecmapinv
@@ -233,8 +230,11 @@ void bustools_merge_different_index(const Bustools_opt &opt)
         }
       }
       prev.count = 1;
-      outf.write((char *)&prev, sizeof(prev));
-      ++nw;
+      if (keep_record)
+      {
+        outf.write((char *)&prev, sizeof(prev));
+        ++nw;
+      }
 
       prev = m;
       prev_eids.clear();
