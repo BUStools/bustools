@@ -227,7 +227,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
 
         if (it == ecmapinv.end()) // if it doesnt
         {
-          keep_record = false;
+          keep_record = true;
           prev.ec = ecmapinv.size();       // make a new ec
           oh.ecs.push_back(ecs);           // add it to the matrix.ec
           ecmapinv.insert({ecs, prev.ec}); // insert into ecmapinv
