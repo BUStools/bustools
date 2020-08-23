@@ -55,8 +55,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
     parseECs(opt.files[i] + "/matrix.ec", h); // parse ecs
     vh.push_back(std::move(h));               // place the ecs into h
   }
-  std::cout << "[status] parsed BUS files" << std::endl;
-  std::cout << "[status] parsed ECS files" << std::endl;
+  std::cout << "[info] parsed output.bus files" << std::endl;
 
   // parse the transcripts.txt
   std::unordered_map<std::string, int32_t> txn_tid;
@@ -91,7 +90,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   }
 
   ofn.close();
-  std::cout << "[status] transcripts.txt written" << std::endl;
+  std::cout << "[info] parsed transcripts.txt" << std::endl;
 
   // all of the ecs are in the header
   // h.ecs is a vector<vector<ints>>
@@ -140,7 +139,8 @@ void bustools_merge_different_index(const Bustools_opt &opt)
 
         // check to see if the set exists in ecmapinv
         std::sort(new_ecs.begin(), new_ecs.end());
-        auto it = ecmapinv.find(new_ecs); // see if new_ecs exists
+        new_ecs.erase(std::unique(new_ecs.begin(), new_ecs.end()), new_ecs.end()); // keep only one of the duplicates
+        auto it = ecmapinv.find(new_ecs);                                          // see if new_ecs exists
         if (it != ecmapinv.end())
         {
           eid = it->second; // return the eid that it corresponds to
@@ -156,7 +156,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
     }
     eids_per_file.push_back(std::move(eids));
   }
-
+  std::cout << "[info] parsed matrix.ec files" << std::endl;
   // generate ecmap from ecmapinv
   std::vector<std::vector<int32_t>> ecmap(ecmapinv.size());
   for (const auto &ec : ecmapinv)
@@ -167,7 +167,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   // Process the busfiles
   std::ofstream outf(opt.output + "/merged.bus");
   writeHeader(outf, oh);
-  writeECs(opt.output + "/raw.ec", oh); // prior to reading bus records
+  // writeECs(opt.output + "/raw.ec", oh); // prior to reading bus records
 
   size_t nr = 0, nw = 0;
 
@@ -202,11 +202,12 @@ void bustools_merge_different_index(const Bustools_opt &opt)
     int i = min.second;
 
     // check curr vs min
+    // if the two bus records originate from the same fastq record
     if (m.flags == prev.flags && m.barcode == prev.barcode && m.UMI == prev.UMI)
     {
       prev_eids.insert(eids_per_file[i][prev.ec]); // insert new eid index
     }
-    else
+    else // if not they are not the same, then dump prev busrecord to disk
     {
       // only one eid in prev_eids
       if (prev_eids.size() == 1)
@@ -221,17 +222,20 @@ void bustools_merge_different_index(const Bustools_opt &opt)
           const auto &tids = ecmap[eid];                   // get the set of tids
           ecs.insert(ecs.end(), tids.begin(), tids.end()); // insert into ecs
         }
-        std::sort(ecs.begin(), ecs.end());
+        std::sort(ecs.begin(), ecs.end());                         // sort the set of tids
         ecs.erase(std::unique(ecs.begin(), ecs.end()), ecs.end()); // keep only one of the duplicates
         auto it = ecmapinv.find(ecs);                              // see if the set exists
 
-        if (it == ecmapinv.end()) // if it doesnt
+        if (it == ecmapinv.end()) // if it doesnt, this is a "merged" ec
         {
-          keep_record = true;
-          prev.ec = ecmapinv.size();       // make a new ec
-          oh.ecs.push_back(ecs);           // add it to the matrix.ec
-          ecmapinv.insert({ecs, prev.ec}); // insert into ecmapinv
-          ecmap.push_back(ecs);            // add it to the ecmap
+          keep_record = true; // for debugging purposes
+          if (keep_record)
+          {
+            prev.ec = ecmapinv.size();       // make a new ec
+            oh.ecs.push_back(ecs);           // add it to the matrix.ec
+            ecmapinv.insert({ecs, prev.ec}); // insert into ecmapinv
+            ecmap.push_back(ecs);            // add it to the ecmap
+          }
         }
         else // if it does exist
         {
@@ -296,7 +300,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
     outf.write((char *)&prev, sizeof(prev));
     ++nw;
   }
-  std::cout << "[status] merged.bus written" << std::endl;
+  std::cout << "[info] wrote merged.bus" << std::endl;
   for (int i = 0; i < nf; ++i)
   {
     bf[i].close();
@@ -304,9 +308,9 @@ void bustools_merge_different_index(const Bustools_opt &opt)
 
   // write the master ec file
   writeECs(opt.output + "/matrix.ec", oh);
-  std::cout << "[status] matrix.ec written" << std::endl;
-  std::cerr << "BUS Records read:  " << nr << std::endl;
-  std::cerr << "BUS Records wrote: " << nw << std::endl;
+  std::cout << "[info] wrote matrix.ec" << std::endl;
+  std::cerr << "bus records read:    " << nr << std::endl;
+  std::cerr << "bus records written: " << nw << std::endl;
 }
 
 void bustools_merge(const Bustools_opt &opt)
