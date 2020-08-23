@@ -228,7 +228,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
 
         if (it == ecmapinv.end()) // if it doesnt, this is a "merged" ec
         {
-          keep_record = true; // for debugging purposes
+          keep_record = false; // for debugging purposes
           if (keep_record)
           {
             prev.ec = ecmapinv.size();       // make a new ec
