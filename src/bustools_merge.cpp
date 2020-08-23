@@ -243,6 +243,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
         }
       }
       prev.count = 1;
+      prev.flags = 0;
       if (keep_record)
       {
         outf.write((char *)&prev, sizeof(prev));
