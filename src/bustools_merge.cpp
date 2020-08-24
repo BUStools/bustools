@@ -205,6 +205,8 @@ void bustools_merge_different_index(const Bustools_opt &opt)
     // if the two bus records originate from the same fastq record
     if (m.flags == prev.flags && m.barcode == prev.barcode && m.UMI == prev.UMI)
     {
+      std::cout << i << "\t" << m.flags << std::endl;
+
       prev_eids.insert(eids_per_file[i][prev.ec]); // insert new eid index
     }
     else // if not they are not the same, then dump prev busrecord to disk
