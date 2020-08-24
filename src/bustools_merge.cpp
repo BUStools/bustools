@@ -211,6 +211,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
     }
     else // if not they are not the same, then dump prev busrecord to disk
     {
+      std::cout << "--------------" << std::endl;
       // only one eid in prev_eids
       if (prev_eids.size() == 1)
       {
