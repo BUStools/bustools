@@ -10,17 +10,36 @@
 #include <unordered_map>
 #include <sstream>
 
-
 #define BUSTOOLS_VERSION "0.40.0"
 
-enum CAPTURE_TYPE : char {CAPTURE_NONE = 0, CAPTURE_TX, CAPTURE_BC, CAPTURE_UMI, CAPTURE_F};
-enum SORT_TYPE : char {SORT_BC = 0, SORT_UMI, SORT_F, SORT_COUNT};
-enum PROJECT_TYPE : char {PROJECT_BC = 0, PROJECT_UMI, PROJECT_TX, PROJECT_F};
+enum CAPTURE_TYPE : char
+{
+  CAPTURE_NONE = 0,
+  CAPTURE_TX,
+  CAPTURE_BC,
+  CAPTURE_UMI,
+  CAPTURE_F
+};
+enum SORT_TYPE : char
+{
+  SORT_BC = 0,
+  SORT_UMI,
+  SORT_F,
+  SORT_COUNT
+};
+enum PROJECT_TYPE : char
+{
+  PROJECT_BC = 0,
+  PROJECT_UMI,
+  PROJECT_TX,
+  PROJECT_F
+};
 
-struct Bustools_opt {
+struct Bustools_opt
+{
   int threads;
-  
-  std::string whitelist;  
+
+  std::string whitelist;
   std::string output;
   std::vector<std::string> files;
 
@@ -30,7 +49,7 @@ struct Bustools_opt {
   /* extract */
   int nFastqs;
   std::vector<std::string> fastq;
-  
+
   char type;
 
   int ec_d;
@@ -55,7 +74,7 @@ struct Bustools_opt {
   /* project */
   std::string map;
   std::string output_folder;
-  
+
   /* capture */
   std::string capture;
   bool complement = false;
@@ -66,17 +85,19 @@ struct Bustools_opt {
 
   /* text */
   bool text_dumpflags = false;
+  bool text_dumppad = false;
 
   /* linker */
   int start, end;
 
-  Bustools_opt() : threads(1), max_memory(1ULL<<32), type(0),
-    threshold(0), start(-1), end(-1)  {}
+  Bustools_opt() : threads(1), max_memory(1ULL << 32), type(0),
+                   threshold(0), start(-1), end(-1) {}
 };
 
-static const char alpha[4] = {'A','C','G','T'};
+static const char alpha[4] = {'A', 'C', 'G', 'T'};
 
-inline size_t rndup(size_t v) {
+inline size_t rndup(size_t v)
+{
 
   v--;
   v |= v >> 1;
@@ -90,7 +111,8 @@ inline size_t rndup(size_t v) {
   return v;
 }
 
-inline uint32_t rndup(uint32_t v) {
+inline uint32_t rndup(uint32_t v)
+{
 
   v--;
   v |= v >> 1;
@@ -103,16 +125,18 @@ inline uint32_t rndup(uint32_t v) {
   return v;
 }
 
-
-struct SortedVectorHasher {
-  size_t operator()(const std::vector<int32_t>& v) const {
+struct SortedVectorHasher
+{
+  size_t operator()(const std::vector<int32_t> &v) const
+  {
     uint64_t r = 0;
-    int i=0;
-    for (auto x : v) {
+    int i = 0;
+    for (auto x : v)
+    {
       uint64_t t = std::hash<int32_t>{}(x);
-      t = (x>>i) | (x<<(64-i));
+      t = (x >> i) | (x << (64 - i));
       r = r ^ t;
-      i = (i+1)%64;
+      i = (i + 1) % 64;
     }
     return r;
   }
@@ -122,11 +146,8 @@ std::vector<int32_t> union_vectors(const std::vector<std::vector<int32_t>> &v);
 std::vector<int32_t> intersect_vectors(const std::vector<std::vector<int32_t>> &v);
 int32_t intersect_ecs(const std::vector<int32_t> &ecs, std::vector<int32_t> &u, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes);
 void vt2gene(const std::vector<int32_t> &v, const std::vector<int32_t> &genemap, std::vector<int32_t> &glist);
-void intersect_genes_of_ecs(const std::vector<int32_t> &ecs, const  std::vector<std::vector<int32_t>> &ec2genes, std::vector<int32_t> &glist);
+void intersect_genes_of_ecs(const std::vector<int32_t> &ecs, const std::vector<std::vector<int32_t>> &ec2genes, std::vector<int32_t> &glist);
 int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes, bool assumeIntersectionIsEmpty = true);
 void create_ec2genes(const std::vector<std::vector<int32_t>> &ecmap, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ec2gene);
-
-
-
 
 #endif // BUSTOOLS_COMMON_HPP

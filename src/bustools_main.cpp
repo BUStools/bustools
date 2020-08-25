@@ -342,12 +342,13 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
 void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt &opt)
 {
 
-  const char *opt_string = "o:pf";
+  const char *opt_string = "o:pfd";
 
   static struct option long_options[] = {
       {"output", required_argument, 0, 'o'},
       {"pipe", no_argument, 0, 'p'},
       {"flags", no_argument, 0, 'f'},
+      {"pad", no_argument, 0, 'd'},
       {0, 0, 0, 0}};
 
   int option_index = 0, c;
@@ -365,6 +366,9 @@ void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt &opt)
       break;
     case 'f':
       opt.text_dumpflags = true;
+      break;
+    case 'd':
+      opt.text_dumppad = true;
       break;
     default:
       break;
@@ -1647,6 +1651,8 @@ void Bustools_dump_Usage()
             << std::endl
             << "Options: " << std::endl
             << "-o, --output          File for text output" << std::endl
+            << "-f, --flags           Write the flag column" << std::endl
+            << "-d, --pad             Write the pad column" << std::endl
             << "-p, --pipe            Write to standard output" << std::endl
             << std::endl;
 }
@@ -1885,6 +1891,10 @@ int main(int argc, char **argv)
               if (opt.text_dumpflags)
               {
                 o << "\t" << p[i].flags;
+              }
+              if (opt.text_dumppad)
+              {
+                o << "\t" << p[i].pad;
               }
               o << "\n";
             }
