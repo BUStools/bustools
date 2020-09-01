@@ -11,6 +11,32 @@
 
 #define BP std::pair<BUSData, int>
 #define TP std::pair<BUSData, int>
+#define Range std::pair<uint32_t, uint32_t>
+
+inline std::vector<int32_t> intersect_vecs(const std::vector<int32_t> &x, const std::vector<int32_t> &y)
+{
+  std::vector<int32_t> v;
+  auto a = x.begin();
+  auto b = y.begin();
+  while (a != x.end() && b != y.end())
+  {
+    if (*a < *b)
+    {
+      ++a;
+    }
+    else if (*b < *a)
+    {
+      ++b;
+    }
+    else
+    {
+      v.push_back(*a);
+      ++a;
+      ++b;
+    }
+  }
+  return v;
+}
 
 inline bool ncmp(const BP &a, const BP &b)
 {
@@ -189,74 +215,173 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   }
 
   BUSData prev = pq.top().first;
-
-  std::unordered_set<int32_t> prev_eids;
+  int prev_file = pq.top().second;
   bool keep_record;
+  // std::vector<std::vector<std::pair<uint32_t, int32_t>>> kmer_ec_per_file(nf);
+  // [((lower, upper), ec)]
+  // [((lower, upper), ec)]
+  // [((lower, upper), ec)]
+  // [((lower, upper), ec)]
+  std::vector<std::pair<std::pair<uint32_t, uint32_t>, uint32_t>> intervals;
+  int32_t min_kmer_pos;
+  int32_t max_kmer_pos;
+  int32_t mec;
+
+  eids.clear();
+  std::vector<std::vector<int32_t>> eids_per_kmer;
+  std::vector<int32_t> ecs;
+  std::vector<int32_t> ecs_to_intersect;
+  int32_t prev_ec;
+  uint32_t lower;
+  uint32_t upper;
+  // NOTE: bus file must be sorted by flag
+
   while (!pq.empty())
   {
     keep_record = true;
+
     BP min = pq.top(); // top of heap
     pq.pop();          // remove min
 
-    BUSData &m = min.first;
-    int i = min.second;
+    BUSData &m = min.first; // newest bus record
+    int i = min.second;     // from which file
 
-    // check curr vs min
+    // check prev vs min
     // if the two bus records originate from the same fastq record
+    // generate a vector of std pairs for each
+
     if (m.flags == prev.flags && m.barcode == prev.barcode && m.UMI == prev.UMI)
     {
-      std::cout << i << "\t" << m.flags << std::endl;
+      // put the ec on a new coordinate system
+      prev.ec = eids_per_file[i][prev.ec]; // the new ec for that bus record
+      mec = eids_per_file[i][m.ec];        // the new ec for that bus record
+      std::cout << prev_file << "," << i << "\t" << prev.ec << "," << mec << "\t" << prev.pad << "," << m.pad << std::endl;
 
-      prev_eids.insert(eids_per_file[i][prev.ec]); // insert new eid index
+      if (mec == prev.ec) // if the equivalence classes are the same
+      {
+        if (!intervals.size()) // if no interals
+        {
+          min_kmer_pos = prev.pad; // the first starting kmer (usually 0)
+          intervals.push_back(
+              {{prev.pad, m.pad}, prev.ec}); // add a new interval
+        }
+        else if (intervals.size()) // if intervals
+        {
+          intervals.back().first.second = m.pad; // change the upper bound of the interval
+        }
+      }
+      else if (mec != prev.ec) // if eqc is different
+      {
+        if (!intervals.size())
+        {
+          intervals.push_back({{prev.pad, prev.pad}, prev.ec});
+          intervals.push_back({{m.pad, m.pad}, mec});
+        }
+        else if (intervals.size())
+        {
+          intervals.push_back({{m.pad, m.pad}, mec}); // make a new interval
+        }
+      }
+      for (auto const &itv : intervals)
+      {
+        std::cout << itv.first.first << "\t" << itv.first.second << "\t" << itv.second << std::endl;
+      }
     }
     else // if not they are not the same, then dump prev busrecord to disk
     {
-      std::cout << "--------------" << std::endl;
-      // only one eid in prev_eids
-      if (prev_eids.size() == 1)
-      {
-        prev.ec = *prev_eids.begin();
-      }
-      else // merge the ecs and see if it exists, else add it
-      {
-        std::vector<int32_t> ecs;         // set of tids
-        for (const auto &eid : prev_eids) // for each eid (from the bus records)
-        {
-          const auto &tids = ecmap[eid];                   // get the set of tids
-          ecs.insert(ecs.end(), tids.begin(), tids.end()); // insert into ecs
-        }
-        std::sort(ecs.begin(), ecs.end());                         // sort the set of tids
-        ecs.erase(std::unique(ecs.begin(), ecs.end()), ecs.end()); // keep only one of the duplicates
-        auto it = ecmapinv.find(ecs);                              // see if the set exists
+      max_kmer_pos = prev.pad;
 
-        if (it == ecmapinv.end()) // if it doesnt, this is a "merged" ec
+      eids.clear();
+      ecs.clear();
+      eids_per_kmer.clear();
+      ecs_to_intersect.clear();
+
+      std::vector<std::vector<int32_t>> tids_per_kmer;
+      tids_per_kmer.clear();
+
+      std::cout << "Min kmer: " << min_kmer_pos << "\tMax kmer: " << max_kmer_pos << std::endl;
+
+      for (int p = max_kmer_pos; p >= min_kmer_pos - 1; p--) // iterate backwards from max kmer pos to min
+      {
+        std::cout << "p: " << p << std::endl;
+        prev_ec = -1;
+        for (int itv = intervals.size() - 1; itv >= 0; itv--) // iterate backwards over interval to make deletion faster
         {
-          keep_record = false; // for debugging purposes
-          if (keep_record)
+          std::cout << "iter: " << itv << "\tinterval size: " << intervals.size() << std::endl;
+          if (intervals.size())
           {
-            prev.ec = ecmapinv.size();       // make a new ec
-            oh.ecs.push_back(ecs);           // add it to the matrix.ec
-            ecmapinv.insert({ecs, prev.ec}); // insert into ecmapinv
-            ecmap.push_back(ecs);            // add it to the ecmap
+            eid = intervals[itv].second;         // eid for the specific interval
+            lower = intervals[itv].first.first;  // lower kmer
+            upper = intervals[itv].first.second; // upper kmer
+            if (p < lower)                       // if kmer pos greater than upper bound
+            {
+              std::cout << "greater than upper" << std::endl;
+              intervals.erase(intervals.begin() + itv);                  // remove this interval
+              std::sort(ecs.begin(), ecs.end());                         // sort the set of tids
+              ecs.erase(std::unique(ecs.begin(), ecs.end()), ecs.end()); // keep only one of the duplicates
+              tids_per_kmer.push_back(ecs);
+            }
+            if (p >= lower && p <= upper) // within the interval, merge ecs
+            {
+              if (eid != prev_ec)
+              {
+                std::cout << "eid: " << eid << std::endl;
+                const auto &tids = ecmap[eid];                   // get the set of tids
+                ecs.insert(ecs.end(), tids.begin(), tids.end()); // insert into ecs
+              }
+            }
+            prev_ec = eid;
           }
         }
-        else // if it does exist
-        {
-          prev.ec = it->second;
-        }
       }
-      prev.count = 1;
-      prev.flags = 0;
-      if (keep_record)
+      // intersect ec
+      if (tids_per_kmer.size())
       {
-        outf.write((char *)&prev, sizeof(prev));
-        ++nw;
+        std::vector<int32_t> prev_tids = tids_per_kmer[0];
+        for (int i = 1; i < tids_per_kmer.size(); i++)
+        {
+          std::cout << prev_tids.size() << "\t" << tids_per_kmer[i].size() << std::endl;
+          prev_tids = intersect_vecs(prev_tids, tids_per_kmer[i]);
+        }
+        std::cout << "after intersecting" << std::endl;
+
+        if (prev_tids.size()) // then write the record
+        {
+          ecs = prev_tids;
+
+          auto it = ecmapinv.find(ecs); // see if the set exists
+
+          if (it == ecmapinv.end()) // if it doesnt, this is a "merged" ec
+          {
+            keep_record = false; // for debugging purposes
+            if (keep_record)
+            {
+              prev.ec = ecmapinv.size();       // make a new ec
+              oh.ecs.push_back(ecs);           // add it to the matrix.ec
+              ecmapinv.insert({ecs, prev.ec}); // insert into ecmapinv
+              ecmap.push_back(ecs);            // add it to the ecmap
+            }
+          }
+          else // if it does exist
+          {
+            prev.ec = it->second;
+          }
+
+          prev.count = 1;
+          if (keep_record)
+          {
+            outf.write((char *)&prev, sizeof(prev));
+            ++nw;
+          }
+        }
       }
 
       prev = m;
-      prev_eids.clear();
-      prev_eids.insert(eids_per_file[i][prev.ec]);
+      prev_file = i;
+      intervals.clear();
     }
+    prev = m;
+    prev_file = i;
 
     // Read in the next bus record into the queue
     if (bf[i].good())
@@ -271,38 +396,77 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   }
 
   // write out the remaining straggler
-  if (prev_eids.size())
+  if (intervals.size())
   {
-    if (prev_eids.size() == 1)
+    keep_record = true;
+    max_kmer_pos = prev.pad;
+
+    eids.clear();
+    ecs.clear();
+    eids_per_kmer.clear();
+    ecs_to_intersect.clear();
+    std::vector<std::vector<int32_t>> tids_per_kmer;
+    tids_per_kmer.clear();
+    for (int p = min_kmer_pos; p >= max_kmer_pos; p++) // iterate backwards from max kmer pos to min
     {
-      prev.ec = *prev_eids.begin();
-    }
-    else // merge the ecs and see if it exists, else add it
-    {
-      std::vector<int32_t> ecs;         // set of tids
-      for (const auto &eid : prev_eids) // for each eid (from the bus records)
+      prev_ec = -1;
+      for (int itv = 0; itv < max_kmer_pos; itv++) // iterate backwards over interval to make deletion faster
       {
-        const auto &tids = ecmap[eid];                   // get the set of tids
-        ecs.insert(ecs.end(), tids.begin(), tids.end()); // insert into ecs
+        if (intervals.size())
+        {
+          eid = intervals[itv].second;         // eid for the specific interval
+          lower = intervals[itv].first.first;  // lower kmer
+          upper = intervals[itv].first.second; // upper kmer
+          if (p > upper)                       // if kmer pos greater than upper bound
+          {
+            intervals.erase(intervals.begin() + itv);                  // remove this interval
+            std::sort(ecs.begin(), ecs.end());                         // sort the set of tids
+            ecs.erase(std::unique(ecs.begin(), ecs.end()), ecs.end()); // keep only one of the duplicates
+            tids_per_kmer.push_back(ecs);
+          }
+          if (p >= lower && p <= upper) // within the interval, merge ecs
+          {
+            if (eid != prev_ec)
+            {
+              const auto &tids = ecmap[eid];                   // get the set of tids
+              ecs.insert(ecs.end(), tids.begin(), tids.end()); // insert into ecs
+            }
+          }
+          prev_ec = eid;
+        }
       }
-      std::sort(ecs.begin(), ecs.end());
-      ecs.erase(std::unique(ecs.begin(), ecs.end()), ecs.end()); // keep only one of the duplicates
-      auto it = ecmapinv.find(ecs);                              // see if the set exists
-      if (it == ecmapinv.end())                                  // if it doesnt
+      // intersect ec
+      std::vector<int32_t> prev_tids = tids_per_kmer[0];
+      for (int i = 1; i < tids_per_kmer.size(); i++)
       {
-        prev.ec = ecmapinv.size();       // make a new ec
-        oh.ecs.push_back(ecs);           // add it to the matrix.ec
-        ecmapinv.insert({ecs, prev.ec}); // insert into ecmapinv
-        ecmap.push_back(ecs);            // add it to the ecmap
+        prev_tids = intersect_vecs(prev_tids, tids_per_kmer[i]);
+      }
+
+      auto it = ecmapinv.find(prev_tids); // see if the set exists
+
+      if (it == ecmapinv.end()) // if it doesnt, this is a "merged" ec
+      {
+        keep_record = false; // for debugging purposes
+        if (keep_record)
+        {
+          prev.ec = ecmapinv.size();             // make a new ec
+          oh.ecs.push_back(prev_tids);           // add it to the matrix.ec
+          ecmapinv.insert({prev_tids, prev.ec}); // insert into ecmapinv
+          ecmap.push_back(prev_tids);            // add it to the ecmap
+        }
       }
       else // if it does exist
       {
         prev.ec = it->second;
       }
     }
+
     prev.count = 1;
-    outf.write((char *)&prev, sizeof(prev));
-    ++nw;
+    if (keep_record)
+    {
+      outf.write((char *)&prev, sizeof(prev));
+      ++nw;
+    }
   }
   std::cout << "[info] wrote merged.bus" << std::endl;
   for (int i = 0; i < nf; ++i)
