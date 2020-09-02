@@ -125,11 +125,12 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   BUSHeader oh;
   oh.version = BUSFORMAT_VERSION;
   oh.text = "Merged files";
-  //TODO: parse the transcripts file, check that they are identical and merge.
+
   oh.bclen = vh[0].bclen;
   oh.umilen = vh[0].umilen;
 
   std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv; // set{tids} (ec) to eid it came from
+  std::cout << "tid: " << tid << std::endl;
   for (int i = 0; i < tid; i++)
   {
     oh.ecs.push_back({i});
@@ -139,6 +140,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   std::vector<std::vector<int32_t>> eids_per_file;
   std::vector<int32_t> eids;
   int32_t eid = ecmapinv.size();
+  std::cout << "ecmapin size: " << eid << std::endl;
 
   for (int i = 0; i < nf; i++)
   {
@@ -150,35 +152,28 @@ void bustools_merge_different_index(const Bustools_opt &opt)
     for (const auto &ecs : h.ecs) // ecs is a set of tids std::vector<int32_t>
     {
       std::vector<int32_t> new_ecs(ecs.size());
-      if (ecs.size() == 1)
-      {
-        eid = tids[ecs[0]];
-        eids.push_back(eid);
-      }
-      else if (ecs.size() > 1)
-      {
-        // convert tid to new coordinates
-        for (int j = 0; j < ecs.size(); j++)
-        {
-          new_ecs[j] = tids[ecs[j]];
-        }
 
-        // check to see if the set exists in ecmapinv
-        std::sort(new_ecs.begin(), new_ecs.end());
-        new_ecs.erase(std::unique(new_ecs.begin(), new_ecs.end()), new_ecs.end()); // keep only one of the duplicates
-        auto it = ecmapinv.find(new_ecs);                                          // see if new_ecs exists
-        if (it != ecmapinv.end())
-        {
-          eid = it->second; // return the eid that it corresponds to
-        }
-        else
-        {
-          eid++;                     // make new eid
-          oh.ecs.push_back(new_ecs); // add the set of tids (new ref)
-          ecmapinv.insert({new_ecs, eid});
-        }
-        eids.push_back(eid);
+      // convert tid to new coordinates
+      for (int j = 0; j < ecs.size(); j++)
+      {
+        new_ecs[j] = tids[ecs[j]];
       }
+
+      // check to see if the set exists in ecmapinv
+      std::sort(new_ecs.begin(), new_ecs.end());
+      new_ecs.erase(std::unique(new_ecs.begin(), new_ecs.end()), new_ecs.end()); // keep only one of the duplicates
+      auto it = ecmapinv.find(new_ecs);                                          // see if new_ecs exists
+      if (it != ecmapinv.end())
+      {
+        eid = it->second; // return the eid that it corresponds to
+      }
+      else
+      {
+        eid = ecmapinv.size();     // make new eid
+        oh.ecs.push_back(new_ecs); // add the set of tids (new ref)
+        ecmapinv.insert({new_ecs, eid});
+      }
+      eids.push_back(eid);
     }
     eids_per_file.push_back(std::move(eids));
   }
@@ -232,8 +227,8 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   std::vector<int32_t> ecs;
   std::vector<int32_t> ecs_to_intersect;
   int32_t prev_ec;
-  uint32_t lower;
-  uint32_t upper;
+  int32_t lower;
+  int32_t upper;
   // NOTE: bus file must be sorted by flag
 
   while (!pq.empty())
@@ -253,10 +248,12 @@ void bustools_merge_different_index(const Bustools_opt &opt)
     if (m.flags == prev.flags && m.barcode == prev.barcode && m.UMI == prev.UMI)
     {
       // put the ec on a new coordinate system
-      prev.ec = eids_per_file[i][prev.ec]; // the new ec for that bus record
-      mec = eids_per_file[i][m.ec];        // the new ec for that bus record
-      // std::cout << prev_file << "," << i << "\t" << prev.ec << "," << mec << "\t" << prev.pad << "," << m.pad << std::endl;
+      int32_t old_ec = prev.ec;
 
+      prev.ec = eids_per_file[prev_file][prev.ec]; // the new ec for that bus record
+      mec = eids_per_file[i][m.ec];                // the new ec for that bus record
+      std::cout << old_ec << " -> " << prev.ec << "\t" << m.ec << " -> " << mec << std::endl;
+      // std::cout << "[" << prev.pad << "\t" << m.pad << "]" << std::endl;
       if (mec == prev.ec) // if the equivalence classes are the same
       {
         if (!intervals.size()) // if no interals
@@ -282,51 +279,59 @@ void bustools_merge_different_index(const Bustools_opt &opt)
           intervals.push_back({{m.pad, m.pad}, mec}); // make a new interval
         }
       }
-      // for (auto const &itv : intervals)
-      // {
-      //   std::cout << itv.first.first << "\t" << itv.first.second << "\t" << itv.second << std::endl;
-      // }
+      for (auto const &itv : intervals)
+      {
+        std::cout << "BR: " << prev.flags << "\t" << itv.first.first << "\t" << itv.first.second << "\t" << itv.second << ": ";
+        for (auto const &t : oh.ecs[itv.second])
+        {
+          std::cout << t << ",";
+        }
+        std::cout << std::endl;
+      }
     }
     else // if not they are not the same, then dump prev busrecord to disk
     {
       max_kmer_pos = prev.pad;
 
       eids.clear();
-      ecs.clear();
+
       eids_per_kmer.clear();
       ecs_to_intersect.clear();
 
       std::vector<std::vector<int32_t>> tids_per_kmer;
       tids_per_kmer.clear();
 
-      //  << "Min kmer: " << min_kmer_pos << "\tMax kmer: " << max_kmer_pos << std::endl;
+      //std::cout << "Min kmer: " << min_kmer_pos << "\tMax kmer: " << max_kmer_pos << std::endl;
 
       for (int p = max_kmer_pos; p >= min_kmer_pos - 1; p--) // iterate backwards from max kmer pos to min
       {
         // std::cout << "p: " << p << std::endl;
         prev_ec = -1;
+
         for (int itv = intervals.size() - 1; itv >= 0; itv--) // iterate backwards over interval to make deletion faster
         {
           // std::cout << "iter: " << itv << "\tinterval size: " << intervals.size() << std::endl;
           if (intervals.size())
           {
-            eid = intervals[itv].second;         // eid for the specific interval
-            lower = intervals[itv].first.first;  // lower kmer
-            upper = intervals[itv].first.second; // upper kmer
-            if (p < lower)                       // if kmer pos greater than upper bound
+            eid = intervals[itv].second;                  // eid for the specific interval
+            lower = (int32_t)intervals[itv].first.first;  // lower kmer
+            upper = (int32_t)intervals[itv].first.second; // upper kmer
+
+            if (p < lower) // if kmer pos greater than upper bound
             {
-              // std::cout << "greater than upper" << std::endl;
+
               intervals.erase(intervals.begin() + itv);                  // remove this interval
               std::sort(ecs.begin(), ecs.end());                         // sort the set of tids
               ecs.erase(std::unique(ecs.begin(), ecs.end()), ecs.end()); // keep only one of the duplicates
               tids_per_kmer.push_back(ecs);
+              ecs.clear();
             }
             if (p >= lower && p <= upper) // within the interval, merge ecs
             {
               if (eid != prev_ec)
               {
                 // std::cout << "eid: " << eid << std::endl;
-                const auto &tids = ecmap[eid];                   // get the set of tids
+                const auto &tids = oh.ecs[eid];                  // get the set of tids
                 ecs.insert(ecs.end(), tids.begin(), tids.end()); // insert into ecs
               }
             }
@@ -334,16 +339,37 @@ void bustools_merge_different_index(const Bustools_opt &opt)
           }
         }
       }
-      // intersect ec
+      // intersect the ecs
+      std::cout << "before intersecting" << std::endl;
       if (tids_per_kmer.size())
       {
+        for (auto const &tv : tids_per_kmer)
+        {
+          for (auto const &t : tv)
+          {
+            std::cout << t << ",";
+          }
+          std::cout << std::endl;
+        }
         std::vector<int32_t> prev_tids = tids_per_kmer[0];
         for (int i = 1; i < tids_per_kmer.size(); i++)
         {
           // std::cout << prev_tids.size() << "\t" << tids_per_kmer[i].size() << std::endl;
           prev_tids = intersect_vecs(prev_tids, tids_per_kmer[i]);
         }
-        // std::cout << "after intersecting" << std::endl;
+        std::cout << "after intersecting" << std::endl;
+        if (prev_tids.size())
+        {
+          for (auto const &t : prev_tids)
+          {
+            std::cout << t << ",";
+          }
+          std::cout << std::endl;
+        }
+        else
+        {
+          std::cout << " " << std::endl;
+        }
 
         if (prev_tids.size()) // then write the record
         {
@@ -368,6 +394,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
           }
 
           prev.count = 1;
+          prev.pad = 0;
           if (keep_record)
           {
             outf.write((char *)&prev, sizeof(prev));
@@ -401,41 +428,44 @@ void bustools_merge_different_index(const Bustools_opt &opt)
     max_kmer_pos = prev.pad;
 
     eids.clear();
-    ecs.clear();
+
     eids_per_kmer.clear();
     ecs_to_intersect.clear();
 
     std::vector<std::vector<int32_t>> tids_per_kmer;
     tids_per_kmer.clear();
 
-    //  << "Min kmer: " << min_kmer_pos << "\tMax kmer: " << max_kmer_pos << std::endl;
+    //std::cout << "Min kmer: " << min_kmer_pos << "\tMax kmer: " << max_kmer_pos << std::endl;
 
     for (int p = max_kmer_pos; p >= min_kmer_pos - 1; p--) // iterate backwards from max kmer pos to min
     {
       // std::cout << "p: " << p << std::endl;
       prev_ec = -1;
+
       for (int itv = intervals.size() - 1; itv >= 0; itv--) // iterate backwards over interval to make deletion faster
       {
         // std::cout << "iter: " << itv << "\tinterval size: " << intervals.size() << std::endl;
         if (intervals.size())
         {
-          eid = intervals[itv].second;         // eid for the specific interval
-          lower = intervals[itv].first.first;  // lower kmer
-          upper = intervals[itv].first.second; // upper kmer
-          if (p < lower)                       // if kmer pos greater than upper bound
+          eid = intervals[itv].second;                  // eid for the specific interval
+          lower = (int32_t)intervals[itv].first.first;  // lower kmer
+          upper = (int32_t)intervals[itv].first.second; // upper kmer
+
+          if (p < lower) // if kmer pos greater than upper bound
           {
-            // std::cout << "greater than upper" << std::endl;
+
             intervals.erase(intervals.begin() + itv);                  // remove this interval
             std::sort(ecs.begin(), ecs.end());                         // sort the set of tids
             ecs.erase(std::unique(ecs.begin(), ecs.end()), ecs.end()); // keep only one of the duplicates
             tids_per_kmer.push_back(ecs);
+            ecs.clear();
           }
           if (p >= lower && p <= upper) // within the interval, merge ecs
           {
             if (eid != prev_ec)
             {
               // std::cout << "eid: " << eid << std::endl;
-              const auto &tids = ecmap[eid];                   // get the set of tids
+              const auto &tids = oh.ecs[eid];                  // get the set of tids
               ecs.insert(ecs.end(), tids.begin(), tids.end()); // insert into ecs
             }
           }
@@ -443,16 +473,37 @@ void bustools_merge_different_index(const Bustools_opt &opt)
         }
       }
     }
-    // intersect ec
+    // intersect the ecs
+    std::cout << "before intersecting" << std::endl;
     if (tids_per_kmer.size())
     {
+      for (auto const &tv : tids_per_kmer)
+      {
+        for (auto const &t : tv)
+        {
+          std::cout << t << ",";
+        }
+        std::cout << std::endl;
+      }
       std::vector<int32_t> prev_tids = tids_per_kmer[0];
       for (int i = 1; i < tids_per_kmer.size(); i++)
       {
         // std::cout << prev_tids.size() << "\t" << tids_per_kmer[i].size() << std::endl;
         prev_tids = intersect_vecs(prev_tids, tids_per_kmer[i]);
       }
-      // std::cout << "after intersecting" << std::endl;
+      std::cout << "after intersecting" << std::endl;
+      if (prev_tids.size())
+      {
+        for (auto const &t : prev_tids)
+        {
+          std::cout << t << ",";
+        }
+        std::cout << std::endl;
+      }
+      else
+      {
+        std::cout << " " << std::endl;
+      }
 
       if (prev_tids.size()) // then write the record
       {
@@ -477,6 +528,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
         }
 
         prev.count = 1;
+        prev.pad = 0;
         if (keep_record)
         {
           outf.write((char *)&prev, sizeof(prev));
@@ -484,6 +536,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
         }
       }
     }
+
     intervals.clear();
   }
 
