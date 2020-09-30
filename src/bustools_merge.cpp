@@ -484,11 +484,13 @@ void bustools_merge_different_index(const Bustools_opt &opt)
         }
         // std::cout << "EC: " << BR.ec << std::endl;
         // std::cout << "##########################" << std::endl;
+        tids_per_elem.clear();
       }
 
       // prev_tids is now a set of tids
 
       elem_sets.clear();
+      bounds.clear();
       itv_left.clear();
       itv_right.clear();
     }
