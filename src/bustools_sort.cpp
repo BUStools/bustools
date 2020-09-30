@@ -119,9 +119,9 @@ inline bool cmp3(const BUSData &a, const BUSData &b)
 {
   if (a.flags == b.flags)
   {
-    if (a.ec == b.ec)
+    if (a.pad == b.pad)
     {
-      if (a.pad == b.pad)
+      if (a.ec == b.ec)
       {
         if (a.barcode == b.barcode)
         {
@@ -134,12 +134,12 @@ inline bool cmp3(const BUSData &a, const BUSData &b)
       }
       else
       {
-        return a.pad < b.pad;
+        return a.ec < b.ec;
       }
     }
     else
     {
-      return a.ec < b.ec;
+      return a.pad < b.pad;
     }
   }
   else
@@ -152,9 +152,9 @@ inline bool ncmp3(const TP &a, const TP &b)
 {
   if (a.first.flags == b.first.flags)
   {
-    if (a.first.ec == b.first.ec)
+    if (a.first.pad == b.first.pad)
     {
-      if (a.first.pad == b.first.pad)
+      if (a.first.ec == b.first.ec)
       {
         if (a.first.barcode == b.first.barcode)
         {
@@ -174,12 +174,12 @@ inline bool ncmp3(const TP &a, const TP &b)
       }
       else
       {
-        return a.first.pad > b.first.pad;
+        return a.first.ec > b.first.ec;
       }
     }
     else
     {
-      return a.first.ec > b.first.ec;
+      return a.first.pad > b.first.pad;
     }
   }
   else

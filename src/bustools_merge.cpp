@@ -101,15 +101,22 @@ inline bool itv_cmp_right(const BUSRange &x, BUSRange &y)
 //   }
 // }
 
-inline bool pqcmp(const BP &a, const BP &b)
+inline bool pqcmp(const std::pair<BUSData, int> &a, const std::pair<BUSData, int> &b)
 {
-  if (a.first.first.flags == b.first.first.flags)
+  if (a.first.flags == b.first.flags)
   {
-    return a.second > b.second;
+    if (a.first.pad == b.first.pad)
+    {
+      return a.second > b.second;
+    }
+    else
+    {
+      return a.first.pad > b.first.pad;
+    }
   }
   else
   {
-    return a.first.first.flags > b.first.first.flags;
+    return a.first.flags > b.first.flags;
   }
 }
 
@@ -294,130 +301,87 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   writeHeader(outf, oh);
   // writeECs(opt.output + "/raw.ec", oh); // prior to reading bus records
 
-  std::priority_queue<BP, std::vector<BP>, std::function<bool(const BP &a, const BP &b)>> pq(pqcmp);
-  BUSData bd1, bd2;
+  std::priority_queue<std::pair<BUSData, int>, std::vector<std::pair<BUSData, int>>, std::function<bool(const std::pair<BUSData, int> &a, const std::pair<BUSData, int> &b)>> pq(pqcmp);
+  BUSData bd;
 
   size_t nr = 0, nw = 0;
   // fill the pq
-  int bufsize = 100;
   for (int i = 0; i < nf; i++)
   {
     // if we can read data
     if (bf[i].good())
     {
-      bf[i].read((char *)&bd1, sizeof(bd1));
-      bf[i].read((char *)&bd2, sizeof(bd2));
-      assert(bd1.barcode == bd2.barcode && bd1.UMI == bd2.UMI && bd1.ec == bd2.ec && bd1.flags == bd2.flags);
+      bf[i].read((char *)&bd, sizeof(bd));
 
-      int32_t prev_rn = bd1.flags;
-      while (prev_rn == bd2.flags && bf[i].good())
+      int32_t prev_rn = bd.flags;
+      while (prev_rn == bd.flags && bf[i].good())
       {
-        pq.push({{bd1, bd2}, i});
-        nr += 2;
+        pq.push({bd, i});
+        nr += 1;
 
-        bf[i].read((char *)&bd1, sizeof(bd1));
-        bf[i].read((char *)&bd2, sizeof(bd2));
-
-        assert(bd1.barcode == bd2.barcode && bd1.UMI == bd2.UMI && bd1.ec == bd2.ec && bd1.flags == bd2.flags);
+        bf[i].read((char *)&bd, sizeof(bd));
       }
-      // if the flag changes, we want to move the file pointer back by two busrecords
-      bf[i].seekg(-sizeof(bd1), std::ios::cur);
-      bf[i].seekg(-sizeof(bd1), std::ios::cur);
+      // if the flag changes, we want to move the file pointer back by one busrecord
+      bf[i].seekg(-sizeof(bd), std::ios::cur);
     }
   }
-  // when condition breaks, bd1 and bd2 not pushed to pq, add it in while loop
-  // std::cout << "size of pq: " << pq.size() << std::endl;
-  // while (!pq.empty())
-  // {
-  //   print_bd(pq.top().first.first, oh.bclen, oh.umilen);
-  //   print_bd(pq.top().first.second, oh.bclen, oh.umilen);
-  //   pq.pop();
-  // }
-  BPair prev_bp, curr_bp;
+
+  BUSData prev_bd, curr_bd;
   int prev_file, curr_file;
 
-  prev_bp = pq.top().first;
+  prev_bd = pq.top().first;
   prev_file = pq.top().second;
 
-  prev_bp.first.ec = eids_per_file[prev_file][prev_bp.first.ec];
-  prev_bp.second.ec = eids_per_file[prev_file][prev_bp.second.ec];
+  prev_bd.ec = eids_per_file[prev_file][prev_bd.ec];
 
   pq.pop();
 
-  std::vector<BUSRange> itv_left, itv_right;
+  std::vector<BUSData> itv_left, itv_right;
   int loop_num = 0;
+  std::unordered_set<int32_t> c;
+  std::vector<std::unordered_set<int32_t>> d;
+  bool readmore = false;
   while (!pq.empty())
   {
     // std::cout << "- Loop number: " << loop_num << std::endl;
-    // std::cout << "      Read number: " << prev_bp.first.flags << std::endl;
+    // std::cout << "      Read number: " << prev_bd.flags << std::endl;
 
-    curr_bp = pq.top().first;
+    curr_bd = pq.top().first;
     curr_file = pq.top().second;
-    curr_bp.first.ec = eids_per_file[curr_file][curr_bp.first.ec];
-    curr_bp.second.ec = eids_per_file[curr_file][curr_bp.second.ec];
+    curr_bd.ec = eids_per_file[curr_file][curr_bd.ec];
 
     pq.pop();
 
-    if (prev_bp.first.flags == curr_bp.first.flags && prev_bp.first.barcode == curr_bp.first.barcode && prev_bp.first.UMI == curr_bp.first.UMI)
+    if (prev_bd.flags == curr_bd.flags && prev_bd.barcode == curr_bd.barcode && prev_bd.UMI == curr_bd.UMI)
     {
 
       // std::cout << "From file " << prev_file << std::endl;
-      // print_bd(prev_bp.first, oh.bclen, oh.umilen);
-      // print_bd(prev_bp.second, oh.bclen, oh.umilen);
+      // print_bd(prev_bd.first, oh.bclen, oh.umilen);
+      // print_bd(prev_bd.second, oh.bclen, oh.umilen);
 
-      itv_left.push_back({prev_bp.first, {prev_bp.first.pad, prev_bp.second.pad}});
-      itv_right.push_back({prev_bp.first, {prev_bp.first.pad, prev_bp.second.pad}});
+      if (curr_bd.ec != prev_bd.ec)
+      {
+        d.push_back(c);
+      }
+      if (c.find(curr_bd.ec) != c.end())
+      {
+        c.erase(curr_bd.ec);
+      }
+      else
+      {
+        c.insert(curr_bd.ec);
+      }
+
+      prev_bd = curr_bd;
     }
     else
     {
-
+      readmore = true;
+      std::vector<std::unordered_set<int32_t>> elem_sets = d;
       // std::cout << "From file " << prev_file << std::endl;
-      // print_bd(prev_bp.first, oh.bclen, oh.umilen);
-      // print_bd(prev_bp.second, oh.bclen, oh.umilen);
+      // print_bd(prev_bd.first, oh.bclen, oh.umilen);
+      // print_bd(prev_bd.second, oh.bclen, oh.umilen);
 
-      BUSData BR = prev_bp.first;
-      itv_left.push_back({prev_bp.first, {prev_bp.first.pad, prev_bp.second.pad}});
-      itv_right.push_back({prev_bp.first, {prev_bp.first.pad, prev_bp.second.pad}});
-
-      // 1. sort by lower bound
-      std::sort(itv_left.begin(), itv_left.end(), itv_cmp_left);
-      // std::cout << "Original intervals: (L, R)\t"
-      //           << "(" << itv_left.size() << ", " << itv_right.size() << ")" << std::endl;
-      // for (int i = 0; i < itv_left.size(); i++)
-      // {
-      //   std::cout << itv_left[i].first.ec << ", " << itv_right[i].first.ec << ":\t"
-      //             << "[" << itv_left[i].second.first << ", " << itv_left[i].second.second << ")\t"
-      //             << "[" << itv_right[i].second.first << ", " << itv_right[i].second.second << ")" << std::endl;
-      // }
-      // 2. sort by upper bound
-      std::sort(itv_right.begin(), itv_right.end(), itv_cmp_right);
-      // 3. find elementary sets
-
-      std::pair<std::vector<std::unordered_set<int32_t>>, std::vector<std::pair<int32_t, int32_t>>> thepair = find_elem(itv_left, itv_right);
-      std::vector<std::unordered_set<int32_t>> elem_sets = thepair.first;
-      std::vector<std::pair<int32_t, int32_t>> bounds = thepair.second;
-      // std::cout << "Elementary intervals" << std::endl;
-      // for (int i = 0; i < bounds.size(); i++)
-      // {
-      //   std::cout << "[" << bounds[i].first << ", " << bounds[i].second << ")" << std::endl;
-      // }
-
-      // std::cout << "before intersecting, tids, #elem intvs: " << elem_sets.size() << std::endl;
-      // for (int i = 0; i < elem_sets.size(); i++)
-      // {
-      //   for (auto &s : elem_sets[i])
-      //   {
-      //     for (auto &t : get_tids(oh, ecmapinv, s))
-      //     {
-      //       std::cout << t << ", ";
-      //     }
-      //   }
-      //   std::cout << std::endl;
-      // }
-
-      // 4. intersect tids in the ecs
-      // 4a. add the set of tids for a single elem itv
-      // only do this if we have elem sets
       if (elem_sets.size() > 0)
       {
         std::vector<int32_t> tids_per_elem, prev_tids;
@@ -466,19 +430,19 @@ void bustools_merge_different_index(const Bustools_opt &opt)
           // if the ec doesnt exist, make a new one
           if (findec == ecmapinv.end())
           {
-            BR.ec = ecmapinv.size();
+            prev_bd.ec = ecmapinv.size();
             oh.ecs.push_back(prev_tids);
-            ecmapinv.insert({prev_tids, BR.ec});
+            ecmapinv.insert({prev_tids, prev_bd.ec});
           }
           else // if it does exist, assign it
           {
-            BR.ec = findec->second;
+            prev_bd.ec = findec->second;
           }
           // write the busrecord
           // std::cout << "ec: " << BR.ec << std::endl;
-          BR.count = 1;
-          BR.pad = 0;
-          outf.write((char *)&BR, sizeof(BR));
+          prev_bd.count = 1;
+          prev_bd.pad = 0;
+          outf.write((char *)&prev_bd, sizeof(prev_bd));
           ++nw;
           prev_tids.clear();
         }
@@ -490,84 +454,45 @@ void bustools_merge_different_index(const Bustools_opt &opt)
       // prev_tids is now a set of tids
 
       elem_sets.clear();
-      bounds.clear();
-      itv_left.clear();
-      itv_right.clear();
+      c.clear();
+      d.clear();
+      c.insert(prev_bd.ec);
     }
-    prev_bp = std::move(curr_bp); // update the bus pair
+
+    prev_bd = curr_bd;
     prev_file = curr_file;
-
     // read in more data!
-    if (bf[curr_file].good())
+    if (readmore)
     {
-
-      bf[curr_file].read((char *)&bd1, sizeof(bd1));
-      bf[curr_file].read((char *)&bd2, sizeof(bd2));
-      assert(bd1.barcode == bd2.barcode && bd1.UMI == bd2.UMI && bd1.ec == bd2.ec && bd1.flags == bd2.flags);
-
-      int32_t prev_nr = bd2.flags;
-      while (prev_nr == bd2.flags && bf[curr_file].good())
+      readmore = false;
+      for (int i = 0; i < nf; i++)
       {
-        pq.push({{bd1, bd2}, curr_file});
-        nr += 2;
+        // if we can read data
+        if (bf[i].good())
+        {
+          bf[i].read((char *)&bd, sizeof(bd));
 
-        bf[curr_file].read((char *)&bd1, sizeof(bd1));
-        bf[curr_file].read((char *)&bd2, sizeof(bd2));
-        assert(bd1.barcode == bd2.barcode && bd1.UMI == bd2.UMI && bd1.ec == bd2.ec && bd1.flags == bd2.flags);
+          int32_t prev_rn = bd.flags;
+          while (prev_rn == bd.flags && bf[i].good())
+          {
+            pq.push({bd, i});
+            nr += 1;
+
+            bf[i].read((char *)&bd, sizeof(bd));
+          }
+          // if the flag changes, we want to move the file pointer back by one busrecord
+          bf[i].seekg(-sizeof(bd), std::ios::cur);
+        }
       }
-      bf[curr_file].seekg(-sizeof(bd1), std::ios::cur);
-      bf[curr_file].seekg(-sizeof(bd2), std::ios::cur);
     }
     loop_num += 1;
   }
-  // delete after
+  // BEGIN STRAGGLERS
+  std::vector<std::unordered_set<int32_t>> elem_sets = d;
   // std::cout << "From file " << prev_file << std::endl;
-  // print_bd(prev_bp.first, oh.bclen, oh.umilen);
-  // print_bd(prev_bp.second, oh.bclen, oh.umilen);
+  // print_bd(prev_bd.first, oh.bclen, oh.umilen);
+  // print_bd(prev_bd.second, oh.bclen, oh.umilen);
 
-  BUSData BR = prev_bp.first;
-  itv_left.push_back({prev_bp.first, {prev_bp.first.pad, prev_bp.second.pad}});
-  itv_right.push_back({prev_bp.first, {prev_bp.first.pad, prev_bp.second.pad}});
-
-  // 1. sort by lower bound
-  std::sort(itv_left.begin(), itv_left.end(), itv_cmp_left);
-  // std::cout << "Original intervals: (L, R)\t"
-  //           << "(" << itv_left.size() << ", " << itv_right.size() << ")" << std::endl;
-  // for (int i = 0; i < itv_left.size(); i++)
-  // {
-  //   std::cout << itv_left[i].first.ec << ", " << itv_right[i].first.ec << ":\t"
-  //             << "[" << itv_left[i].second.first << ", " << itv_left[i].second.second << ")\t"
-  //             << "[" << itv_right[i].second.first << ", " << itv_right[i].second.second << ")" << std::endl;
-  // }
-  // 2. sort by upper bound
-  std::sort(itv_right.begin(), itv_right.end(), itv_cmp_right);
-  // 3. find elementary sets
-
-  std::pair<std::vector<std::unordered_set<int32_t>>, std::vector<std::pair<int32_t, int32_t>>> thepair = find_elem(itv_left, itv_right);
-  std::vector<std::unordered_set<int32_t>> elem_sets = thepair.first;
-  std::vector<std::pair<int32_t, int32_t>> bounds = thepair.second;
-  // std::cout << "Elementary intervals" << std::endl;
-  // for (int i = 0; i < bounds.size(); i++)
-  // {
-  //   std::cout << "[" << bounds[i].first << ", " << bounds[i].second << ")" << std::endl;
-  // }
-
-  // std::cout << "before intersecting, tids, #elem intvs: " << elem_sets.size() << std::endl;
-  // for (int i = 0; i < elem_sets.size(); i++)
-  // {
-  //   for (auto &s : elem_sets[i])
-  //   {
-  //     for (auto &t : get_tids(oh, ecmapinv, s))
-  //     {
-  //       std::cout << t << ", ";
-  //     }
-  //   }
-  //   std::cout << std::endl;
-  // }
-
-  // 4. intersect tids in the ecs
-  // 4a. add the set of tids for a single elem itv
-  // only do this if we have elem sets
   if (elem_sets.size() > 0)
   {
     std::vector<int32_t> tids_per_elem, prev_tids;
@@ -616,31 +541,28 @@ void bustools_merge_different_index(const Bustools_opt &opt)
       // if the ec doesnt exist, make a new one
       if (findec == ecmapinv.end())
       {
-        BR.ec = ecmapinv.size();
+        curr_bd.ec = ecmapinv.size();
         oh.ecs.push_back(prev_tids);
-        ecmapinv.insert({prev_tids, BR.ec});
+        ecmapinv.insert({prev_tids, curr_bd.ec});
       }
       else // if it does exist, assign it
       {
-        BR.ec = findec->second;
+        curr_bd.ec = findec->second;
       }
       // write the busrecord
       // std::cout << "ec: " << BR.ec << std::endl;
-      BR.count = 1;
-      BR.pad = 0;
-      outf.write((char *)&BR, sizeof(BR));
+      curr_bd.count = 1;
+      curr_bd.pad = 0;
+      outf.write((char *)&curr_bd, sizeof(curr_bd));
       ++nw;
       prev_tids.clear();
     }
     // std::cout << "EC: " << BR.ec << std::endl;
     // std::cout << "##########################" << std::endl;
+    tids_per_elem.clear();
   }
+  // END OF STRAGGLERS
 
-  // prev_tids is now a set of tids
-
-  elem_sets.clear();
-  itv_left.clear();
-  itv_right.clear();
   // close all of the busfiles
   for (int i = 0; i < nf; i++)
   {
