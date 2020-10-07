@@ -58,116 +58,6 @@ inline void print_bd(const BUSData &bd, const size_t bclen, const size_t umilen)
   std::cout << binaryToString(bd.barcode, bclen) << "\t" << binaryToString(bd.UMI, umilen) << "\t" << bd.ec << "\t" << bd.count << "\t" << bd.flags << "\t" << bd.pad << std::endl;
 }
 
-inline bool itv_cmp_left(const BUSRange &x, const BUSRange &y)
-{
-  if (x.second.first == y.second.first)
-  {
-    return x.second.second < y.second.second;
-  }
-  else
-  {
-    return x.second.first < y.second.first;
-  }
-}
-
-inline bool itv_cmp_right(const BUSRange &x, BUSRange &y)
-{
-  if (x.second.second == y.second.second)
-  {
-    return x.second.first < y.second.first;
-  }
-  else
-  {
-    return x.second.second < y.second.second;
-  }
-}
-
-// inline bool ncmp(const BP &a, const BP &b)
-// {
-//   if (a.first.flags == b.first.flags)
-//   {
-//     if (a.first.ec == b.first.ec)
-//     {
-//       return a.second > b.second;
-//     }
-//     else
-//     {
-//       return a.first.ec > b.first.ec;
-//     }
-//   }
-//   else
-//   {
-//     return a.first.flags > b.first.flags;
-//   }
-// }
-
-inline bool pqcmp(const std::pair<BUSData, int> &a, const std::pair<BUSData, int> &b)
-{
-  if (a.first.flags == b.first.flags)
-  {
-    if (a.first.pad == b.first.pad)
-    {
-      return a.second > b.second;
-    }
-    else
-    {
-      return a.first.pad > b.first.pad;
-    }
-  }
-  else
-  {
-    return a.first.flags > b.first.flags;
-  }
-}
-
-inline std::pair<std::vector<std::unordered_set<int32_t>>, std::vector<std::pair<int32_t, int32_t>>> find_elem(std::vector<BUSRange> &l, std::vector<BUSRange> &r)
-{
-  std::vector<std::unordered_set<int32_t>> d;
-  std::vector<std::pair<int32_t, int32_t>> bounds;
-
-  // initializers
-  int lidx, ridx;
-  int32_t start, stop;
-  std::unordered_set<int32_t> c;
-  // declarations
-  lidx = 0;
-  start = l[lidx].second.first;
-
-  for (int ridx = 0; ridx < r.size(); ridx++)
-  {
-
-    c.insert(r[ridx].first.ec);
-
-    while (lidx < l.size() && l[lidx].second.first <= r[ridx].second.second)
-    {
-      stop = l[lidx].second.first;
-
-      c.insert(l[lidx].first.ec);
-
-      if (stop > start)
-      {
-        c.erase(l[lidx].first.ec);
-        d.push_back(c);
-        bounds.push_back({start, stop});
-        start = stop;
-        c.insert(l[lidx].first.ec);
-      }
-      lidx += 1;
-    }
-
-    if (start < r[ridx].second.second)
-    {
-      stop = r[ridx].second.second;
-      d.push_back(c);
-      bounds.push_back({start, stop});
-      start = stop;
-    }
-    c.erase(r[ridx].first.ec);
-  }
-
-  return {d, bounds};
-}
-
 // vocab
 // txn: string representing transcript str
 // tid: number indexing the transcript in the file
@@ -178,398 +68,231 @@ inline std::pair<std::vector<std::unordered_set<int32_t>>, std::vector<std::pair
 
 void bustools_merge_different_index(const Bustools_opt &opt)
 {
-  int nf = opt.files.size();
-
-  std::vector<std::ifstream> bf(nf); // vector of bus file streams
-  std::vector<BUSHeader> vh;         // vector of bus headers
-
-  // populate the headers (we ignore ec for now)
-  for (int i = 0; i < nf; i++)
-  {
-    bf[i].open((opt.files[i] + "/output.bus").c_str(), std::ios::binary);
-    BUSHeader h;
-    parseHeader(bf[i], h); // parse the header into h
-
-    parseECs(opt.files[i] + "/matrix.ec", h); // parse ecs
-    vh.push_back(std::move(h));               // place the ecs into h
-  }
-  std::cout << "[info] parsed output.bus files" << std::endl;
-
-  // parse the transcripts.txt
+  // read in transcripts.txt
+  std::ifstream ifn(opt.count_txp);
+  std::string txn;
+  int32_t tid;
   std::unordered_map<std::string, int32_t> txn_tid;
-  std::vector<std::vector<int32_t>> tids_per_file; // list of tids as they occur for each file
-  std::vector<int32_t> tids;                       // a vector of tids
-  int32_t tid = 0;
+  std::vector<int32_t> tids;
 
-  std::ofstream ofn(opt.output + "/transcripts.txt"); // master transcripts.txt
-
-  // iterate through each file and populate txn_tid, tids perfile
-  for (int i = 0; i < nf; i++)
+  // insert tids into a vector
+  while (ifn >> txn)
   {
-    tids.clear();
-    std::ifstream ifn(opt.files[i] + "/transcripts.txt");
-    std::string txn;
-
-    while (ifn >> txn) // while still have transcript data
+    auto ok = txn_tid.insert({txn, tid});
+    if (ok.second)
     {
-      auto ok = txn_tid.insert({txn, tid}); // insert transcript and new index assoc with it
-      if (ok.second)                        // if the insertion successful
-      {
-        tids.push_back(tid); // add the index to tids (this is a list of new index)
-        ofn << txn << "\n";  // write to file
-        tid += 1;            // increment transcript index
-      }
-      else
-      {
-        tids.push_back(ok.first->second); // this only hapens when the transcript appears in more than one busfile
-      }
-    }
-    tids_per_file.push_back(tids); // new index
-  }
-
-  ofn.close();
-  std::cout << "[info] parsed transcripts.txt" << std::endl;
-
-  // all of the ecs are in the header
-  // h.ecs is a vector<vector<ints>>
-  // the first positional index is the equivalence eid
-  // so h.ecs[eid_1] -> returns a vector of tids wrt local indexing
-  BUSHeader oh;
-  oh.version = BUSFORMAT_VERSION;
-  oh.text = "Merged files";
-
-  oh.bclen = vh[0].bclen;
-  oh.umilen = vh[0].umilen;
-
-  std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv; // set{tids} (ec) to eid it came from
-
-  for (int i = 0; i < tid; i++)
-  {
-    oh.ecs.push_back({i});
-    ecmapinv.insert({{i}, i});
-  }
-
-  std::vector<std::vector<int32_t>> eids_per_file;
-  std::vector<int32_t> eids;
-  int32_t eid = ecmapinv.size();
-
-  for (int i = 0; i < nf; i++)
-  {
-    eids.clear();
-
-    BUSHeader h = vh[i];
-    const auto &tids = tids_per_file[i]; // new index of tids for that file of the length of that file
-
-    for (const auto &ecs : h.ecs) // ecs is a set of tids std::vector<int32_t>
-    {
-      std::vector<int32_t> new_ecs(ecs.size());
-
-      // convert tid to new coordinates
-      for (int j = 0; j < ecs.size(); j++)
-      {
-        new_ecs[j] = tids[ecs[j]];
-      }
-
-      // check to see if the set exists in ecmapinv
-      std::sort(new_ecs.begin(), new_ecs.end());
-      new_ecs.erase(std::unique(new_ecs.begin(), new_ecs.end()), new_ecs.end()); // keep only one of the duplicates
-      auto it = ecmapinv.find(new_ecs);                                          // see if new_ecs exists
-      if (it != ecmapinv.end())
-      {
-        eid = it->second; // return the eid that it corresponds to
-      }
-      else
-      {
-        eid = ecmapinv.size();     // make new eid
-        oh.ecs.push_back(new_ecs); // add the set of tids (new ref)
-        ecmapinv.insert({new_ecs, eid});
-      }
-      eids.push_back(eid);
-    }
-    eids_per_file.push_back(std::move(eids));
-  }
-  std::cout << "[info] parsed matrix.ec files" << std::endl;
-  // generate ecmap from ecmapinv
-  std::vector<std::vector<int32_t>> ecmap(ecmapinv.size());
-  for (const auto &ec : ecmapinv)
-  {
-    ecmap[ec.second] = ec.first; // eid -> ecs (set of tids)
-  }
-
-  // Process the busfiles
-  std::ofstream outf(opt.output + "/merged.bus");
-  writeHeader(outf, oh);
-  // writeECs(opt.output + "/raw.ec", oh); // prior to reading bus records
-
-  std::priority_queue<std::pair<BUSData, int>, std::vector<std::pair<BUSData, int>>, std::function<bool(const std::pair<BUSData, int> &a, const std::pair<BUSData, int> &b)>> pq(pqcmp);
-  BUSData bd;
-
-  size_t nr = 0, nw = 0;
-  // fill the pq
-  for (int i = 0; i < nf; i++)
-  {
-    // if we can read data
-    if (bf[i].good())
-    {
-      bf[i].read((char *)&bd, sizeof(bd));
-
-      int32_t prev_rn = bd.flags;
-      while (prev_rn == bd.flags && bf[i].good())
-      {
-        pq.push({bd, i});
-        nr += 1;
-
-        bf[i].read((char *)&bd, sizeof(bd));
-      }
-      // if the flag changes, we want to move the file pointer back by one busrecord
-      bf[i].seekg(-sizeof(bd), std::ios::cur);
-    }
-  }
-
-  BUSData prev_bd, curr_bd;
-  int prev_file, curr_file;
-
-  prev_bd = pq.top().first;
-  prev_file = pq.top().second;
-
-  prev_bd.ec = eids_per_file[prev_file][prev_bd.ec];
-
-  pq.pop();
-
-  std::vector<BUSData> itv_left, itv_right;
-  int loop_num = 0;
-  std::unordered_set<int32_t> c;
-  std::vector<std::unordered_set<int32_t>> d;
-  bool readmore = false;
-  while (!pq.empty())
-  {
-    // std::cout << "- Loop number: " << loop_num << std::endl;
-    // std::cout << "      Read number: " << prev_bd.flags << std::endl;
-
-    curr_bd = pq.top().first;
-    curr_file = pq.top().second;
-    curr_bd.ec = eids_per_file[curr_file][curr_bd.ec];
-
-    pq.pop();
-
-    if (prev_bd.flags == curr_bd.flags && prev_bd.barcode == curr_bd.barcode && prev_bd.UMI == curr_bd.UMI)
-    {
-
-      // std::cout << "From file " << prev_file << std::endl;
-      // print_bd(prev_bd.first, oh.bclen, oh.umilen);
-      // print_bd(prev_bd.second, oh.bclen, oh.umilen);
-
-      if (curr_bd.ec != prev_bd.ec)
-      {
-        d.push_back(c);
-      }
-      if (c.find(curr_bd.ec) != c.end())
-      {
-        c.erase(curr_bd.ec);
-      }
-      else
-      {
-        c.insert(curr_bd.ec);
-      }
-
-      prev_bd = curr_bd;
+      tids.push_back(tid);
+      tid++;
     }
     else
     {
-      readmore = true;
-      std::vector<std::unordered_set<int32_t>> elem_sets = d;
-      // std::cout << "From file " << prev_file << std::endl;
-      // print_bd(prev_bd.first, oh.bclen, oh.umilen);
-      // print_bd(prev_bd.second, oh.bclen, oh.umilen);
-
-      if (elem_sets.size() > 0)
-      {
-        std::vector<int32_t> tids_per_elem, prev_tids;
-        for (auto &e : elem_sets[0])
-        {
-          const auto &tids = oh.ecs[e];
-          tids_per_elem.insert(tids_per_elem.end(), tids.begin(), tids.end());
-        }
-        std::sort(tids_per_elem.begin(), tids_per_elem.end());
-        tids_per_elem.erase(std::unique(tids_per_elem.begin(), tids_per_elem.end()), tids_per_elem.end());
-
-        prev_tids = std::move(tids_per_elem);
-
-        // 4b. add the set of tids for the rest of the elem itv
-        // if there is more than one elem itv
-        if (elem_sets.size() > 1)
-        {
-          for (int i = 1; i < elem_sets.size(); i++)
-          {
-            for (auto &e : elem_sets[i])
-            {
-              const auto &tids = oh.ecs[e];
-              tids_per_elem.insert(tids_per_elem.end(), tids.begin(), tids.end());
-            }
-            std::sort(tids_per_elem.begin(), tids_per_elem.end());
-            tids_per_elem.erase(std::unique(tids_per_elem.begin(), tids_per_elem.end()), tids_per_elem.end());
-
-            // Intersect the vectors
-            if (tids_per_elem.size())
-            {
-              prev_tids = intersect_vecs(prev_tids, tids_per_elem);
-              tids_per_elem.clear();
-            }
-          }
-        }
-        // std::cout << "After intersecting TIDS" << std::endl;
-        // for (auto &t : prev_tids)
-        // {
-        //   std::cout << t << ", ";
-        // }
-        // std::cout << std::endl;
-        if (prev_tids.size()) // if there are tids left over
-        {
-          // we find the ec associated with prev_tids
-          auto findec = ecmapinv.find(prev_tids);
-          // if the ec doesnt exist, make a new one
-          if (findec == ecmapinv.end())
-          {
-            prev_bd.ec = ecmapinv.size();
-            oh.ecs.push_back(prev_tids);
-            ecmapinv.insert({prev_tids, prev_bd.ec});
-          }
-          else // if it does exist, assign it
-          {
-            prev_bd.ec = findec->second;
-          }
-          // write the busrecord
-          // std::cout << "ec: " << BR.ec << std::endl;
-          prev_bd.count = 1;
-          prev_bd.pad = 0;
-          outf.write((char *)&prev_bd, sizeof(prev_bd));
-          ++nw;
-          prev_tids.clear();
-        }
-        // std::cout << "EC: " << BR.ec << std::endl;
-        // std::cout << "##########################" << std::endl;
-        tids_per_elem.clear();
-      }
-
-      // prev_tids is now a set of tids
-
-      elem_sets.clear();
-      c.clear();
-      d.clear();
-      c.insert(prev_bd.ec);
+      tids.push_back(ok.first->second);
     }
-
-    prev_bd = curr_bd;
-    prev_file = curr_file;
-    // read in more data!
-    if (readmore)
-    {
-      readmore = false;
-      for (int i = 0; i < nf; i++)
-      {
-        // if we can read data
-        if (bf[i].good())
-        {
-          bf[i].read((char *)&bd, sizeof(bd));
-
-          int32_t prev_rn = bd.flags;
-          while (prev_rn == bd.flags && bf[i].good())
-          {
-            pq.push({bd, i});
-            nr += 1;
-
-            bf[i].read((char *)&bd, sizeof(bd));
-          }
-          // if the flag changes, we want to move the file pointer back by one busrecord
-          bf[i].seekg(-sizeof(bd), std::ios::cur);
-        }
-      }
-    }
-    loop_num += 1;
   }
-  // BEGIN STRAGGLERS
-  std::vector<std::unordered_set<int32_t>> elem_sets = d;
-  // std::cout << "From file " << prev_file << std::endl;
-  // print_bd(prev_bd.first, oh.bclen, oh.umilen);
-  // print_bd(prev_bd.second, oh.bclen, oh.umilen);
+  ifn.close();
+  std::cout << "[info] parsed transcripts.txt" << std::endl;
 
-  if (elem_sets.size() > 0)
+  // read in matrix.ec
+  BUSHeader h, bh;
+  parseECs(opt.count_ecs, h);
+  // put the ecs into a ecmap inv
+  std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
+
+  for (int32_t ec; ec < h.ecs.size(); ec++)
   {
-    std::vector<int32_t> tids_per_elem, prev_tids;
-    for (auto &e : elem_sets[0])
-    {
-      const auto &tids = oh.ecs[e];
-      tids_per_elem.insert(tids_per_elem.end(), tids.begin(), tids.end());
-    }
-    std::sort(tids_per_elem.begin(), tids_per_elem.end());
-    tids_per_elem.erase(std::unique(tids_per_elem.begin(), tids_per_elem.end()), tids_per_elem.end());
+    ecmapinv.insert({h.ecs[ec], ec});
+  }
+  std::cout << "[info] parsed matrix.ec" << std::endl;
 
-    prev_tids = std::move(tids_per_elem);
+  // read in BUS Records grouped by flags
+  std::streambuf *inbuf;
+  std::ifstream inf;
+  if (!opt.stream_in)
+  {
+    inf.open(opt.files[0].c_str(), std::ios::binary);
+    inbuf = inf.rdbuf();
+  }
+  else
+  {
+    inbuf = std::cin.rdbuf();
+  }
 
-    // 4b. add the set of tids for the rest of the elem itv
-    // if there is more than one elem itv
-    if (elem_sets.size() > 1)
+  std::istream in(inbuf);
+  parseHeader(in, bh);
+  uint32_t bclen = bh.bclen;
+  uint32_t umilen = bh.umilen;
+  int rc = 1;
+
+  // implement std queue
+
+  std::queue<BUSData> queue;
+  BUSData bd, prev, curr;
+  int N = 512;
+  size_t nr = 0, nw = 0;
+  for (int i = 0; i < N; i++)
+  {
+    in.read((char *)&bd, sizeof(BUSData));
+    queue.push(bd);
+    nr++;
+  }
+
+  prev = queue.front();
+  queue.pop();
+  curr = queue.front();
+  queue.pop();
+
+  std::unordered_set<int32_t> c;
+  std::vector<std::unordered_set<int32_t>> elem_sets;
+
+  std::ofstream outf(opt.output);
+  writeHeader(outf, bh);
+
+  while (true)
+  {
+    print_bd(prev, bclen, umilen);
+    elem_sets.clear();
+    c.clear();
+    while (prev.flags == curr.flags && prev.barcode == curr.barcode && prev.UMI == curr.UMI)
     {
-      for (int i = 1; i < elem_sets.size(); i++)
+      print_bd(curr, bclen, umilen);
+      if (curr.ec != prev.ec)
       {
+        if (c.size())
+        {
+          elem_sets.push_back(c);
+        }
+      }
+
+      if (c.find(curr.ec) != c.end())
+      {
+        c.erase(curr.ec);
+      }
+      else
+      {
+        c.insert(curr.ec);
+      }
+
+      if (queue.empty())
+      {
+        break;
+      }
+      // read in more data
+      prev = std::move(curr);
+      curr = queue.front();
+      queue.pop();
+      if (in.good())
+      {
+        in.read((char *)&bd, sizeof(BUSData));
+        queue.push(bd);
+        nr++;
+      }
+
+      //print_bd(curr, bclen, umilen);
+    }
+
+    // do the intersection
+    if (elem_sets.size())
+    {
+
+      //there is a weird segfault when printing this out..
+      // std::cout << "before intersecting TIDS" << std::endl;
+      // for (auto &e : elem_sets)
+      // {
+      //   if (e.size())
+      //   {
+      //     for (auto &eid : e)
+      //     {
+      //       for (auto &t : get_tids(h, ecmapinv, eid))
+      //       {
+      //         std::cout << t << ", ";
+      //       }
+      //     }
+      //   }
+      //   std::cout << std::endl;
+      // }
+      // std::cout << "mark the territory" << std::endl;
+
+      std::vector<int32_t> tids_per_elem, prev_tids;
+      bool single = true;
+      std::vector<int32_t> tids;
+      for (int i = 0; i < elem_sets.size(); i++)
+      {
+
         for (auto &e : elem_sets[i])
         {
-          const auto &tids = oh.ecs[e];
+          tids = h.ecs[e];
           tids_per_elem.insert(tids_per_elem.end(), tids.begin(), tids.end());
+          tids.clear();
         }
         std::sort(tids_per_elem.begin(), tids_per_elem.end());
         tids_per_elem.erase(std::unique(tids_per_elem.begin(), tids_per_elem.end()), tids_per_elem.end());
 
-        // Intersect the vectors
-        if (tids_per_elem.size())
+        if (i == 0)
         {
-          prev_tids = intersect_vecs(prev_tids, tids_per_elem);
+          prev_tids = std::move(tids_per_elem);
+        }
+        else
+        {
+          prev_tids = intersect_vecs(prev_tids, tids_per_elem); // problem may be here..
+          if (!prev_tids.size())                                // an intermediary intersection is empty
+          {
+            break;
+          }
           tids_per_elem.clear();
         }
       }
-    }
-    // std::cout << "After intersecting TIDS" << std::endl;
-    // for (auto &t : prev_tids)
-    // {
-    //   std::cout << t << ", ";
-    // }
-    // std::cout << std::endl;
-    if (prev_tids.size()) // if there are tids left over
-    {
-      // we find the ec associated with prev_tids
-      auto findec = ecmapinv.find(prev_tids);
-      // if the ec doesnt exist, make a new one
-      if (findec == ecmapinv.end())
+
+      // std::cout << "After intersecting TIDS" << std::endl;
+      // for (auto &t : prev_tids)
+      // {
+      //   std::cout << t << ", ";
+      // }
+      // std::cout << std::endl;
+
+      if (prev_tids.size()) // if there are tids left over write the record
       {
-        curr_bd.ec = ecmapinv.size();
-        oh.ecs.push_back(prev_tids);
-        ecmapinv.insert({prev_tids, curr_bd.ec});
+        // we find the ec associated with prev_tids
+        auto findec = ecmapinv.find(prev_tids);
+        // if the ec doesnt exist, make a new one
+        if (findec == ecmapinv.end())
+        {
+          //std::cout << "end of ecmapinv" << std::endl;
+          prev.ec = ecmapinv.size();
+          h.ecs.push_back(prev_tids);
+          ecmapinv.insert({prev_tids, prev.ec});
+        }
+        else // if it does exist, assign it
+        {
+          //std::cout << "found ecmap" << std::endl;
+          prev.ec = findec->second;
+        }
+        // write the busrecord
+        ///std::cout << "ec: " << BR.ec << std::endl;
+        prev.count = 1;
+        prev.pad = 0;
+        outf.write((char *)&prev, sizeof(prev));
+        nw++;
       }
-      else // if it does exist, assign it
-      {
-        curr_bd.ec = findec->second;
-      }
-      // write the busrecord
-      // std::cout << "ec: " << BR.ec << std::endl;
-      curr_bd.count = 1;
-      curr_bd.pad = 0;
-      outf.write((char *)&curr_bd, sizeof(curr_bd));
-      ++nw;
+      tids_per_elem.clear();
       prev_tids.clear();
     }
-    // std::cout << "EC: " << BR.ec << std::endl;
-    // std::cout << "##########################" << std::endl;
-    tids_per_elem.clear();
-  }
-  // END OF STRAGGLERS
 
-  // close all of the busfiles
-  for (int i = 0; i < nf; i++)
-  {
-    bf[i].close();
+    // read in more data
+    if (queue.empty())
+    {
+      break;
+    }
+    prev = std::move(curr);
+    curr = queue.front();
+    queue.pop();
+    if (in.good())
+    {
+      in.read((char *)&bd, sizeof(BUSData));
+      queue.push(bd);
+      nr++;
+    }
   }
-  // write the matrix.ec
-  writeECs(opt.output + "/matrix.ec", oh);
+  // std::cout << "end" << std::endl;
   std::cerr << "bus records read:    " << nr << std::endl;
   std::cerr << "bus records written: " << nw << std::endl;
 }

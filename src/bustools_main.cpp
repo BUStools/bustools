@@ -31,6 +31,7 @@
 #include "bustools_correct.h"
 #include "bustools_merge.h"
 #include "bustools_extract.h"
+#include "bustools_mash.h"
 
 int my_mkdir(const char *path, mode_t mode)
 {
@@ -176,6 +177,46 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt &opt)
 }
 
 void parse_ProgramOptions_merge(int argc, char **argv, Bustools_opt &opt)
+{
+  const char *opt_string = "o:e:t:";
+  static struct option long_options[] = {
+      {"output", required_argument, 0, 'o'},
+
+      {"ecmap", required_argument, 0, 'e'},
+      {"txnames", required_argument, 0, 't'},
+      {0, 0, 0, 0}};
+
+  int option_index = 0, c;
+
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1)
+  {
+
+    switch (c)
+    {
+    case 'o':
+      opt.output = optarg;
+      break;
+    case 't':
+      opt.count_txp = optarg;
+      break;
+    case 'e':
+      opt.count_ecs = optarg;
+      break;
+    default:
+      break;
+    }
+  }
+
+  while (optind < argc)
+    opt.files.push_back(argv[optind++]);
+
+  if (opt.files.size() == 1 && opt.files[0] == "-")
+  {
+    opt.stream_in = true;
+  }
+}
+
+void parse_ProgramOptions_mash(int argc, char **argv, Bustools_opt &opt)
 {
   const char *opt_string = "o:";
 
@@ -814,6 +855,76 @@ bool check_ProgramOptions_merge(Bustools_opt &opt)
 {
   bool ret = true;
 
+  // check for output directory
+  if (!opt.stream_out)
+  {
+    if (opt.output.empty())
+    {
+      std::cerr << "Error: missing output file" << std::endl;
+      ret = false;
+    }
+    else if (!checkOutputFileValid(opt.output))
+    {
+      std::cerr << "Error: unable to open output file" << std::endl;
+      ret = false;
+    }
+  }
+
+  if (opt.files.size() == 0)
+  {
+    std::cerr << "Error: Missing BUS input files" << std::endl;
+    ret = false;
+  }
+  else
+  {
+    if (!opt.stream_in)
+    {
+      for (const auto &it : opt.files)
+      {
+        if (!checkFileExists(it))
+        {
+          std::cerr << "Error: File not found, " << it << std::endl;
+          ret = false;
+        }
+      }
+    }
+  }
+
+  if (opt.count_ecs.size() == 0)
+  {
+    std::cerr << "Error: missing equivalence class mapping file" << std::endl;
+    ret = false;
+  }
+  else
+  {
+    if (!checkFileExists(opt.count_ecs))
+    {
+      std::cerr << "Error: File not found " << opt.count_ecs << std::endl;
+      ret = false;
+    }
+  }
+
+  if (opt.count_txp.size() == 0)
+  {
+    std::cerr << "Error: missing transcript name file" << std::endl;
+    ret = false;
+  }
+  else
+  {
+    if (!checkFileExists(opt.count_txp))
+    {
+      std::cerr << "Error: File not found " << opt.count_txp << std::endl;
+      ret = false;
+    }
+  }
+
+  return ret;
+}
+
+bool check_ProgramOptions_mash(Bustools_opt &opt)
+{
+  bool ret = true;
+
   if (opt.output.empty())
   {
     std::cerr << "Error: missing output directory" << std::endl;
@@ -874,18 +985,6 @@ bool check_ProgramOptions_merge(Bustools_opt &opt)
         }
       }
     }
-
-    //     // check if output directory exists or if we can create it
-    //     if (checkDirectoryExists(opt.output.c_str())) {
-    //       std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
-    //       ret = false;
-    //     } else {
-    //       // create directory
-    //       if (my_mkdir(opt.output.c_str(), 0777) == -1) {
-    //         std::cerr << "Error: could not create directory " << opt.output << std::endl;
-    //         ret = false;
-    //       }
-    //     }
   }
 
   return ret;
@@ -1636,12 +1735,23 @@ void Bustools_capture_Usage()
 
 void Bustools_merge_Usage()
 {
-  std::cout << "Usage: bustools merge [options] directories" << std::endl
+  std::cout << "Usage: bustools merge [options] sorted-bus-file by flag" << std::endl
+            << std::endl
+            << "Options: " << std::endl
+            << "-o, --output          Output merged file" << std::endl
+            << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
+            << "-t, --txnames         File with names of transcripts" << std::endl
+            << std::endl;
+}
+
+void Bustools_mash_Usage()
+{
+  std::cout << "Usage: bustools mash [options] directories" << std::endl
             << "  Note: BUS files should be sorted by flag" << std::endl
             << std::endl
             << "Options: " << std::endl
             << "-t, --threads         Number of threads to use" << std::endl
-            << "-o, --output          Directory for merged output" << std::endl
+            << "-o, --output          Directory for mashed output" << std::endl
             << std::endl;
 }
 
@@ -1815,6 +1925,25 @@ int main(int argc, char **argv)
       else
       {
         Bustools_merge_Usage();
+        exit(1);
+      }
+    }
+    else if (cmd == "mash")
+    {
+      if (disp_help)
+      {
+        Bustools_mash_Usage();
+        exit(0);
+      }
+      parse_ProgramOptions_mash(argc - 1, argv + 1, opt);
+      if (check_ProgramOptions_mash(opt))
+      {
+        bustools_mash(opt);
+        // bustools_mash(opt);
+      }
+      else
+      {
+        Bustools_mash_Usage();
         exit(1);
       }
     }
