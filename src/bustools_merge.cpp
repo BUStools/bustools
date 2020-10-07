@@ -127,7 +127,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
 
   std::queue<BUSData> queue;
   BUSData bd, prev, curr;
-  int N = 512;
+  int N = 1024;
   size_t nr = 0, nw = 0;
   for (int i = 0; i < N; i++)
   {
@@ -217,28 +217,30 @@ void bustools_merge_different_index(const Bustools_opt &opt)
       std::vector<int32_t> tids;
       for (int i = 0; i < elem_sets.size(); i++)
       {
-
-        for (auto &e : elem_sets[i])
+        if (elem_sets[i].size())
         {
-          tids = h.ecs[e];
-          tids_per_elem.insert(tids_per_elem.end(), tids.begin(), tids.end());
-          tids.clear();
-        }
-        std::sort(tids_per_elem.begin(), tids_per_elem.end());
-        tids_per_elem.erase(std::unique(tids_per_elem.begin(), tids_per_elem.end()), tids_per_elem.end());
-
-        if (i == 0)
-        {
-          prev_tids = std::move(tids_per_elem);
-        }
-        else
-        {
-          prev_tids = intersect_vecs(prev_tids, tids_per_elem); // problem may be here..
-          if (!prev_tids.size())                                // an intermediary intersection is empty
+          for (auto &e : elem_sets[i])
           {
-            break;
+            tids = h.ecs[e];
+            tids_per_elem.insert(tids_per_elem.end(), tids.begin(), tids.end());
+            tids.clear();
           }
-          tids_per_elem.clear();
+          std::sort(tids_per_elem.begin(), tids_per_elem.end());
+          tids_per_elem.erase(std::unique(tids_per_elem.begin(), tids_per_elem.end()), tids_per_elem.end());
+
+          if (i == 0)
+          {
+            prev_tids = std::move(tids_per_elem);
+          }
+          else
+          {
+            prev_tids = intersect_vecs(prev_tids, tids_per_elem); // problem may be here..
+            if (!prev_tids.size())                                // an intermediary intersection is empty
+            {
+              break;
+            }
+            tids_per_elem.clear();
+          }
         }
       }
 
