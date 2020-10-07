@@ -235,11 +235,11 @@ void bustools_merge_different_index(const Bustools_opt &opt)
           else
           {
             prev_tids = intersect_vecs(prev_tids, tids_per_elem); // problem may be here..
-            if (!prev_tids.size())                                // an intermediary intersection is empty
-            {
-              break;
-            }
             tids_per_elem.clear();
+          }
+          if (!prev_tids.size()) // an intermediary intersection is empty
+          {
+            break;
           }
         }
       }
