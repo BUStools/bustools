@@ -149,12 +149,12 @@ void bustools_merge_different_index(const Bustools_opt &opt)
 
   while (true)
   {
-    print_bd(prev, bclen, umilen);
+    // print_bd(prev, bclen, umilen);
     elem_sets.clear();
     c.clear();
     while (prev.flags == curr.flags && prev.barcode == curr.barcode && prev.UMI == curr.UMI)
     {
-      print_bd(curr, bclen, umilen);
+      // print_bd(curr, bclen, umilen);
       if (curr.ec != prev.ec)
       {
         if (c.size())
