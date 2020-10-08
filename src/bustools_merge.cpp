@@ -138,10 +138,12 @@ void bustools_merge_different_index(const Bustools_opt &opt)
 
   prev = queue.front();
   queue.pop();
-  curr = queue.front();
-  queue.pop();
+  curr = prev;
+  // queue.front();
+  // queue.pop();
 
   std::unordered_set<int32_t> c;
+  c.insert(prev.ec);
   std::vector<std::unordered_set<int32_t>> elem_sets;
 
   std::ofstream outf(opt.output);
@@ -151,14 +153,32 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   {
     // print_bd(prev, bclen, umilen);
     elem_sets.clear();
-    c.clear();
+    // std::vector<std::pair<int32_t, int32_t>> bounds;
+    // std::pair<int32_t, int32_t> intv;
     while (prev.flags == curr.flags && prev.barcode == curr.barcode && prev.UMI == curr.UMI)
     {
-      // print_bd(curr, bclen, umilen);
-      if (curr.ec != prev.ec)
+      // read in more data
+      prev = std::move(curr);
+      curr = queue.front();
+      queue.pop();
+      if (in.good())
       {
-        if (c.size()) // if c has elements in the set
+        in.read((char *)&bd, sizeof(BUSData));
+        queue.push(bd);
+        nr++;
+      }
+      // print_bd(curr, bclen, umilen);
+      // std::cout << prev.pad << "\t" << curr.pad << "\t" << prev.ec << ", " << curr.ec << std::endl;
+      if (curr.pad != prev.pad)
+      {
+        if (!c.empty()) // if c has elements in the set
         {
+          // std::cout << prev.pad << ", " << curr.pad << ": ";
+          // for (auto &ce : c)
+          // {
+          //   std::cout << ce << ", ";
+          // }
+          // std::cout << std::endl;
           elem_sets.push_back(c);
         }
       }
@@ -176,16 +196,6 @@ void bustools_merge_different_index(const Bustools_opt &opt)
       {
         break;
       }
-      // read in more data
-      prev = std::move(curr);
-      curr = queue.front();
-      queue.pop();
-      if (in.good())
-      {
-        in.read((char *)&bd, sizeof(BUSData));
-        queue.push(bd);
-        nr++;
-      }
 
       //print_bd(curr, bclen, umilen);
     }
@@ -194,34 +204,24 @@ void bustools_merge_different_index(const Bustools_opt &opt)
     if (elem_sets.size())
     {
 
-      //there is a weird segfault when printing this out..
-      // std::cout << "before intersecting TIDS" << std::endl;
+      // std::cout << "Before intersecting TIDS, num of elem itvs: " << elem_sets.size() << std::endl;
       // for (const std::unordered_set<int32_t> &e : elem_sets)
       // {
       //   if (!e.empty())
       //   {
+      //     std::cout << "num of ec in this elem set: " << e.size() << std::endl;
       //     for (const int32_t &eid : e)
       //     {
-      //       try
+      //       std::vector<int32_t> tds = h.ecs[eid];
+      //       /* code */
+      //       std::cout << eid << ": ";
+      //       for (auto &t : tds)
       //       {
-      //         std::cout << h.ecs.size() << ": " << eid << ", ";
-      //         if (eid > h.ecs.size())
-      //         {
-      //           std::cout << "--------SCREAM!!!!!!" << std::endl;
-      //         }
-      //         // std::vector<int32_t> tds = h.ecs[eid];
-      //         // /* code */
-      //         // for (auto &t : tds)
-      //         // {
-      //         //   std::cout << t << ", ";
-      //         // }
+      //         std::cout << t << ", ";
       //       }
-      //       catch (const std::exception &e)
-      //       {
-      //         std::cerr << e.what() << '\n';
-      //         break;
-      //       }
+      //       std::cout << std::endl;
       //     }
+      //     std::cout << std::endl;
       //   }
       //   std::cout << std::endl;
       // }
@@ -308,6 +308,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
       queue.push(bd);
       nr++;
     }
+    c.clear();
   }
   // std::cout << "end" << std::endl;
   std::cerr << "bus records read:    " << nr << std::endl;
