@@ -102,7 +102,7 @@ void bustools_mash(const Bustools_opt &opt)
 
     std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv; // set{tids} (ec) to eid it came from
 
-    for (int i = 0; i < tid; i++)
+    for (int32_t i = 0; i < tid; i++)
     {
         oh.ecs.push_back({i});
         ecmapinv.insert({{i}, i});
@@ -124,7 +124,7 @@ void bustools_mash(const Bustools_opt &opt)
             std::vector<int32_t> new_ecs(ecs.size());
 
             // convert tid to new coordinates
-            for (int j = 0; j < ecs.size(); j++)
+            for (int32_t j = 0; j < ecs.size(); j++)
             {
                 new_ecs[j] = tids[ecs[j]];
             }
@@ -149,29 +149,62 @@ void bustools_mash(const Bustools_opt &opt)
     }
     std::cout << "[info] parsed matrix.ec files" << std::endl;
     // generate ecmap from ecmapinv
-    std::vector<std::vector<int32_t>> ecmap(ecmapinv.size());
-    for (const auto &ec : ecmapinv)
-    {
-        ecmap[ec.second] = ec.first; // eid -> ecs (set of tids)
-    }
+    // std::vector<std::vector<int32_t>> ecmap(ecmapinv.size());
+    // for (const auto &ec : ecmapinv)
+    // {
+    //     ecmap[ec.second] = ec.first; // eid -> ecs (set of tids)
+    // }
 
     // Process the busfiles
     std::ofstream outf(opt.output + "/mashed.bus");
     writeHeader(outf, oh);
     // writeECs(opt.output + "/raw.ec", oh); // prior to reading bus records
 
-    BUSData bd;
-    size_t nr, nw;
+    BUSData bd, new_bd;
+    int32_t nr = 0, nw = 0;
+
+    int32_t N = 512;
+    std::queue<BUSData> queue[nf];
+
+    for (int i = 0; i < nf; i++)
+    {
+        for (int j = 0; j < N; j++)
+        {
+            if (bf[i].good())
+            {
+                bf[i].read((char *)&bd, sizeof(bd));
+                queue[i].push(bd);
+                nr++;
+            }
+        }
+    }
+
     for (int i = 0; i < nf; i++)
     {
         // if we can read a bus record
-        while (bf[i].good())
+        while (true)
         {
-            bf[i].read((char *)&bd, sizeof(bd));
-            nr++;
-            bd.ec = eids_per_file[i][bd.ec];
-            outf.write((char *)&bd, sizeof(bd));
+            if (queue[i].empty())
+            {
+                break;
+            }
+
+            new_bd = queue[i].front();
+            queue[i].pop();
+
+            // print_bd(new_bd, oh.bclen, oh.umilen);
+            new_bd.ec = eids_per_file[i][new_bd.ec];
+            // print_bd(new_bd, oh.bclen, oh.umilen);
+            // std::cout << "------------------------" << std::endl;
+            outf.write((char *)&new_bd, sizeof(new_bd));
             nw++;
+
+            if (bf[i].good())
+            {
+                bf[i].read((char *)&bd, sizeof(bd));
+                nr++;
+                queue[i].push(bd);
+            }
         }
     }
 

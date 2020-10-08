@@ -47,8 +47,8 @@ inline std::vector<int32_t> get_tids(const BUSHeader &oh, const std::unordered_m
 
   std::vector<int32_t> tids = oh.ecs[eid];
 
-  std::sort(tids.begin(), tids.end());
-  tids.erase(std::unique(tids.begin(), tids.end()), tids.end());
+  // std::sort(tids.begin(), tids.end());
+  // tids.erase(std::unique(tids.begin(), tids.end()), tids.end());
 
   return tids;
 }
@@ -157,7 +157,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
       // print_bd(curr, bclen, umilen);
       if (curr.ec != prev.ec)
       {
-        if (c.size())
+        if (c.size()) // if c has elements in the set
         {
           elem_sets.push_back(c);
         }
@@ -196,30 +196,44 @@ void bustools_merge_different_index(const Bustools_opt &opt)
 
       //there is a weird segfault when printing this out..
       // std::cout << "before intersecting TIDS" << std::endl;
-      // for (auto &e : elem_sets)
+      // for (const std::unordered_set<int32_t> &e : elem_sets)
       // {
-      //   if (e.size())
+      //   if (!e.empty())
       //   {
-      //     for (auto &eid : e)
+      //     for (const int32_t &eid : e)
       //     {
-      //       for (auto &t : get_tids(h, ecmapinv, eid))
+      //       try
       //       {
-      //         std::cout << t << ", ";
+      //         std::cout << h.ecs.size() << ": " << eid << ", ";
+      //         if (eid > h.ecs.size())
+      //         {
+      //           std::cout << "--------SCREAM!!!!!!" << std::endl;
+      //         }
+      //         // std::vector<int32_t> tds = h.ecs[eid];
+      //         // /* code */
+      //         // for (auto &t : tds)
+      //         // {
+      //         //   std::cout << t << ", ";
+      //         // }
+      //       }
+      //       catch (const std::exception &e)
+      //       {
+      //         std::cerr << e.what() << '\n';
+      //         break;
       //       }
       //     }
       //   }
       //   std::cout << std::endl;
       // }
-      // std::cout << "mark the territory" << std::endl;
 
       std::vector<int32_t> tids_per_elem, prev_tids;
       bool single = true;
       std::vector<int32_t> tids;
-      for (int i = 0; i < elem_sets.size(); i++)
+      for (int32_t i = 0; i < elem_sets.size(); i++)
       {
         if (elem_sets[i].size())
         {
-          for (auto &e : elem_sets[i])
+          for (const int32_t &e : elem_sets[i])
           {
             tids = h.ecs[e];
             tids_per_elem.insert(tids_per_elem.end(), tids.begin(), tids.end());
@@ -245,7 +259,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
       }
 
       // std::cout << "After intersecting TIDS" << std::endl;
-      // for (auto &t : prev_tids)
+      // for (const int32_t &t : prev_tids)
       // {
       //   std::cout << t << ", ";
       // }
@@ -262,6 +276,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
           prev.ec = ecmapinv.size();
           h.ecs.push_back(prev_tids);
           ecmapinv.insert({prev_tids, prev.ec});
+          // std::cout << "Making new ecs: " << prev.ec << ", " << ecmapinv.size() << ", " << h.ecs.size() << std::endl;
         }
         else // if it does exist, assign it
         {
