@@ -11,11 +11,7 @@
 
 #include "bustools_merge.h"
 
-#define BPair std::pair<BUSData, BUSData>
-#define BP std::pair<BPair, int> // bus pair, file that they came from
-#define BUSRange std::pair<BUSData, std::pair<int32_t, int32_t>>
 #define TP std::pair<BUSData, int>
-#define Range std::pair<uint32_t, uint32_t>
 
 inline std::vector<int32_t> intersect_vecs(const std::vector<int32_t> &x, const std::vector<int32_t> &y)
 {
@@ -40,17 +36,6 @@ inline std::vector<int32_t> intersect_vecs(const std::vector<int32_t> &x, const 
     }
   }
   return v;
-}
-
-inline std::vector<int32_t> get_tids(const BUSHeader &oh, const std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, const int32_t &eid)
-{
-
-  std::vector<int32_t> tids = oh.ecs[eid];
-
-  // std::sort(tids.begin(), tids.end());
-  // tids.erase(std::unique(tids.begin(), tids.end()), tids.end());
-
-  return tids;
 }
 
 inline void print_bd(const BUSData &bd, const size_t bclen, const size_t umilen)
@@ -128,7 +113,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   std::queue<BUSData> queue;
   BUSData bd, prev, curr;
   int N = 1024;
-  size_t nr = 0, nw = 0;
+  int32_t nr = 0, nw = 0, notw = 0;
   for (int i = 0; i < N; i++)
   {
     in.read((char *)&bd, sizeof(BUSData));
@@ -139,8 +124,6 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   prev = queue.front();
   queue.pop();
   curr = prev;
-  // queue.front();
-  // queue.pop();
 
   std::unordered_set<int32_t> c;
   c.insert(prev.ec);
@@ -151,22 +134,21 @@ void bustools_merge_different_index(const Bustools_opt &opt)
 
   while (true)
   {
+    prev = std::move(curr);
+    curr = queue.front();
+    queue.pop();
+    if (in.good())
+    {
+      in.read((char *)&bd, sizeof(BUSData));
+      queue.push(bd);
+      nr++;
+    }
     // print_bd(prev, bclen, umilen);
     elem_sets.clear();
     // std::vector<std::pair<int32_t, int32_t>> bounds;
     // std::pair<int32_t, int32_t> intv;
     while (prev.flags == curr.flags && prev.barcode == curr.barcode && prev.UMI == curr.UMI)
     {
-      // read in more data
-      prev = std::move(curr);
-      curr = queue.front();
-      queue.pop();
-      if (in.good())
-      {
-        in.read((char *)&bd, sizeof(BUSData));
-        queue.push(bd);
-        nr++;
-      }
       // print_bd(curr, bclen, umilen);
       // std::cout << prev.pad << "\t" << curr.pad << "\t" << prev.ec << ", " << curr.ec << std::endl;
       if (curr.pad != prev.pad)
@@ -183,21 +165,29 @@ void bustools_merge_different_index(const Bustools_opt &opt)
         }
       }
 
-      if (c.find(curr.ec) != c.end())
+      if (c.find(curr.ec) != c.end()) // if the ec is in C, then this is the closing pt
       {
         c.erase(curr.ec);
       }
       else
       {
-        c.insert(curr.ec);
+        c.insert(curr.ec); // if the ec is not in C then this is the opening pt
       }
 
       if (queue.empty())
       {
         break;
       }
-
-      //print_bd(curr, bclen, umilen);
+      // read in more data
+      prev = std::move(curr);
+      curr = queue.front();
+      queue.pop();
+      if (in.good())
+      {
+        in.read((char *)&bd, sizeof(BUSData));
+        queue.push(bd);
+        nr++;
+      }
     }
 
     // do the intersection
@@ -227,7 +217,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
       // }
 
       std::vector<int32_t> tids_per_elem, prev_tids;
-      bool single = true;
+
       std::vector<int32_t> tids;
       for (int32_t i = 0; i < elem_sets.size(); i++)
       {
@@ -248,10 +238,10 @@ void bustools_merge_different_index(const Bustools_opt &opt)
           }
           else
           {
-            prev_tids = intersect_vecs(prev_tids, tids_per_elem); // problem may be here..
-            tids_per_elem.clear();
+            prev_tids = intersect_vecs(prev_tids, tids_per_elem);
           }
-          if (!prev_tids.size()) // an intermediary intersection is empty
+          tids_per_elem.clear();
+          if (prev_tids.size() == 0) // an intermediary intersection is empty
           {
             break;
           }
@@ -290,8 +280,16 @@ void bustools_merge_different_index(const Bustools_opt &opt)
         outf.write((char *)&prev, sizeof(prev));
         nw++;
       }
+      else
+      {
+        notw++;
+      }
       tids_per_elem.clear();
       prev_tids.clear();
+    }
+    else
+    {
+      notw++;
     }
 
     // read in more data
@@ -299,18 +297,11 @@ void bustools_merge_different_index(const Bustools_opt &opt)
     {
       break;
     }
-    prev = std::move(curr);
-    curr = queue.front();
-    queue.pop();
-    if (in.good())
-    {
-      in.read((char *)&bd, sizeof(BUSData));
-      queue.push(bd);
-      nr++;
-    }
     c.clear();
   }
   // std::cout << "end" << std::endl;
+  writeECs("./merged.ec", h);
   std::cerr << "bus records read:    " << nr << std::endl;
   std::cerr << "bus records written: " << nw << std::endl;
+  std::cerr << "bus records lost:    " << notw << std::endl;
 }

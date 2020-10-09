@@ -130,19 +130,31 @@ void bustools_mash(const Bustools_opt &opt)
             }
 
             // check to see if the set exists in ecmapinv
-            std::sort(new_ecs.begin(), new_ecs.end());
-            new_ecs.erase(std::unique(new_ecs.begin(), new_ecs.end()), new_ecs.end()); // keep only one of the duplicates
-            auto it = ecmapinv.find(new_ecs);                                          // see if new_ecs exists
-            if (it != ecmapinv.end())
+            if (new_ecs.size() == 1)
             {
-                eid = it->second; // return the eid that it corresponds to
+                eid = new_ecs[0];
+                if (eid > ecmapinv.size())
+                {
+                    std::cerr << "[warn] transcript not found" << std::endl;
+                }
             }
             else
             {
-                eid = ecmapinv.size();     // make new eid
-                oh.ecs.push_back(new_ecs); // add the set of tids (new ref)
-                ecmapinv.insert({new_ecs, eid});
+                std::sort(new_ecs.begin(), new_ecs.end());
+                new_ecs.erase(std::unique(new_ecs.begin(), new_ecs.end()), new_ecs.end()); // keep only one of the duplicates
+                auto it = ecmapinv.find(new_ecs);                                          // see if new_ecs exists
+                if (it != ecmapinv.end())
+                {
+                    eid = it->second; // return the eid that it corresponds to
+                }
+                else
+                {
+                    eid = ecmapinv.size();     // make new eid
+                    oh.ecs.push_back(new_ecs); // add the set of tids (new ref)
+                    ecmapinv.insert({new_ecs, eid});
+                }
             }
+
             eids.push_back(eid);
         }
         eids_per_file.push_back(std::move(eids));
@@ -163,7 +175,7 @@ void bustools_mash(const Bustools_opt &opt)
     BUSData bd, new_bd;
     int32_t nr = 0, nw = 0;
 
-    int32_t N = 512;
+    int32_t N = 1024;
     std::queue<BUSData> queue[nf];
 
     for (int i = 0; i < nf; i++)
