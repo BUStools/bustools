@@ -493,8 +493,11 @@ void bustools_count(Bustools_opt &opt) {
 			sum += histograms[offs + c];
 		}
 		double cu = wsum/sum;
-		
-		cuof << names[g] << '\t' << cu << '\t' << sum << '\n';
+		if (sum == 0) {
+			cuof << names[g] << '\t' << "NA" << '\t' << sum << '\n';
+		} else {
+			cuof << names[g] << '\t' << cu << '\t' << sum << '\n';
+		}
 	}
 	cuof.close();
   }
