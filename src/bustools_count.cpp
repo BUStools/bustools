@@ -471,6 +471,16 @@ void bustools_count(Bustools_opt &opt) {
 	//write header
 	cuof << "gene\tCU\tUMIs\n"; 
 
+	//prepare gene names for writing
+	std::vector<std::string> names;
+    names.resize(genenames.size());
+	for (const auto &x : genenames) {
+		if (x.second >= 0) {
+			names[x.second] = x.first;
+		}
+	}
+
+
 	for (size_t g = 0; g < genenames.size(); ++g) {
 		//Indexed as gene*histmax + histIndex
 		unsigned int offs = g * histmax;
@@ -484,7 +494,7 @@ void bustools_count(Bustools_opt &opt) {
 		}
 		cu = wsum/sum;
 		
-		cuof << genenames[g] << '\t' << cu << '\t' << sum << '\n';
+		cuof << names[g] << '\t' << cu << '\t' << sum << '\n';
 	}
 	cuof.close();
   }
