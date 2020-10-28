@@ -18,11 +18,13 @@ rm ./tmp/*
 #Test count
 #tc0004
 ./build/src/bustools fromtext -p ./test/test_cases/tc0004.txt | ./build/src/bustools count -o ./tmp/tc0004output/ --hist -m  --genecounts -e ./test/test_cases/matrix.ec -g ./test/test_cases/transcripts_to_genes.txt -t ./test/test_cases/transcripts.txt -
+./build/src/bustools fromtext -p ./test/test_cases/tc0004.txt | ./build/src/bustools count -o ./tmp/tc0004outputraw/ --hist -m  --genecounts --rawcounts -e ./test/test_cases/matrix.ec -g ./test/test_cases/transcripts_to_genes.txt -t ./test/test_cases/transcripts.txt -
 diff -w -B -s ./test/test_cases/tc0004ExpResultsCount.txt ./tmp/tc0004output/output.mtx
 diff -w -B -s ./test/test_cases/tc0004ExpResultsGenes.txt ./tmp/tc0004output/output.genes.txt
 diff -w -B -s ./test/test_cases/tc0004ExpResultsBarcodes.txt ./tmp/tc0004output/output.barcodes.txt
 diff -w -B -s ./test/test_cases/tc0004ExpResultsHist.txt ./tmp/tc0004output/output.hist.txt
 diff -w -B -s ./test/test_cases/tc0004ExpResultsCU.txt ./tmp/tc0004output/output.cu.txt
+diff -w -B -s ./test/test_cases/tc0004ExpResultsCountRaw.txt ./tmp/tc0004outputraw/output.mtx
 
 
 
