@@ -489,7 +489,7 @@ void bustools_count(Bustools_opt &opt) {
 		double wsum = 0;
 		double sum = 0;
 		for (size_t c = 0; c < histmax; ++c) {
-			wsum += double(c+1) * histograms[offs + c]
+			wsum += double(c+1) * histograms[offs + c];
 			sum += histograms[offs + c];
 		}
 		double cu = wsum/sum;
