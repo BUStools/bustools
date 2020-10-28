@@ -304,9 +304,6 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
     case 'm':
       opt.count_gene_multimapping = true;
       break;
-    case 'm':
-      opt.count_gene_multimapping = true;
-      break;
     default:
       break;
     }
