@@ -266,6 +266,7 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
   int gene_flag = 0;
   int em_flag = 0;
   int hist_flag = 0;
+  int rawcounts_flag = 0;
   static struct option long_options[] = {
     {"output",          required_argument,  0, 'o'},
     {"genemap",          required_argument,  0, 'g'},
@@ -276,6 +277,7 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
     {"em", no_argument, &em_flag, 1},
     {"hist", no_argument, &hist_flag, 1},
     {"downsample", required_argument, 0, 'd'},
+    {"rawcounts", no_argument, &rawcounts_flag, 1},
     {0,                 0,                  0,  0 }
   };
 
@@ -302,6 +304,9 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
     case 'm':
       opt.count_gene_multimapping = true;
       break;
+    case 'm':
+      opt.count_gene_multimapping = true;
+      break;
     default:
       break;
     }
@@ -315,6 +320,10 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt& opt) {
   if (hist_flag) {
     opt.count_gen_hist = true;
   }
+  if (rawcounts_flag) {
+    opt.count_raw_counts = true;
+  }
+  
 
   while (optind < argc) opt.files.push_back(argv[optind++]);
 
@@ -1103,8 +1112,14 @@ bool check_ProgramOptions_count(Bustools_opt& opt) {
     std::cerr << "Error: EM algorithm and counting multimapping reads are incompatible" << std::endl;
     ret = false;
   }
-
-  
+  if (opt.count_raw_counts && opt.count_em) {
+    std::cerr << "Error: Counting raw counts are not supported for the EM algorithm" << std::endl;
+    ret = false;
+  }
+  if (opt.count_raw_counts && !opt.count_collapse) {
+    std::cerr << "Error: Raw counts are currently only supported for gene counting, not ec counting." << std::endl;
+    ret = false;
+  }
 
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input files" << std::endl;
@@ -1644,6 +1659,7 @@ void Bustools_count_Usage() {
   << "    --hist            Output copy per UMI histograms for all genes" << std::endl 
   << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl
   << "-d  --downsample      Specify a factor between 0 and 1 specifying how much to downsample" << std::endl 
+  << "    --rawcounts       The count matrix will contain raw counts instead of UMI counts" << std::endl 
   << std::endl;
 }
 

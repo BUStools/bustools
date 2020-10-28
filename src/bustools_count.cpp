@@ -215,7 +215,7 @@ void bustools_count(Bustools_opt &opt) {
       if (gn > 0) {
         if (opt.count_gene_multimapping) {
           for (auto x : glist) {
-            column_vp.push_back({x, 1.0/gn});
+            column_vp.push_back({x, (opt.count_raw_counts ? counts : 1.0)/gn});
 
 			//Fill in histograms for prediction.
 			if (opt.count_gen_hist) {
@@ -229,7 +229,7 @@ void bustools_count(Bustools_opt &opt) {
           }
         } else {
           if (gn==1) {
-            column_vp.push_back({glist[0],1.0});
+            column_vp.push_back({glist[0],opt.count_raw_counts ? counts : 1.0});
 			//Fill in histograms for prediction.
 			if (opt.count_gen_hist) {
 				if (glist[0] < n_genes) { //crasches with an invalid gene file otherwise
@@ -379,7 +379,7 @@ void bustools_count(Bustools_opt &opt) {
             if (!opt.count_collapse) {
               write_barcode_matrix(v);
             } else {
-              write_barcode_matrix_collapsed(v);
+				write_barcode_matrix_collapsed(v);
             }
           }
           v.clear();
