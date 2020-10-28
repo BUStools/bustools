@@ -42,7 +42,8 @@ void bustools_count(Bustools_opt &opt) {
   std::string ec_ofn = opt.output + ".ec.txt";
   std::string gene_ofn = opt.output + ".genes.txt";
   std::string hist_ofn = opt.output + ".hist.txt";
-  of.open(mtx_ofn); 
+  std::string cu_ofn = opt.output + ".cu.txt";
+  of.open(mtx_ofn);
 
   // write out the initial header
   // keep the number of newlines constant, this way it will work for both Windows and Linux
@@ -462,6 +463,32 @@ void bustools_count(Bustools_opt &opt) {
 	}
 	histof.close();
   }
+  
+  //write mean counts per UMI file
+  if (opt.count_gen_hist) {
+	std::ofstream cuof;
+	cuof.open(cu_ofn);
+	//write header
+	cuof << "gene\tCU\tUMIs\n"; 
+
+	for (size_t g = 0; g < genenames.size(); ++g) {
+		//Indexed as gene*histmax + histIndex
+		unsigned int offs = g * histmax;
+		
+		//calculate counts per UMI as the mean of the histogram
+		double wsum = 0;
+		double sum = 0;
+		for (size_t c = 0; c < histmax; ++c) {
+			wsum += double(c+1) * histograms[offs + c]
+			sum += histograms[offs + c]
+		}
+		cu = wsum/sum;
+		
+		cuof << genenames[g] << '\t' << cu << '\t' << sum << '\n';
+	}
+	cuof.close();
+  }
+  
 
   //std::cerr << "bad counts = " << bad_count <<", rescued  =" << rescued << ", compacted = " << compacted << std::endl;
 
