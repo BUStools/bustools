@@ -1,0 +1,10 @@
+Get Eigen from http://eigen.tuxfamily.org/index.php?title=Main_Page#Projects_using_Eigen
+Just extract and put it under the eigen-3.3.7 folder (folder name may change if a newer version is used)
+The compiler needs to find the headers, that's all, it's a header-only library, so no need to worry about linking etc.
+
+LBFGSpp is downloaded from https://github.com/yixuan/LBFGSpp, downloaded master on 2020-05-19. Just extract under dependencies
+under LBFGSpp-master. This is also header-only.
+
+
+
+

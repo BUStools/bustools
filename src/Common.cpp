@@ -1,5 +1,5 @@
 #include "Common.hpp"
-
+#include <fstream>
 
 std::vector<int32_t> intersect(std::vector<int32_t> &u, std::vector<int32_t> &v) {
   std::vector<int32_t> res;
@@ -325,4 +325,11 @@ void create_ec2genes(const std::vector<std::vector<int32_t>> &ecmap, const std::
     vt2gene(v, genemap, u);
     ec2gene.push_back(std::move(u));
   }
+}
+
+void copy_file(std::string src, std::string dest) {
+	std::ifstream  isrc(src, std::ios::binary);
+	std::ofstream  idest(dest, std::ios::binary);
+
+	idest << isrc.rdbuf();
 }

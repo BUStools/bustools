@@ -1,0 +1,27 @@
+---
+kind: pipeline
+name: Build
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: lint
+  pull: never
+  image: patwie/cppnumericalsolvers
+  commands:
+  - python lint.py
+
+- name: build
+  pull: never
+  image: patwie/cppnumericalsolvers
+  commands:
+  - /root/bin/bazel run verify
+
+
+---
+kind: signature
+hmac: a370fbc7962c2d6dd6fc520f6492046228942cf9529a33e53b1cda59e6ad3281
+
+...

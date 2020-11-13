@@ -6,6 +6,7 @@
 #include "BUSData.h"
 
 #include "bustools_count.h"
+#include <random>
 
 
 void bustools_count(Bustools_opt &opt) {
@@ -40,17 +41,19 @@ void bustools_count(Bustools_opt &opt) {
   std::string barcodes_ofn = opt.output + ".barcodes.txt";
   std::string ec_ofn = opt.output + ".ec.txt";
   std::string gene_ofn = opt.output + ".genes.txt";
-  of.open(mtx_ofn); 
+  std::string hist_ofn = opt.output + ".hist.txt";
+  std::string cu_ofn = opt.output + ".cu.txt";
+  of.open(mtx_ofn);
 
   // write out the initial header
-  of << "%%MatrixMarket matrix coordinate real general\n%\n";
-  // number of genes
-  auto mat_header_pos = of.tellp();
-  std::string dummy_header(66, '\n');
-  for (int i = 0; i < 33; i++) {
-    dummy_header[2*i] = '%';
-  }
-  of.write(dummy_header.c_str(), dummy_header.size());
+  // keep the number of newlines constant, this way it will work for both Windows and Linux
+  std::string headerBuf;
+  std::stringstream ssHeader(headerBuf);
+  std::string headerComments = "%%MatrixMarket matrix coordinate real general\n%\n";
+  ssHeader << headerComments;
+  ssHeader << std::string(66, '%') << '\n';
+  size_t headerLength = ssHeader.str().length();
+  of << ssHeader.str();
 
 
   size_t n_cols = 0;
@@ -73,6 +76,22 @@ void bustools_count(Bustools_opt &opt) {
     column_vp.reserve(N);
     glist.reserve(100);
   }
+
+  //Allocate histograms
+  //Indexed as gene*histmax + histIndex
+  size_t n_genes = genenames.size();
+  const uint32_t histmax = 100;//set molecules with more than histmax copies to histmax 
+  std::vector<double> histograms;
+  if (opt.count_gen_hist) {
+	  histograms = std::vector<double>(n_genes * histmax, 0);
+  }
+
+  //set up random number generator for downsampling
+  std::random_device						rand_dev;
+  std::mt19937								generator(rand_dev());
+  std::uniform_real_distribution<double>	distr(0.0, 1.0);
+
+
   //barcodes 
   std::vector<uint64_t> barcodes;
   int bad_count = 0;
@@ -172,23 +191,67 @@ void bustools_count(Bustools_opt &opt) {
 
       // v[i..j-1] share the same UMI
       ecs.resize(0);
+	  uint32_t counts = 0;
       for (size_t k = i; k < j; k++) {
         ecs.push_back(v[k].ec);
+		counts += v[k].count;
       }
 
       intersect_genes_of_ecs(ecs,ec2genes, glist);
       int gn = glist.size();
+	  if (opt.count_downsampling_factor != 1.0) {
+		  uint32_t newCounts = 0;
+		  for (uint32_t c = 0; c < counts; ++c) {
+			  if (distr(generator) <= opt.count_downsampling_factor) {
+				  ++newCounts;
+			  }
+		  }
+		  counts = newCounts;
+		  if (newCounts == 0) {
+			  gn = 0;//trick to skip quantification below
+		  }
+
+	  }
       if (gn > 0) {
         if (opt.count_gene_multimapping) {
           for (auto x : glist) {
-            column_vp.push_back({x, 1.0/gn});
+            column_vp.push_back({x, (opt.count_raw_counts ? counts : 1.0)/gn});
+
+			//Fill in histograms for prediction.
+			if (opt.count_gen_hist) {
+				if (x < n_genes) { //crasches with an invalid gene file otherwise
+					histograms[x * histmax + std::min(counts - 1, histmax - 1)] += 1.0 / gn; //histmax-1 since histograms[g][0] is the histogram value for 1 copy and so forth
+				}
+				else {
+					std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
+				}
+			}
           }
         } else {
           if (gn==1) {
-            column_vp.push_back({glist[0],1.0});
+            column_vp.push_back({glist[0],opt.count_raw_counts ? counts : 1.0});
+			//Fill in histograms for prediction.
+			if (opt.count_gen_hist) {
+				if (glist[0] < n_genes) { //crasches with an invalid gene file otherwise
+					histograms[glist[0] * histmax + std::min(counts - 1, histmax - 1)] += 1.0; //histmax-1 since histograms[g][0] is the histogram value for 1 copy and so forth
+				} else {
+					std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
+				}
+			}
+
           } else if (opt.count_em) {
             ambiguous_genes.push_back(std::move(glist));
-          }
+			//Fill in histograms for prediction. This is a simplification. TODO: should be fixed for the em algorithm!
+			if (opt.count_gen_hist) {
+				for (auto x : glist) {
+					if (x < n_genes) { //crasches with an invalid gene file otherwise
+						histograms[x * histmax + std::min(counts - 1, histmax - 1)] += 1.0 / gn; //histmax-1 since histograms[g][0] is the histogram value for 1 copy and so forth
+					} else {
+						std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
+					}
+				}
+			}
+		  }
         }
       }
       i = j; // increment
@@ -316,7 +379,7 @@ void bustools_count(Bustools_opt &opt) {
             if (!opt.count_collapse) {
               write_barcode_matrix(v);
             } else {
-              write_barcode_matrix_collapsed(v);
+				write_barcode_matrix_collapsed(v);
             }
           }
           v.clear();
@@ -348,17 +411,14 @@ void bustools_count(Bustools_opt &opt) {
 
   of.close();
   
+  //Rewrite header in a way that works for both Windows and Linux
   std::stringstream ss;
-  ss << n_rows << " " << n_cols << " " << n_entries << "\n";
+  ss << n_rows << " " << n_cols << " " << n_entries;
   std::string header = ss.str();
   int hlen = header.size();
-  assert(hlen < 66);
-  of.open(mtx_ofn, std::ios::binary | std::ios::in | std::ios::out);
-  of.seekp(mat_header_pos);
-  of.write("%",1);
-  of.write(std::string(66-hlen-2,' ').c_str(),66-hlen-2);
-  of.write("\n",1);
-  of.write(header.c_str(), hlen);
+  header = header + std::string(66 - hlen, ' ') + '\n';
+  of.open(mtx_ofn, std::ios::in | std::ios::out);
+  of << headerComments << header;
   of.close();
 
   // write updated ec file
@@ -375,6 +435,74 @@ void bustools_count(Bustools_opt &opt) {
     bcof << binaryToString(x, bclen) << "\n";
   }
   bcof.close();
+
+  //write histogram file
+  if (opt.count_gen_hist) {
+	std::ofstream histof;
+	histof.open(hist_ofn);
+
+	for (size_t g = 0; g < genenames.size(); ++g) {
+		//Indexed as gene*histmax + histIndex
+		unsigned int offs = g * histmax;
+		
+		//first figure out the length of the histogram, don't write that to make the file smaller
+		unsigned int histEnd = histmax - 1;
+		for (; histEnd != 0; --histEnd) {
+			if (histograms[offs + histEnd] != 0) {
+				break;
+			}
+		}
+		for (size_t c = 0; c <= histEnd; ++c) {
+			if (c != 0) {
+				histof << '\t';
+			}
+			histof << histograms[offs + c];
+		}
+
+		histof << "\n";
+	}
+	histof.close();
+  }
+  
+  //write mean counts per UMI file
+  if (opt.count_gen_hist) {
+	std::ofstream cuof;
+	cuof.open(cu_ofn);
+	//write header
+	cuof << "gene\tCU\tUMIs\n"; 
+
+	//prepare gene names for writing
+	std::vector<std::string> names;
+    names.resize(genenames.size());
+	for (const auto &x : genenames) {
+		if (x.second >= 0) {
+			names[x.second] = x.first;
+		}
+	}
+
+
+	for (size_t g = 0; g < genenames.size(); ++g) {
+		//Indexed as gene*histmax + histIndex
+		unsigned int offs = g * histmax;
+		
+		//calculate counts per UMI as the mean of the histogram
+		double wsum = 0;
+		double sum = 0;
+		for (size_t c = 0; c < histmax; ++c) {
+			wsum += double(c+1) * histograms[offs + c];
+			sum += histograms[offs + c];
+		}
+		double cu = wsum/sum;
+		if (sum == 0) {
+			cuof << names[g] << '\t' << "NA" << '\t' << sum << '\n';
+		} else {
+			cuof << names[g] << '\t' << cu << '\t' << sum << '\n';
+		}
+	}
+	cuof.close();
+  }
+  
+
   //std::cerr << "bad counts = " << bad_count <<", rescued  =" << rescued << ", compacted = " << compacted << std::endl;
 
   //std::cerr << "Read in " << nr << " BUS records" << std::endl;
