@@ -440,7 +440,7 @@ void bustools_count_mult(Bustools_opt &opt) {
   std::vector<int32_t> column_v;
   std::vector<std::pair<int32_t, double>> column_vp;
   if (!opt.count_collapse) {
-    column_v.reserve(N); 
+    column_vp.reserve(N); 
   } else {
     column_vp.reserve(N);
     glist.reserve(100);
@@ -452,6 +452,38 @@ void bustools_count_mult(Bustools_opt &opt) {
   int rescued = 0;
 
 
+  auto write_barcode_matrix = [&](const std::vector<BUSData> &v) {
+    if(v.empty()) {
+      return;
+    }
+    column_vp.resize(0);
+    n_rows+= 1;
+    
+    barcodes.push_back(v[0].barcode);
+    double val = 0.0;
+    size_t n = v.size();
+    
+    for (size_t i = 0; i < n; i++) {
+      int32_t ec = v[i].ec;
+      column_vp.push_back({ec,v[i].count});
+    }
+    std::sort(column_vp.begin(), column_vp.end());
+    size_t m = column_vp.size();
+    for (size_t i = 0; i < m; ) {
+      size_t j = i+1;
+      double val = column_vp[i].second;
+      for (; j < m; j++) {
+        if (column_vp[i].first != column_vp[j].first) {
+          break;
+        }
+        val += column_vp[j].second;
+      }
+      n_entries++;
+      of << n_rows << " " << (column_vp[i].first+1) << " " << val << "\n";
+      i = j; // increment
+    }
+  };
+  
   auto write_barcode_matrix_collapsed = [&](const std::vector<BUSData> &v) {
     if(v.empty()) {
       return;
@@ -545,7 +577,11 @@ void bustools_count_mult(Bustools_opt &opt) {
         if (p[i].barcode != current_bc) {                 
           // output whatever is in v
           if (!v.empty()) {
-              write_barcode_matrix_collapsed(v);
+            if (!opt.count_collapse) {
+              write_barcode_matrix(v);
+              } else {
+                write_barcode_matrix_collapsed(v);
+              }
             }
           v.clear();
           current_bc = p[i].barcode;
@@ -555,7 +591,11 @@ void bustools_count_mult(Bustools_opt &opt) {
       }            
     }
     if (!v.empty()) {
+      if (!opt.count_collapse) {
+        write_barcode_matrix(v);
+      } else {
         write_barcode_matrix_collapsed(v);
+      }
     }
 
     if (!opt.stream_in) {
