@@ -129,7 +129,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   c.insert(prev.ec);
   std::vector<std::unordered_set<int32_t>> elem_sets;
 
-  std::ofstream outf(opt.output);
+  std::ofstream outf(opt.output + "/merged.bus");
   writeHeader(outf, bh);
 
   while (true)
@@ -300,7 +300,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
     c.clear();
   }
   // std::cout << "end" << std::endl;
-  writeECs("./merged.ec", h);
+  writeECs(opt.output + "/merged.ec", h);
   std::cerr << "bus records read:    " << nr << std::endl;
   std::cerr << "bus records written: " << nw << std::endl;
   std::cerr << "bus records lost:    " << notw << std::endl;

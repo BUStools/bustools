@@ -860,13 +860,32 @@ bool check_ProgramOptions_merge(Bustools_opt &opt)
   {
     if (opt.output.empty())
     {
-      std::cerr << "Error: missing output file" << std::endl;
+      std::cerr << "Error: missing output directory" << std::endl;
       ret = false;
     }
-    else if (!checkOutputFileValid(opt.output))
+    else
     {
-      std::cerr << "Error: unable to open output file" << std::endl;
-      ret = false;
+      // check if output directory exists or if we can create it
+      struct stat stFileInfo;
+      auto intStat = stat(opt.output.c_str(), &stFileInfo);
+      if (intStat == 0)
+      {
+        // file/dir exits
+        if (!S_ISDIR(stFileInfo.st_mode))
+        {
+          std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
+          ret = false;
+        }
+      }
+      else
+      {
+        // create directory
+        if (my_mkdir(opt.output.c_str(), 0777) == -1)
+        {
+          std::cerr << "Error: could not create directory " << opt.output << std::endl;
+          ret = false;
+        }
+      }
     }
   }
 
@@ -1738,7 +1757,7 @@ void Bustools_merge_Usage()
   std::cout << "Usage: bustools merge [options] sorted-bus-file by flag" << std::endl
             << std::endl
             << "Options: " << std::endl
-            << "-o, --output          Output merged file" << std::endl
+            << "-o, --output          Directory for merged output" << std::endl
             << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
             << "-t, --txnames         File with names of transcripts" << std::endl
             << std::endl;
