@@ -394,8 +394,6 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 			x[0] = size;
 		}
 		
-		std::cout << "Iteration: " << iter << " x val: " << x[0] << "ll" << err << "\n";
-		
 		//avoid printing of warning text in console
 		if (x[0] > 10000.0) {
 			x[0] = 10000.0;
@@ -408,6 +406,8 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 		//std::cout << "val: " << x[0] << "\n";
 
 		currNegLL = -ZTNBLogLikelihood(hist, histLen, x[0], mean);
+		
+		std::cout << "Iteration: " << iter << " x val: " << x[0] << " ll " << currNegLL << " lldiff: " << err << "\n";
 		
 		//keep track of the best values we had in case it doesn't converge - better to return those
 		if (currNegLL < bestNegLL) {
