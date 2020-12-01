@@ -312,6 +312,10 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 	op.setLowerBound(Optimizer2::TVector::Ones(1) * 0.0001);
 	op.setUpperBound(Optimizer2::TVector::Ones(1) * 10000);
 	cppoptlib::LbfgsbSolver<Optimizer2> solver;
+	//change the stop criteria to speed things up
+	cppoptlib::LbfgsbSolver<Optimizer2>::TCriteria crit = cppoptlib::LbfgsbSolver<Optimizer2>::TCriteria::defaults(); 
+	crit.iterations = 1000; //default is 10000
+	solver.setStopCriteria(crit);
 	Optimizer2::TVector x = Optimizer2::TVector::Zero(1);
 
 	if (variance > mean) {
@@ -340,7 +344,7 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 	//termination criteria for the EM algorithm
 	const double MAX_ERROR = 1e-8;
 	const double MAX_ERROR_FAST = 1e-5;
-	const size_t MAX_ITER = 1000; //Since this algorithm is pretty slow, don't iterate too many times. The algorithm may get stuck here, on a few values only, don't let them dictate the total execution time too much.
+	const size_t MAX_ITER = 400; //Since this algorithm is pretty slow, don't iterate too many times. The algorithm may get stuck here, on a few values only, don't let them dictate the total execution time too much.
 	const size_t ITER_FAST_LIMIT = 200; //if the number of iterations goes over this number, start using the lower error threshold, MAX_ERROR_FAST, to quicken things up
 	const double LARGE_NEG_LL = 100000000000000000.0;
 	
