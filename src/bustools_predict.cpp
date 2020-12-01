@@ -385,7 +385,9 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 		else {
 			x[0] = size;
 		}
-
+		
+		std::cout << "Iteration: " << iter << " x val: " << x[0] << "\n";
+		
 		//avoid printing of warning text in console
 		if (x[0] > 10000.0) {
 			x[0] = 10000.0;
@@ -469,6 +471,12 @@ public:
 		, m_histmax(histmax)
 	{}
 	void Execute(int numThreads) {
+		std::cout << "Predicting 1345 \n";
+		double size = 0;
+		double mu = 0;
+		PredictZTNBForGene(&m_hists[1345 * m_histmax], m_histLengths[1345], m_t, size, mu, 1345);
+		std::cout << "End Predicting 1345 \n";
+		/*
 		//create the threads
 		for (int i = 0; i < numThreads; ++i) {
 			m_threads.push_back(std::shared_ptr<std::thread> (new std::thread(&PredictionExecuter::ThreadFunc, this)));
@@ -478,6 +486,7 @@ public:
 			m_threads[i]->join();
 		}
 		std::cout << "\n";
+		*/
 	}
 private:
 	void ThreadFunc() {
