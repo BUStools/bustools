@@ -349,6 +349,10 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 		iter < MAX_ITER &&
 		!(iter >= ITER_FAST_LIMIT && fabs(lastNegLL - currNegLL) / histSum <= MAX_ERROR_FAST))
 	{
+		//temp, remove
+		err = fabs(lastNegLL - currNegLL);
+		
+		
 		lastNegLL = currNegLL;
 
 		//update distribution params
@@ -386,7 +390,7 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 			x[0] = size;
 		}
 		
-		std::cout << "Iteration: " << iter << " x val: " << x[0] << "\n";
+		std::cout << "Iteration: " << iter << " x val: " << x[0] << "ll" << err << "\n";
 		
 		//avoid printing of warning text in console
 		if (x[0] > 10000.0) {
