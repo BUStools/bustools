@@ -354,7 +354,7 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 		!(iter >= ITER_FAST_LIMIT && fabs(lastNegLL - currNegLL) / histSum <= MAX_ERROR_FAST))
 	{
 		//temp, remove
-		double err = fabs(lastNegLL - currNegLL);
+		//double err = fabs(lastNegLL - currNegLL);
 		
 		
 		lastNegLL = currNegLL;
@@ -407,7 +407,7 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 
 		currNegLL = -ZTNBLogLikelihood(hist, histLen, x[0], mean);
 		
-		std::cout << "Iteration: " << iter << " x val: " << x[0] << " ll " << currNegLL << " lldiff: " << err << "\n";
+		//std::cout << "Iteration: " << iter << " x val: " << x[0] << " ll " << currNegLL << " lldiff: " << err << "\n";
 		
 		//keep track of the best values we had in case it doesn't converge - better to return those
 		if (currNegLL < bestNegLL) {
@@ -431,7 +431,7 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 		size = bestSize;
 	}
 
-	std::cout << "Iteration: " << iter << " mu: " << mu << " size: " << size << " ll: " << currNegLL << "\n";
+	//std::cout << "Iteration: " << iter << " mu: " << mu << " size: " << size << " ll: " << currNegLL << "\n";
 
 	return -currNegLL;
 }
@@ -452,15 +452,15 @@ double PredictZTNBForGene(const double* hist, size_t histLen, double t, double& 
 	//So, the trick here is to first use Alg1 - it is faster, but fails sometimes. If it fails,
 	//use Alg2
 	try {
-		std::cout << "Alg1: " << index << "\n";
+		//std::cout << "Alg1: " << index << "\n";
 		PredictZTNBEmAlg1(hist, histLen, size, mu);
-		std::cout << "Alg1 done: " << index << "\n";
+		//std::cout << "Alg1 done: " << index << "\n";
 	}
 	catch (std::exception&)
 	{
-		std::cout << "Alg2: " << index << "\n";
+		//std::cout << "Alg2: " << index << "\n";
 		PredictZTNBEmAlg2(hist, histLen, size, mu);
-		std::cout << "Alg2 done: " << index << "\n";
+		//std::cout << "Alg2 done: " << index << "\n";
 	}
 	
 	//std::cout << "Mu: " << mu << " Size: " << size << "\n";
@@ -494,12 +494,13 @@ public:
 		, m_histmax(histmax)
 	{}
 	void Execute(int numThreads) {
-		std::cout << "Predicting 1345 \n";
-		double size = 0;
-		double mu = 0;
-		PredictZTNBForGene(&m_hists[1345 * m_histmax], m_histLengths[1345], m_t, size, mu, 1345);
-		std::cout << "End Predicting 1345 \n";
-		/*
+		//Some test code:
+		//std::cout << "Predicting 1345 \n";
+		//double size = 0;
+		//double mu = 0;
+		//PredictZTNBForGene(&m_hists[1345 * m_histmax], m_histLengths[1345], m_t, size, mu, 1345);
+		//std::cout << "End Predicting 1345 \n";
+
 		//create the threads
 		for (int i = 0; i < numThreads; ++i) {
 			m_threads.push_back(std::shared_ptr<std::thread> (new std::thread(&PredictionExecuter::ThreadFunc, this)));
@@ -509,7 +510,6 @@ public:
 			m_threads[i]->join();
 		}
 		std::cout << "\n";
-		*/
 	}
 private:
 	void ThreadFunc() {
@@ -660,7 +660,8 @@ void bustools_predict(Bustools_opt &opt) {
 	
 	//Modify counts
 	//////////////////
-
+	
+	std::cout << "Creating corrected counts matrix...\n"
 
 	//read and write the counts matrix
 	{
@@ -691,6 +692,7 @@ void bustools_predict(Bustools_opt &opt) {
 	}
 	
 	//write negative binomial params (file with header)
+	std::cout << "Writing negative binomial params...\n"
 	{
 		std::ofstream of(nb_params_ofn);
 		
