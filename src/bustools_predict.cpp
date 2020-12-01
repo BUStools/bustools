@@ -412,7 +412,7 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 }
 
 //size and mu are out parameters describing the negative binomial
-double PredictZTNBForGene(const double* hist, size_t histLen, double t, double& size, double& mu) {
+double PredictZTNBForGene(const double* hist, size_t histLen, double t, double& size, double& mu, int index) {
 	double histSum = 0; //S in the R code
 	for (size_t i = 0; i < histLen; ++i) {
 		histSum += *(hist + i);
@@ -427,11 +427,15 @@ double PredictZTNBForGene(const double* hist, size_t histLen, double t, double& 
 	//So, the trick here is to first use Alg1 - it is faster, but fails sometimes. If it fails,
 	//use Alg2
 	try {
+		std::cout << "Alg1: " << index << "\n"
 		PredictZTNBEmAlg1(hist, histLen, size, mu);
+		std::cout << "Alg1 done: " << index << "\n"
 	}
 	catch (std::exception&)
 	{
+		std::cout << "Alg2: " << index << "\n"
 		PredictZTNBEmAlg2(hist, histLen, size, mu);
+		std::cout << "Alg2 done: " << index << "\n"
 	}
 	
 	//std::cout << "Mu: " << mu << " Size: " << size << "\n";
@@ -481,7 +485,7 @@ private:
 		while (GetNextIndex(i)) {
 			double size = 0;
 			double mu = 0;
-			m_predVals[i] = PredictZTNBForGene(&m_hists[i * m_histmax], m_histLengths[i], m_t, size, mu);
+			m_predVals[i] = PredictZTNBForGene(&m_hists[i * m_histmax], m_histLengths[i], m_t, size, mu, i);
 			m_sizeVals[i] = size;
 			m_muVals[i] = mu;
 		}
@@ -513,8 +517,6 @@ void bustools_predict(Bustools_opt &opt) {
 	//Prepare and load histograms
 	//////////////////
 
-	std::cout << "Test 1\n";
-
 	//read the hist file
 	std::string hist_ifn = opt.predict_input + ".hist.txt";
 	std::string counts_ifn = opt.predict_input + ".mtx";
@@ -542,8 +544,6 @@ void bustools_predict(Bustools_opt &opt) {
 	std::vector<size_t> histogramLengths = std::vector<size_t>(n_genes, 0);
 	std::string line;
 
-	std::cout << "Test 2\n";
-
 	//load histograms file
 	{
 		std::ifstream inf(hist_ifn);
@@ -559,8 +559,6 @@ void bustools_predict(Bustools_opt &opt) {
 			++geneIndex;
 		}
 	}
-
-	std::cout << "Test 3\n";
 
 	//fix the histograms if they have only a single non-zero value (i.e. for example looks like this: 1 0 0 0)
 	//however, do not fix completely empty histograms
@@ -591,8 +589,6 @@ void bustools_predict(Bustools_opt &opt) {
 			}
 		}
 	}
-
-	std::cout << "Test 4\n";
 
 	//Predict
 	//////////////////
