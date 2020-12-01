@@ -560,7 +560,7 @@ void bustools_predict(Bustools_opt &opt) {
 	std::string barcode_ifn = opt.predict_input + ".barcodes.txt";
 
 	std::string corr_counts_ofn = opt.output + ".mtx";
-	std::string nb_params_ofn = opt.output + "nb_params.txt";
+	std::string nb_params_ofn = opt.output + ".nb_params.txt";
 	std::string corr_gene_ofn = opt.output + ".genes.txt";
 	std::string corr_barcode_ofn = opt.output + ".barcodes.txt";
 
