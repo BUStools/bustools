@@ -340,10 +340,14 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 	//termination criteria for the EM algorithm
 	const double MAX_ERROR = 1e-8;
 	const double MAX_ERROR_FAST = 1e-5;
-	const size_t MAX_ITER = 100000;
+	const size_t MAX_ITER = 1500; //Since this algorithm is pretty slow, don't iterate too many times. The algorithm may get stuck here, on a few values only.
 	const size_t ITER_FAST_LIMIT = 200; //if the number of iterations goes over this number, start using the lower error threshold, MAX_ERROR_FAST, to quicken things up
-
-
+	const double LARGE_NEG_LL = 100000000000000000.0;
+	
+	double bestNegLL = LARGE_NEG_LL;
+	double bestMu = -1;
+	double bestSize = -1;
+	
 	//The EM algorithm starts here
 	while (fabs(lastNegLL - currNegLL) / histSum > MAX_ERROR&&
 		iter < MAX_ITER &&
@@ -404,6 +408,13 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 		//std::cout << "val: " << x[0] << "\n";
 
 		currNegLL = -ZTNBLogLikelihood(hist, histLen, x[0], mean);
+		
+		//keep track of the best values we had in case it doesn't converge - better to return those
+		if (currNegLL < bestNegLL) {
+			bestNegLL = currNegLL;
+			bestMu = mu;
+			bestSize = size;
+		}
 
 		//std::cout << "error: " << (lastNegLL - currNegLL) / histSum << "\n";
 
@@ -413,6 +424,14 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 	}
 
 	//std::cout << "iterations: " << iter << " error: " << (lastNegLL - currNegLL) / histSum << "\n";
+	
+	if (bestNegLL < LARGE_NEG_LL) {
+		currNegLL = bestNegLL;
+		mu = bestMu;
+		size = bestSize;
+	}
+
+	std::cout << "Iteration: " << iter << " mu: " << mu << " size: " << size << " ll: " << currNegLL << "\n";
 
 	return -currNegLL;
 }
