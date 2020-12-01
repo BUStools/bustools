@@ -427,15 +427,15 @@ double PredictZTNBForGene(const double* hist, size_t histLen, double t, double& 
 	//So, the trick here is to first use Alg1 - it is faster, but fails sometimes. If it fails,
 	//use Alg2
 	try {
-		std::cout << "Alg1: " << index << "\n"
+		std::cout << "Alg1: " << index << "\n";
 		PredictZTNBEmAlg1(hist, histLen, size, mu);
-		std::cout << "Alg1 done: " << index << "\n"
+		std::cout << "Alg1 done: " << index << "\n";
 	}
 	catch (std::exception&)
 	{
-		std::cout << "Alg2: " << index << "\n"
+		std::cout << "Alg2: " << index << "\n";
 		PredictZTNBEmAlg2(hist, histLen, size, mu);
-		std::cout << "Alg2 done: " << index << "\n"
+		std::cout << "Alg2 done: " << index << "\n";
 	}
 	
 	//std::cout << "Mu: " << mu << " Size: " << size << "\n";
