@@ -660,7 +660,7 @@ void bustools_predict(Bustools_opt &opt) {
 		std::ofstream of(nb_params_ofn);
 		
 		//header
-		of << "gene\tmu\t\size\tUMIs\t\counts\n";
+		of << "gene\tmu\tsize\tUMIs\tcounts\n";
 
 		for (size_t i = 0; i < genes.size(); ++i) {
 			of << genes[i] << '\t' << muVals[i] << '\t' << sizeVals[i] << '\t' << umisPerGene[i] << '\t' << countsPerGene[i] << '\n';
