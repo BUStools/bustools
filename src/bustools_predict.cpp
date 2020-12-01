@@ -412,7 +412,7 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 }
 
 //size and mu are out parameters describing the negative binomial
-double PredictZTNBForGene(const double* hist, size_t histLen, double tm, double& size, double& mu) {
+double PredictZTNBForGene(const double* hist, size_t histLen, double t, double& size, double& mu) {
 	double histSum = 0; //S in the R code
 	for (size_t i = 0; i < histLen; ++i) {
 		histSum += *(hist + i);
