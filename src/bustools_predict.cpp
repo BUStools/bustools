@@ -661,7 +661,7 @@ void bustools_predict(Bustools_opt &opt) {
 	//Modify counts
 	//////////////////
 	
-	std::cout << "Creating corrected counts matrix...\n"
+	std::cout << "Creating corrected counts matrix...\n";
 
 	//read and write the counts matrix
 	{
@@ -692,7 +692,7 @@ void bustools_predict(Bustools_opt &opt) {
 	}
 	
 	//write negative binomial params (file with header)
-	std::cout << "Writing negative binomial params...\n"
+	std::cout << "Writing negative binomial params...\n";
 	{
 		std::ofstream of(nb_params_ofn);
 		
