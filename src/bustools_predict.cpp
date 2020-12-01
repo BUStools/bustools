@@ -350,7 +350,7 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 		!(iter >= ITER_FAST_LIMIT && fabs(lastNegLL - currNegLL) / histSum <= MAX_ERROR_FAST))
 	{
 		//temp, remove
-		err = fabs(lastNegLL - currNegLL);
+		double err = fabs(lastNegLL - currNegLL);
 		
 		
 		lastNegLL = currNegLL;
