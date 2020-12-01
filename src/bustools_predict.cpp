@@ -513,6 +513,7 @@ void bustools_predict(Bustools_opt &opt) {
 	//Prepare and load histograms
 	//////////////////
 
+	std::cout << "Test 1\n";
 
 	//read the hist file
 	std::string hist_ifn = opt.predict_input + ".hist.txt";
@@ -541,6 +542,8 @@ void bustools_predict(Bustools_opt &opt) {
 	std::vector<size_t> histogramLengths = std::vector<size_t>(n_genes, 0);
 	std::string line;
 
+	std::cout << "Test 2\n";
+
 	//load histograms file
 	{
 		std::ifstream inf(hist_ifn);
@@ -556,6 +559,8 @@ void bustools_predict(Bustools_opt &opt) {
 			++geneIndex;
 		}
 	}
+
+	std::cout << "Test 3\n";
 
 	//fix the histograms if they have only a single non-zero value (i.e. for example looks like this: 1 0 0 0)
 	//however, do not fix completely empty histograms
@@ -586,6 +591,8 @@ void bustools_predict(Bustools_opt &opt) {
 			}
 		}
 	}
+
+	std::cout << "Test 4\n";
 
 	//Predict
 	//////////////////
