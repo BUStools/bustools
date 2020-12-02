@@ -136,7 +136,7 @@ double PredictZTNBEmAlg1(const double* hist, size_t histLen, double& size, doubl
 		histSum += *(hist + i);
 		histWeights += (*(hist + i)) * (i+1);
 	}
-	mu = (histWeights - histSum)/histSum
+	mu = (histWeights - histSum)/histSum;
 	size = 1;
 
 	double zeroProbability = DensityNegBin(0, size, mu);
