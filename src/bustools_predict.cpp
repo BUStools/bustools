@@ -129,12 +129,18 @@ public:
 //returns the log likelihood
 //This function uses LBFGSpp
 double PredictZTNBEmAlg1(const double* hist, size_t histLen, double& size, double& mu) {
-
-	double zeroProbability = DensityNegBin(0, size, mu);
+	//estimate start values
 	double histSum = 0; //S in the R code
+	double histWeights = 0;
 	for (size_t i = 0; i < histLen; ++i) {
 		histSum += *(hist + i);
+		histWeights += (*(hist + i)) * (i+1);
 	}
+	mu = (histWeights - histSum)/histSum
+	size = 1;
+
+	double zeroProbability = DensityNegBin(0, size, mu);
+	
 	//estimate the total number of molecules
 	double totMol = histSum / (1 - zeroProbability); //L in the R code
 
