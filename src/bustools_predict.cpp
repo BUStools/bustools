@@ -129,12 +129,18 @@ public:
 //returns the log likelihood
 //This function uses LBFGSpp
 double PredictZTNBEmAlg1(const double* hist, size_t histLen, double& size, double& mu) {
-
-	double zeroProbability = DensityNegBin(0, size, mu);
+	//estimate start values
 	double histSum = 0; //S in the R code
+	double histWeights = 0;
 	for (size_t i = 0; i < histLen; ++i) {
 		histSum += *(hist + i);
+		histWeights += (*(hist + i)) * (i+1);
 	}
+	mu = (histWeights - histSum)/histSum;
+	size = 1;
+
+	double zeroProbability = DensityNegBin(0, size, mu);
+	
 	//estimate the total number of molecules
 	double totMol = histSum / (1 - zeroProbability); //L in the R code
 
@@ -275,11 +281,18 @@ double PredictZTNBEmAlg1(const double* hist, size_t histLen, double& size, doubl
 //Similar to above, but uses CppOptimizationLibrary
 double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, double& mu) {
 
-	double zeroProbability = DensityNegBin(0, size, mu);
+	//estimate start values
 	double histSum = 0; //S in the R code
+	double histWeights = 0;
 	for (size_t i = 0; i < histLen; ++i) {
 		histSum += *(hist + i);
+		histWeights += (*(hist + i)) * (i+1);
 	}
+	mu = (histWeights - histSum)/histSum;
+	size = 1;
+
+	double zeroProbability = DensityNegBin(0, size, mu);
+	
 	//estimate the total number of molecules
 	double totMol = histSum / (1 - zeroProbability); //L in the R code
 
@@ -312,6 +325,10 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 	op.setLowerBound(Optimizer2::TVector::Ones(1) * 0.0001);
 	op.setUpperBound(Optimizer2::TVector::Ones(1) * 10000);
 	cppoptlib::LbfgsbSolver<Optimizer2> solver;
+	//change the stop criteria to speed things up
+	cppoptlib::LbfgsbSolver<Optimizer2>::TCriteria crit = cppoptlib::LbfgsbSolver<Optimizer2>::TCriteria::defaults(); 
+	crit.iterations = 1000; //default is 10000
+	solver.setStopCriteria(crit);
 	Optimizer2::TVector x = Optimizer2::TVector::Zero(1);
 
 	if (variance > mean) {
@@ -340,15 +357,23 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 	//termination criteria for the EM algorithm
 	const double MAX_ERROR = 1e-8;
 	const double MAX_ERROR_FAST = 1e-5;
-	const size_t MAX_ITER = 100000;
+	const size_t MAX_ITER = 400; //Since this algorithm is pretty slow, don't iterate too many times. The algorithm may get stuck here, on a few values only, don't let them dictate the total execution time too much.
 	const size_t ITER_FAST_LIMIT = 200; //if the number of iterations goes over this number, start using the lower error threshold, MAX_ERROR_FAST, to quicken things up
-
-
+	const double LARGE_NEG_LL = 100000000000000000.0;
+	
+	double bestNegLL = LARGE_NEG_LL;
+	double bestMu = -1;
+	double bestSize = -1;
+	
 	//The EM algorithm starts here
 	while (fabs(lastNegLL - currNegLL) / histSum > MAX_ERROR&&
 		iter < MAX_ITER &&
 		!(iter >= ITER_FAST_LIMIT && fabs(lastNegLL - currNegLL) / histSum <= MAX_ERROR_FAST))
 	{
+		//temp, remove
+		//double err = fabs(lastNegLL - currNegLL);
+		
+		
 		lastNegLL = currNegLL;
 
 		//update distribution params
@@ -385,7 +410,7 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 		else {
 			x[0] = size;
 		}
-
+		
 		//avoid printing of warning text in console
 		if (x[0] > 10000.0) {
 			x[0] = 10000.0;
@@ -398,6 +423,15 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 		//std::cout << "val: " << x[0] << "\n";
 
 		currNegLL = -ZTNBLogLikelihood(hist, histLen, x[0], mean);
+		
+		//std::cout << "Iteration: " << iter << " x val: " << x[0] << " ll " << currNegLL << " lldiff: " << err << "\n";
+		
+		//keep track of the best values we had in case it doesn't converge - better to return those
+		if (currNegLL < bestNegLL) {
+			bestNegLL = currNegLL;
+			bestMu = mu;
+			bestSize = size;
+		}
 
 		//std::cout << "error: " << (lastNegLL - currNegLL) / histSum << "\n";
 
@@ -407,11 +441,20 @@ double PredictZTNBEmAlg2(const double* hist, size_t histLen, double& size, doubl
 	}
 
 	//std::cout << "iterations: " << iter << " error: " << (lastNegLL - currNegLL) / histSum << "\n";
+	
+	if (bestNegLL < LARGE_NEG_LL) {
+		currNegLL = bestNegLL;
+		mu = bestMu;
+		size = bestSize;
+	}
+
+	//std::cout << "Iteration: " << iter << " mu: " << mu << " size: " << size << " ll: " << currNegLL << "\n";
 
 	return -currNegLL;
 }
 
-double PredictZTNBForGene(const double* hist, size_t histLen, double t) {
+//size and mu are out parameters describing the negative binomial
+double PredictZTNBForGene(const double* hist, size_t histLen, double t, double& size, double& mu, int index) {
 	double histSum = 0; //S in the R code
 	for (size_t i = 0; i < histLen; ++i) {
 		histSum += *(hist + i);
@@ -420,17 +463,21 @@ double PredictZTNBForGene(const double* hist, size_t histLen, double t) {
 		return 0.0;//nothing to do...
 	}
 	//initial values of negative binomial, taken from R code
-	double size = 1.0;
-	double mu = 0.5;
+	size = 1.0;
+	mu = 0.5;
 	//fit the ZTNB (will update size and mu)
 	//So, the trick here is to first use Alg1 - it is faster, but fails sometimes. If it fails,
 	//use Alg2
 	try {
+		//std::cout << "Alg1: " << index << "\n";
 		PredictZTNBEmAlg1(hist, histLen, size, mu);
+		//std::cout << "Alg1 done: " << index << "\n";
 	}
 	catch (std::exception&)
 	{
+		//std::cout << "Alg2: " << index << "\n";
 		PredictZTNBEmAlg2(hist, histLen, size, mu);
+		//std::cout << "Alg2 done: " << index << "\n";
 	}
 	
 	//std::cout << "Mu: " << mu << " Size: " << size << "\n";
@@ -454,14 +501,23 @@ double PredictZTNBForGene(const double* hist, size_t histLen, double t) {
 class PredictionExecuter
 {
 public:
-	PredictionExecuter(const std::vector<double>& hists, const std::vector<size_t>& histLengths, double t, std::vector<double>& predVals, const uint32_t histmax) 
+	PredictionExecuter(const std::vector<double>& hists, const std::vector<size_t>& histLengths, double t, std::vector<double>& predVals, std::vector<double>& sizeVals, std::vector<double>& muVals, const uint32_t histmax) 
 		: m_hists(hists)
 		, m_histLengths(histLengths)
 		, m_t(t)
 		, m_predVals(predVals)
+		, m_sizeVals(sizeVals)
+		, m_muVals(muVals)
 		, m_histmax(histmax)
 	{}
 	void Execute(int numThreads) {
+		//Some test code:
+		//std::cout << "Predicting 1345 \n";
+		//double size = 0;
+		//double mu = 0;
+		//PredictZTNBForGene(&m_hists[1345 * m_histmax], m_histLengths[1345], m_t, size, mu, 1345);
+		//std::cout << "End Predicting 1345 \n";
+
 		//create the threads
 		for (int i = 0; i < numThreads; ++i) {
 			m_threads.push_back(std::shared_ptr<std::thread> (new std::thread(&PredictionExecuter::ThreadFunc, this)));
@@ -476,11 +532,14 @@ private:
 	void ThreadFunc() {
 		size_t i = 0;
 		while (GetNextIndex(i)) {
-			m_predVals[i] = PredictZTNBForGene(&m_hists[i * m_histmax], m_histLengths[i], m_t);
+			double size = 0;
+			double mu = 0;
+			m_predVals[i] = PredictZTNBForGene(&m_hists[i * m_histmax], m_histLengths[i], m_t, size, mu, i);
+			m_sizeVals[i] = size;
+			m_muVals[i] = mu;
 		}
 	}
-	bool GetNextIndex(size_t& index)
-	{
+	bool GetNextIndex(size_t& index) {
 		std::lock_guard<std::mutex> lg(m_mutex);
 		if (m_nextIndex == m_histLengths.size()) {
 			return false;
@@ -496,6 +555,8 @@ private:
 	const std::vector<size_t>& m_histLengths;
 	double m_t;
 	std::vector<double>& m_predVals;
+	std::vector<double>& m_sizeVals;
+	std::vector<double>& m_muVals;
 	const uint32_t m_histmax;
 	std::vector<std::shared_ptr<std::thread>> m_threads;
 };
@@ -505,7 +566,6 @@ void bustools_predict(Bustools_opt &opt) {
 	//Prepare and load histograms
 	//////////////////
 
-
 	//read the hist file
 	std::string hist_ifn = opt.predict_input + ".hist.txt";
 	std::string counts_ifn = opt.predict_input + ".mtx";
@@ -513,6 +573,7 @@ void bustools_predict(Bustools_opt &opt) {
 	std::string barcode_ifn = opt.predict_input + ".barcodes.txt";
 
 	std::string corr_counts_ofn = opt.output + ".mtx";
+	std::string nb_params_ofn = opt.output + ".nb_params.txt";
 	std::string corr_gene_ofn = opt.output + ".genes.txt";
 	std::string corr_barcode_ofn = opt.output + ".barcodes.txt";
 
@@ -582,42 +643,47 @@ void bustools_predict(Bustools_opt &opt) {
 	//////////////////
 	
 	std::vector<double> predVals(n_genes, 0);
+	std::vector<double> sizeVals(n_genes, 0);
+	std::vector<double> muVals(n_genes, 0);
 	int numThreads = std::thread::hardware_concurrency();
 	std::cout << "Using " << numThreads << " threads\n";
-	PredictionExecuter pe(histograms, histogramLengths, opt.predict_t, predVals, histmax);
+	PredictionExecuter pe(histograms, histogramLengths, opt.predict_t, predVals, sizeVals, muVals, histmax);
 	pe.Execute(numThreads);
 	
 	//calculate the sum of all histograms and all predvals:
 	double histSum = 0;
+	std::vector<double> umisPerGene(n_genes, 0);
 	std::vector<double> countsPerGene(n_genes, 0);
 	double predSum = 0;
 
 	for (size_t i = 0; i < predVals.size(); ++i) {
 		for (size_t j = 0; j < histogramLengths[i]; ++j) {
-			countsPerGene[i] += histograms[i * histmax + j];
+			umisPerGene[i] += histograms[i * histmax + j];
+			countsPerGene[i] += histograms[i * histmax + j]*(j+1);
 		}
-		histSum += countsPerGene[i];
+		histSum += umisPerGene[i];
 		predSum += predVals[i];
 	}
 
 	//so the genes should be scaled according to the following:
-	//geneScaling = histSum/predSum * predVal/countsPerGene;
+	//geneScaling = histSum/predSum * predVal/umisPerGene;
 	std::vector<double> geneScaling(n_genes, 1.0);//1.0 for all empty genes
 	double globScale = histSum / predSum;
 	for (size_t i = 0; i < predVals.size(); ++i) {
-		if (countsPerGene[i] > 0) {
-			geneScaling[i] = globScale * predVals[i] / countsPerGene[i];
+		if (umisPerGene[i] > 0) {
+			geneScaling[i] = globScale * predVals[i] / umisPerGene[i];
 		}
 	}
 	
 	//Modify counts
 	//////////////////
+	
+	std::cout << "Creating corrected counts matrix...\n";
 
 	//read and write the counts matrix
 	{
 		std::ifstream inf(counts_ifn);
 		std::string test;
-		//std::ifstream inf(counts_ifn);
 		std::ofstream of(corr_counts_ofn);
 		//first number is cells, second genes
 		//first handle header, we just leave that untouched
@@ -641,4 +707,18 @@ void bustools_predict(Bustools_opt &opt) {
 			}
 		}
 	}
+	
+	//write negative binomial params (file with header)
+	std::cout << "Writing negative binomial params...\n";
+	{
+		std::ofstream of(nb_params_ofn);
+		
+		//header
+		of << "gene\tmu\tsize\tUMIs\tcounts\n";
+
+		for (size_t i = 0; i < genes.size(); ++i) {
+			of << genes[i] << '\t' << muVals[i] << '\t' << sizeVals[i] << '\t' << umisPerGene[i] << '\t' << countsPerGene[i] << '\n';
+		}
+	}
+	
 }
