@@ -109,7 +109,7 @@ void bustools_inspect(Bustools_opt &opt) {
   /* Number of reads in agreement with whitelist. */
   uint32_t reads_wl = 0;
 
-  uint64_t curr_umi, curr_bc;
+  uint64_t curr_umi = 0, curr_bc = 0;
   uint32_t readsPerBc_count = 0, umisPerBc_count = 0;
   bool flag = false;
 
