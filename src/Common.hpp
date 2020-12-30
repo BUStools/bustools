@@ -64,6 +64,7 @@ struct Bustools_opt
   bool count_em = false;
   bool count_cm = false;
   bool count_collapse = false;
+  bool umi_gene_collapse = false;
   bool count_gene_multimapping = false;
 
   /* correct */

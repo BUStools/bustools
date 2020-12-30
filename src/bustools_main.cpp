@@ -278,6 +278,7 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
 {
   const char *opt_string = "o:g:e:t:m";
   int gene_flag = 0;
+  int umigene_flag = 0;
   int em_flag = 0;
   int cm_flag = 0;
   static struct option long_options[] = {
@@ -286,6 +287,7 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
       {"ecmap", required_argument, 0, 'e'},
       {"txnames", required_argument, 0, 't'},
       {"genecounts", no_argument, &gene_flag, 1},
+      {"umi-gene", no_argument, &umigene_flag, 1},
       {"multimapping", no_argument, 0, 'm'},
       {"em", no_argument, &em_flag, 1},
       {"cm", no_argument, &cm_flag, 1},
@@ -320,6 +322,10 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
   if (gene_flag)
   {
     opt.count_collapse = true;
+  }
+  if (umigene_flag)
+  {
+    opt.umi_gene_collapse = true;
   }
   if (em_flag)
   {
@@ -1154,6 +1160,12 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
     std::cerr << "Error: EM algorithm and counting multiplicites are incompatible" << std::endl;
     ret = false;
   }
+  
+  if (opt.umi_gene_collapse && opt.count_cm)
+  {
+    std::cerr << "Error: Gene-level collapsing of UMIs and counting multiplicites are incompatible" << std::endl;
+    ret = false;
+  }
 
   if (opt.files.size() == 0)
   {
@@ -1680,6 +1692,7 @@ void Bustools_count_Usage()
             << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
             << "-t, --txnames         File with names of transcripts" << std::endl
             << "    --genecounts      Aggregate counts to genes only" << std::endl
+            << "    --umi-gene        Perform gene-level collapsing of UMIs" << std::endl
             << "    --em              Estimate gene abundances using EM algorithm" << std::endl
             << "    --cm              Count multiplicites instead of UMIs" << std::endl
             << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl

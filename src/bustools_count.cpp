@@ -103,31 +103,77 @@ void bustools_count(Bustools_opt &opt) {
       for (size_t k = i; k < j; k++) {
         ecs.push_back(v[k].ec);
       }
-
-      int32_t ec = intersect_ecs(ecs, u, genemap, ecmap, ecmapinv, ec2genes);
-      if (ec == -1) {
-        ec = intersect_ecs_with_genes(ecs, genemap, ecmap, ecmapinv, ec2genes);              
+      
+      if (opt.umi_gene_collapse) {
+        intersect_genes_of_ecs(ecs,ec2genes, glist);
+      }
+      if (opt.umi_gene_collapse && glist.size() == 0) {
+        // Gene-intersection zero, check for UMI collision
+        std::vector<int32_t> ecs_within_molecule;
+        while (ecs.size() > 0) {
+          ecs_within_molecule.resize(0);
+          for (size_t k = 0; k < ecs.size(); k++) {
+            ecs_within_molecule.push_back(ecs[k]);
+            intersect_genes_of_ecs(ecs_within_molecule, ec2genes, glist);
+            if (glist.size() == 0) {
+              ecs_within_molecule.pop_back();
+            } else {
+              ecs.erase(ecs.begin() + k);
+              k--;
+            }
+          }
+          int32_t ec = intersect_ecs(ecs_within_molecule, u, genemap, ecmap, ecmapinv, ec2genes);
+          if (ec == -1) {
+            ec = intersect_ecs_with_genes(ecs_within_molecule, genemap, ecmap, ecmapinv, ec2genes);
+            if (ec == -1) {
+              bad_count += ecs_within_molecule.size();
+            } else {
+              bool filter = false;
+              if (!opt.count_gene_multimapping) {
+                filter = (ec2genes[ec].size() != 1);
+              }
+              if (!filter) {
+                rescued += ecs_within_molecule.size();
+                column_v.push_back(ec);
+              }
+            }
+          } else {
+            bool filter = false;
+            if (!opt.count_gene_multimapping) {
+              filter = (ec2genes[ec].size() != 1);
+            }
+            if (!filter) {
+              compacted += ecs_within_molecule.size()-1;
+              column_v.push_back(ec);
+            }
+          }
+        }
+      } else { // Consider the records, which share the same UMI, as having come from the same molecule
+        int32_t ec = intersect_ecs(ecs, u, genemap, ecmap, ecmapinv, ec2genes);
         if (ec == -1) {
-          bad_count += j-i;
+          ec = intersect_ecs_with_genes(ecs, genemap, ecmap, ecmapinv, ec2genes);              
+          if (ec == -1) {
+            bad_count += j-i;
+          } else {
+            bool filter = false;
+            if (!opt.count_gene_multimapping) {
+              filter = (ec2genes[ec].size() != 1);
+            }
+            if (!filter) {
+              rescued += j-i;
+              column_v.push_back(ec);
+            }
+          }
+          
         } else {
           bool filter = false;
           if (!opt.count_gene_multimapping) {
             filter = (ec2genes[ec].size() != 1);
           }
           if (!filter) {
-            rescued += j-i;
+            compacted += j-i-1;
             column_v.push_back(ec);
           }
-        }
-
-      } else {
-        bool filter = false;
-        if (!opt.count_gene_multimapping) {
-          filter = (ec2genes[ec].size() != 1);
-        }
-        if (!filter) {
-          compacted += j-i-1;
-          column_v.push_back(ec);
         }
       }
       i = j; // increment
@@ -188,6 +234,35 @@ void bustools_count(Bustools_opt &opt) {
             column_vp.push_back({glist[0],1.0});
           } else if (opt.count_em) {
             ambiguous_genes.push_back(std::move(glist));
+          }
+        }
+      } else if (opt.umi_gene_collapse) { // Gene-intersection zero, check for UMI collision
+        std::vector<int32_t> ecs_within_molecule;
+        while (ecs.size() > 0) {
+          ecs_within_molecule.resize(0);
+          for (size_t k = 0; k < ecs.size(); k++) {
+            ecs_within_molecule.push_back(ecs[k]);
+            intersect_genes_of_ecs(ecs_within_molecule, ec2genes, glist);
+            if (glist.size() == 0) {
+              ecs_within_molecule.pop_back();
+            } else {
+              ecs.erase(ecs.begin() + k);
+              k--;
+            }
+          }
+          gn = glist.size();
+          if (gn > 0) {
+            if (opt.count_gene_multimapping) {
+              for (auto x : glist) {
+                column_vp.push_back({x, 1.0/gn});
+              }
+            } else {
+              if (gn==1) {
+                column_vp.push_back({glist[0],1.0});
+              } else if (opt.count_em) {
+                ambiguous_genes.push_back(std::move(glist));
+              }
+            }
           }
         }
       }
