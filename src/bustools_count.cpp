@@ -540,6 +540,15 @@ void bustools_count_mult(Bustools_opt &opt) {
     
     for (size_t i = 0; i < n; i++) {
       int32_t ec = v[i].ec;
+      if (!opt.count_gene_multimapping) {
+        ecs.resize(0);
+        ecs.push_back(ec);
+        intersect_genes_of_ecs(ecs, ec2genes, glist);
+        int gn = glist.size();
+        if (gn != 1) {
+          continue;
+        }
+      }
       column_vp.push_back({ec,v[i].count});
     }
     std::sort(column_vp.begin(), column_vp.end());
