@@ -2,6 +2,19 @@
 #to be able to run this file, you need to run the line chmod +x ./test/test_cases/runtests.txt
 mkdir tmp
 
+#Test collapse
+./build/src/bustools fromtext -p ./test/test_cases/tc0002CollapseInput.txt | ./build/src/bustools collapse -o ./tmp/tc2mid2 -p -t ./test/test_cases/transcripts.txt -g ./test/test_cases/transcripts_to_genes.txt -e ./test/test_cases/matrix.ec - | ./build/src/bustools text -o ./tmp/tc0002output.txt -
+diff -w -B -s ./test/test_cases/tc0002ExpResult.txt ./tmp/tc0002output.txt
+rm ./tmp/*
+#or separately
+./build/src/bustools fromtext -o ./tmp/tc2mid.bus ./test/test_cases/tc0002CollapseInput.txt
+./build/src/bustools collapse -o ./tmp/tc2mid2 -t ./test/test_cases/transcripts.txt -g ./test/test_cases/transcripts_to_genes.txt -e ./test/test_cases/matrix.ec ./tmp/tc2mid.bus
+./build/src/bustools text -o ./tmp/tc0002output.txt ./tmp/tc2mid2.bus
+#check that the files are identical
+diff -w -B -s ./test/test_cases/tc0002ExpResult.txt ./tmp/tc0002output.txt
+rm ./tmp/*
+
+
 #Test umicorrect
 #tc0003
 ./build/src/bustools fromtext -p ./test/test_cases/tc0003.txt | ./build/src/bustools umicorrect -e ./test/test_cases/matrix.ec -g ./test/test_cases/transcripts_to_genes.txt -t ./test/test_cases/transcripts.txt -p  - | ./build/src/bustools text -o ./tmp/tc0003output.txt -
