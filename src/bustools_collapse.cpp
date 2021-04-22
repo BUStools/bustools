@@ -92,6 +92,7 @@ void bustools_collapse(Bustools_opt &opt) {
 	if (glist.size() == 1) {
 		auto entry = v[0];
 		entry.count = copies;
+		entry.ec = glist[1];
 		bus_out.write((char*)&entry, sizeof(entry));
 	} else {
 		discarded++;
