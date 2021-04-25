@@ -1685,14 +1685,13 @@ bool check_ProgramOptions_clusterhist(Bustools_opt& opt) {
 			}
 		}
 
-		if (isDir) {
-			opt.output += "output";
-		}
 		std::string histDir = opt.output + "cluster_hists/";
 		//generate directory
-		if (my_mkdir(histDir.c_str(), 0777) == -1) {
-			std::cerr << "Error: could not create cluster_hists directory " << opt.output << std::endl;
-			ret = false;
+		if (!checkDirectoryExists(histDir)) {
+			if (my_mkdir(histDir.c_str(), 0777) == -1) {
+				std::cerr << "Error: could not create directory " << opt.output << std::endl;
+				ret = false;
+			}
 		}
 	}
 
