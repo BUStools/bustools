@@ -180,7 +180,9 @@ void bustools_count(Bustools_opt &opt) {
     }
     column_vp.resize(0);
     n_rows+= 1;
-    
+	cellUMIs.push_back(0);
+	cellCounts.push_back(0);
+
     barcodes.push_back(v[0].barcode);
     double val = 0.0;
     size_t n = v.size();
