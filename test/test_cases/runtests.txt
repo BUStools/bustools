@@ -37,6 +37,7 @@ diff -w -B -s ./test/test_cases/tc0004ExpResultsGenes.txt ./tmp/tc0004output/out
 diff -w -B -s ./test/test_cases/tc0004ExpResultsBarcodes.txt ./tmp/tc0004output/output.barcodes.txt
 diff -w -B -s ./test/test_cases/tc0004ExpResultsHist.txt ./tmp/tc0004output/output.hist.txt
 diff -w -B -s ./test/test_cases/tc0004ExpResultsCU.txt ./tmp/tc0004output/output.cu.txt
+diff -w -B -s ./test/test_cases/tc0004ExpResultsCUPerCell.txt ./tmp/tc0004output/output.CUPerCell.txt
 diff -w -B -s ./test/test_cases/tc0004ExpResultsCountRaw.txt ./tmp/tc0004outputraw/output.mtx
 
 

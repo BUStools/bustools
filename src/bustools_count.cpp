@@ -42,6 +42,7 @@ void bustools_count(Bustools_opt &opt) {
   std::string ec_ofn = opt.output + ".ec.txt";
   std::string gene_ofn = opt.output + ".genes.txt";
   std::string hist_ofn = opt.output + ".hist.txt";
+  std::string cu_per_cell_ofn = opt.output + ".CUPerCell.txt";
   std::string cu_ofn = opt.output + ".cu.txt";
   of.open(mtx_ofn);
 
@@ -82,8 +83,13 @@ void bustools_count(Bustools_opt &opt) {
   size_t n_genes = genenames.size();
   const uint32_t histmax = 100;//set molecules with more than histmax copies to histmax 
   std::vector<double> histograms;
+  std::vector<int> cellUMIs; //used for calculating CU per cell
+  std::vector<int> cellCounts; //used for calculating CU per cell
   if (opt.count_gen_hist) {
+	  
 	  histograms = std::vector<double>(n_genes * histmax, 0);
+	  cellUMIs.reserve(100000);
+	  cellCounts.reserve(100000);
   }
 
   //set up random number generator for downsampling
@@ -188,7 +194,7 @@ void bustools_count(Bustools_opt &opt) {
           break;
         }
       }
-
+	
       // v[i..j-1] share the same UMI
       ecs.resize(0);
 	  uint32_t counts = 0;
@@ -211,22 +217,25 @@ void bustools_count(Bustools_opt &opt) {
 			  gn = 0;//trick to skip quantification below
 		  }
 
-	  }
+      }
       if (gn > 0) {
         if (opt.count_gene_multimapping) {
           for (auto x : glist) {
             column_vp.push_back({x, (opt.count_raw_counts ? counts : 1.0)/gn});
-
-			//Fill in histograms for prediction.
-			if (opt.count_gen_hist) {
+          }
+		  
+		  //Fill in histograms for prediction.
+		  if (opt.count_gen_hist) {
+			for (auto x : glist) {
 				if (x < n_genes) { //crasches with an invalid gene file otherwise
 					histograms[x * histmax + std::min(counts - 1, histmax - 1)] += 1.0 / gn; //histmax-1 since histograms[g][0] is the histogram value for 1 copy and so forth
-				}
-				else {
+				} else {
 					std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
 				}
 			}
-          }
+			cellUMIs[barcodes.size()-1]++;
+			cellCounts[barcodes.size()-1] += counts;
+		  }
         } else {
           if (gn==1) {
             column_vp.push_back({glist[0],opt.count_raw_counts ? counts : 1.0});
@@ -234,6 +243,8 @@ void bustools_count(Bustools_opt &opt) {
 			if (opt.count_gen_hist) {
 				if (glist[0] < n_genes) { //crasches with an invalid gene file otherwise
 					histograms[glist[0] * histmax + std::min(counts - 1, histmax - 1)] += 1.0; //histmax-1 since histograms[g][0] is the histogram value for 1 copy and so forth
+					cellUMIs[barcodes.size()-1]++;
+					cellCounts[barcodes.size()-1] += counts;
 				} else {
 					std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
 				}
@@ -250,6 +261,8 @@ void bustools_count(Bustools_opt &opt) {
 						std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
 					}
 				}
+				cellUMIs[barcodes.size()-1]++;
+				cellCounts[barcodes.size()-1] += counts;
 			}
 		  }
         }
@@ -464,8 +477,9 @@ void bustools_count(Bustools_opt &opt) {
 	histof.close();
   }
   
-  //write mean counts per UMI file
   if (opt.count_gen_hist) {
+	//write mean counts per UMI file (per gene)
+	
 	std::ofstream cuof;
 	cuof.open(cu_ofn);
 	//write header
@@ -500,6 +514,18 @@ void bustools_count(Bustools_opt &opt) {
 		}
 	}
 	cuof.close();
+	
+	//write cu per cell file
+	
+	std::ofstream cupcof;
+	cupcof.open(cu_per_cell_ofn);
+	//write header
+	cupcof << "barcode\tCU\tUMIs\n"; 
+
+	for (size_t bc = 0; bc < barcodes.size(); ++bc) {
+		cupcof << binaryToString(barcodes[bc], bclen) << '\t' << double(cellCounts[bc]) / double(cellUMIs[bc]) << '\t' << cellUMIs[bc] << '\n';
+	}
+	cupcof.close();
   }
   
 
