@@ -1,0 +1,27 @@
+#Test for the collapse function. 
+#What we need to test is that 
+#1. Different ecs with the same UMI and barcode leads to that they are merged to the same gene - these two should be merged
+AAACCTGAGAAGCCCA	ATGGAAATTT	1	4
+AAACCTGAGAAGCCCA	ATGGAAATTT	2	3
+
+#2. Identical ecs with same barcode and different UMI should not be merged
+AAACCTGAGAAGCCCA	ATGAAAATTT	1	1
+AAACCTGAGAAGCCCA	ATGAAAATTA	1	1
+
+#3. Identical barcode and UMI should lead to the set intersection of genes - these should be merged with gene set to 2
+AAACCTGAGAAGCCCA	GTGGAAATTT	9	4
+AAACCTGAGAAGCCCA	GTGGAAATTT	10	3
+AAACCTGAGAAGCCCA	GTGGAAATTT	13	3
+
+#4. Sometimes you get more than one gene - should be merged with gene set to 2,4, but discarded here since we do not keep multimapped molecules
+AAACCTGAGAAGCCCA	ATGGAAATTT	13	4
+AAACCTGAGAAGCCCA	ATGGAAATTT	10	3
+
+#5. No overlap between genes, should be discarded
+AAACCTGAGAAGCCCA	CTGGAAATTT	2	4
+AAACCTGAGAAGCCCA	CTGGAAATTT	10	3
+
+#6. Identical ecs with different barcode and same UMI should not be merged
+AAACCTGAGAAGCCCA	ATGAAAATAA	1	1
+AAACCTGAGAAGCCCT	ATGAAAATAA	1	1
+

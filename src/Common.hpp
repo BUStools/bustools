@@ -53,6 +53,8 @@ struct Bustools_opt {
   std::string predict_input; //specified the same way as the output for count - count and histogram filenames will be created from this
   double predict_t = 0.0; //this is how far to predict, t=10 means that we will predict the change in expression at 10 times the number of reads
 
+  /* clusterhist */
+  std::string cluster_input_file;
 
   /* project */
   std::string map;
