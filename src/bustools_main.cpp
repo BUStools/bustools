@@ -1744,7 +1744,7 @@ bool check_ProgramOptions_clusterhist(Bustools_opt& opt) {
 	}
 
 	if (opt.cluster_input_file.size() == 0) {
-		std::cerr << "Error: missing transcript name file" << std::endl;
+		std::cerr << "Error: missing cluster file" << std::endl;
 		ret = false;
 	}
 	else {
