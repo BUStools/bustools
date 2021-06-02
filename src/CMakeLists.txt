@@ -33,6 +33,11 @@ endif(LINK MATCHES static)
    message(FATAL_ERROR "zlib not found. Required for reading FASTQ files" )
  endif( ZLIB_FOUND )
 
+include_directories(../dependencies/CppNumericalSolvers-v1/include)
+include_directories(../dependencies/eigen-3.3.7)
+include_directories(../dependencies/LBFGSpp-2020-03-06/include)
+
+
 if(LINK MATCHES static)
     if (UNIX AND NOT APPLE)
         target_link_libraries(bustools librt.a)

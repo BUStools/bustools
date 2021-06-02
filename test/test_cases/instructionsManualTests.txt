@@ -1,0 +1,22 @@
+#manual test of predict - requires that pbmcv2 has been processed by Kallisto and that a tr2g file exists, see the commands file for pbmcv2 for how to do this
+#tc0006
+mkdir ~/new_bustools/bustools/data/pbmcv2
+cp /mnt/e/Butterfly/10xv2_whitelist.txt ~/new_bustools/bustools/data/
+cp /mnt/e/Butterfly/pbmcv2/bus_output/matrix.ec ~/new_bustools/bustools/data/pbmcv2/ 
+cp /mnt/e/Butterfly/pbmcv2/bus_output/transcripts.txt ~/new_bustools/bustools/data/pbmcv2/ 
+cp /mnt/e/Butterfly/pbmcv2/bus_output/transcripts_to_genes.txt ~/new_bustools/bustools/data/pbmcv2/ 
+cp /mnt/e/Butterfly/pbmcv2/bus_output/output.bus ~/new_bustools/bustools/data/pbmcv2/
+cd ~/new_bustools/bustools/data/pbmcv2
+mkdir tmp
+~/new_bustools/bustools/build/src/bustools correct -w ../10xv2_whitelist.txt -o corr.bus output.bus
+~/new_bustools/bustools/build/src/bustools sort -T tmp/ -t 4 -o sort.bus corr.bus
+~/new_bustools/bustools/build/src/bustools umicorrect -e ./matrix.ec -g ./transcripts_to_genes.txt -t ./transcripts.txt -o umicorr.bus sort.bus
+~/new_bustools/bustools/build/src/bustools count --hist -m --genecounts -e ./matrix.ec -g ./transcripts_to_genes.txt -t ./transcripts.txt -o count/ umicorr.bus
+~/new_bustools/bustools/build/src/bustools count --downsample 0.1 --hist -m --genecounts -e ./matrix.ec -g ./transcripts_to_genes.txt -t ./transcripts.txt -o count_ds/ umicorr.bus
+~/new_bustools/bustools/build/src/bustools predict -t 10 -o count_ds_pred/ count_ds/
+
+cp -r count_ds /mnt/e/Butterfly/pbmcv2/bus_output/
+cp -r count_ds_pred /mnt/e/Butterfly/pbmcv2/bus_output/
+cp -r count /mnt/e/Butterfly/pbmcv2/bus_output/
+
+#now run TestCppImplPredict.R in R

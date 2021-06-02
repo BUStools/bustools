@@ -1,0 +1,56 @@
+#to run my test cases (from the bustools folder)
+#to be able to run this file, you need to run the line chmod +x ./test/test_cases/runAutoTests.txt
+#Then run this line: ./test/test_cases/runAutoTests.txt
+mkdir tmp
+
+#Test collapse
+echo tc0002-collapse
+./build/src/bustools fromtext -p ./test/test_cases/tc0002CollapseInput.txt | ./build/src/bustools collapse -o ./tmp/tc2mid2 -p -t ./test/test_cases/transcripts.txt -g ./test/test_cases/transcripts_to_genes.txt -e ./test/test_cases/matrix.ec - | ./build/src/bustools text -o ./tmp/tc0002output.txt -
+echo comparing output from pipe
+diff -w -B -s ./test/test_cases/tc0002ExpResult.txt ./tmp/tc0002output.txt
+rm ./tmp/*
+#or separately
+./build/src/bustools fromtext -o ./tmp/tc2mid.bus ./test/test_cases/tc0002CollapseInput.txt
+./build/src/bustools collapse -o ./tmp/tc2mid2 -t ./test/test_cases/transcripts.txt -g ./test/test_cases/transcripts_to_genes.txt -e ./test/test_cases/matrix.ec ./tmp/tc2mid.bus
+./build/src/bustools text -o ./tmp/tc0002output.txt ./tmp/tc2mid2.bus
+#check that the files are identical
+echo comparing output from separate run
+diff -w -B -s ./test/test_cases/tc0002ExpResult.txt ./tmp/tc0002output.txt
+rm ./tmp/*
+
+
+#Test umicorrect
+#tc0003
+echo tc0003-umicorrect
+./build/src/bustools fromtext -p ./test/test_cases/tc0003.txt | ./build/src/bustools umicorrect -e ./test/test_cases/matrix.ec -g ./test/test_cases/transcripts_to_genes.txt -t ./test/test_cases/transcripts.txt -p  - | ./build/src/bustools text -o ./tmp/tc0003output.txt -
+echo comparing output from pipe
+diff -w -B -s ./test/test_cases/tc0003ExpResult.txt ./tmp/tc0003output.txt
+rm ./tmp/*
+#or separately
+./build/src/bustools fromtext -o ./tmp/tc3mid.bus ./test/test_cases/tc0003.txt
+./build/src/bustools umicorrect -o ./tmp/tc3mid2.bus -e ./test/test_cases/matrix.ec -g ./test/test_cases/transcripts_to_genes.txt -t ./test/test_cases/transcripts.txt ./tmp/tc3mid.bus
+./build/src/bustools text -o ./tmp/tc0003output.txt ./tmp/tc3mid2.bus
+#check that the files are identical
+echo comparing output from separate run
+diff -w -B -s ./test/test_cases/tc0003ExpResult.txt ./tmp/tc0003output.txt
+rm ./tmp/*
+
+#Test count
+#tc0004
+echo tc0004-count
+./build/src/bustools fromtext -p ./test/test_cases/tc0004.txt | ./build/src/bustools count -o ./tmp/tc0004output/ --hist -m  --genecounts -e ./test/test_cases/matrix.ec -g ./test/test_cases/transcripts_to_genes.txt -t ./test/test_cases/transcripts.txt -
+./build/src/bustools fromtext -p ./test/test_cases/tc0004.txt | ./build/src/bustools count -o ./tmp/tc0004outputraw/ --hist -m  --genecounts --rawcounts -e ./test/test_cases/matrix.ec -g ./test/test_cases/transcripts_to_genes.txt -t ./test/test_cases/transcripts.txt -
+echo comparing output.mtx
+diff -w -B -s ./test/test_cases/tc0004ExpResultsCount.txt ./tmp/tc0004output/output.mtx
+echo comparing output.genes.txt
+diff -w -B -s ./test/test_cases/tc0004ExpResultsGenes.txt ./tmp/tc0004output/output.genes.txt
+echo comparing output.barcodes.txt
+diff -w -B -s ./test/test_cases/tc0004ExpResultsBarcodes.txt ./tmp/tc0004output/output.barcodes.txt
+echo comparing output.hist.txt
+diff -w -B -s ./test/test_cases/tc0004ExpResultsHist.txt ./tmp/tc0004output/output.hist.txt
+echo comparing output.cu.txt
+diff -w -B -s ./test/test_cases/tc0004ExpResultsCU.txt ./tmp/tc0004output/output.cu.txt
+echo comparing output.CUPerCell.txt
+diff -w -B -s ./test/test_cases/tc0004ExpResultsCUPerCell.txt ./tmp/tc0004output/output.CUPerCell.txt
+echo comparing output.mtx for raw counts
+diff -w -B -s ./test/test_cases/tc0004ExpResultsCountRaw.txt ./tmp/tc0004outputraw/output.mtx
