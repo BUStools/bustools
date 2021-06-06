@@ -226,8 +226,8 @@ void bustools_count(Bustools_opt &opt) {
     }
     column_vp.resize(0);
     n_rows+= 1;
-	cellUMIs.push_back(0);
-	cellCounts.push_back(0);
+    cellUMIs.push_back(0);
+    cellCounts.push_back(0);
 
     barcodes.push_back(v[0].barcode);
     double val = 0.0;
@@ -245,74 +245,71 @@ void bustools_count(Bustools_opt &opt) {
 	
       // v[i..j-1] share the same UMI
       ecs.resize(0);
-	  uint32_t counts = 0;
+      uint32_t counts = 0;
       for (size_t k = i; k < j; k++) {
         ecs.push_back(v[k].ec);
-		counts += v[k].count;
+        counts += v[k].count;
       }
 
       intersect_genes_of_ecs(ecs,ec2genes, glist);
       int gn = glist.size();
-	  if (opt.count_downsampling_factor != 1.0) {
-		  uint32_t newCounts = 0;
-		  for (uint32_t c = 0; c < counts; ++c) {
-			  if (distr(generator) <= opt.count_downsampling_factor) {
-				  ++newCounts;
-			  }
-		  }
-		  counts = newCounts;
-		  if (newCounts == 0) {
-			  gn = 0;//trick to skip quantification below
-		  }
-
+      if (opt.count_downsampling_factor != 1.0) {
+        uint32_t newCounts = 0;
+        for (uint32_t c = 0; c < counts; ++c) {
+          if (distr(generator) <= opt.count_downsampling_factor) {
+            ++newCounts;
+          }
+        }
+        counts = newCounts;
+        if (newCounts == 0) {
+          gn = 0;//trick to skip quantification below
+        }
       }
       if (gn > 0) {
         if (opt.count_gene_multimapping) {
           for (auto x : glist) {
             column_vp.push_back({x, (opt.count_raw_counts ? counts : 1.0)/gn});
           }
-		  
-		  //Fill in histograms for prediction.
-		  if (opt.count_gen_hist) {
-			for (auto x : glist) {
-				if (x < n_genes) { //crasches with an invalid gene file otherwise
-					histograms[x * histmax + std::min(counts - 1, histmax - 1)] += 1.0 / gn; //histmax-1 since histograms[g][0] is the histogram value for 1 copy and so forth
-				} else {
-					std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
-				}
-			}
-			cellUMIs[barcodes.size()-1]++;
-			cellCounts[barcodes.size()-1] += counts;
-		  }
+          //Fill in histograms for prediction.
+          if (opt.count_gen_hist) {
+            for (auto x : glist) {
+              if (x < n_genes) { //crasches with an invalid gene file otherwise
+                histograms[x * histmax + std::min(counts - 1, histmax - 1)] += 1.0 / gn; //histmax-1 since histograms[g][0] is the histogram value for 1 copy and so forth
+              } else {
+                std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
+              }
+            }
+            cellUMIs[barcodes.size()-1]++;
+            cellCounts[barcodes.size()-1] += counts;
+          }
         } else {
           if (gn==1) {
             column_vp.push_back({glist[0],opt.count_raw_counts ? counts : 1.0});
-			//Fill in histograms for prediction.
-			if (opt.count_gen_hist) {
-				if (glist[0] < n_genes) { //crasches with an invalid gene file otherwise
-					histograms[glist[0] * histmax + std::min(counts - 1, histmax - 1)] += 1.0; //histmax-1 since histograms[g][0] is the histogram value for 1 copy and so forth
-					cellUMIs[barcodes.size()-1]++;
-					cellCounts[barcodes.size()-1] += counts;
-				} else {
-					std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
-				}
-			}
-
+            //Fill in histograms for prediction.
+            if (opt.count_gen_hist) {
+              if (glist[0] < n_genes) { //crasches with an invalid gene file otherwise
+                histograms[glist[0] * histmax + std::min(counts - 1, histmax - 1)] += 1.0; //histmax-1 since histograms[g][0] is the histogram value for 1 copy and so forth
+                cellUMIs[barcodes.size()-1]++;
+                cellCounts[barcodes.size()-1] += counts;
+              } else {
+                std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
+              }
+            }
           } else if (opt.count_em) {
             ambiguous_genes.push_back(std::move(glist));
-			//Fill in histograms for prediction. This is a simplification. TODO: should be fixed for the em algorithm!
-			if (opt.count_gen_hist) {
-				for (auto x : glist) {
-					if (x < n_genes) { //crasches with an invalid gene file otherwise
-						histograms[x * histmax + std::min(counts - 1, histmax - 1)] += 1.0 / gn; //histmax-1 since histograms[g][0] is the histogram value for 1 copy and so forth
-					} else {
-						std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
-					}
-				}
-				cellUMIs[barcodes.size()-1]++;
-				cellCounts[barcodes.size()-1] += counts;
-			}
-		  }
+            //Fill in histograms for prediction. This is a simplification. TODO: should be fixed for the em algorithm!
+            if (opt.count_gen_hist) {
+              for (auto x : glist) {
+                if (x < n_genes) { //crasches with an invalid gene file otherwise
+                  histograms[x * histmax + std::min(counts - 1, histmax - 1)] += 1.0 / gn; //histmax-1 since histograms[g][0] is the histogram value for 1 copy and so forth
+                } else {
+                  std::cerr << "Mismatch between gene file and bus file, the bus file contains gene indices that is outside the gene range!\n";
+                }
+              }
+              cellUMIs[barcodes.size()-1]++;
+              cellCounts[barcodes.size()-1] += counts;
+            }
+          }
         }
       } else if (opt.umi_gene_collapse) { // Gene-intersection zero, check for UMI collision
         std::vector<int32_t> ecs_within_molecule;
@@ -469,7 +466,7 @@ void bustools_count(Bustools_opt &opt) {
             if (!opt.count_collapse) {
               write_barcode_matrix(v);
             } else {
-				write_barcode_matrix_collapsed(v);
+              write_barcode_matrix_collapsed(v);
             }
           }
           v.clear();

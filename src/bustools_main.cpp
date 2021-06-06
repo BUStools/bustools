@@ -31,6 +31,7 @@
 #include "bustools_correct.h"
 #include "bustools_merge.h"
 #include "bustools_extract.h"
+#include "bustools_mash.h"
 #include "bustools_text.h"
 #include "bustools_umicorrect.h"
 #include "bustools_predict.h"
