@@ -1555,6 +1555,18 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
     ret = false;
   }
   
+  if (opt.umi_gene_collapse && (opt.count_raw_counts || opt.count_gen_hist || opt.count_downsampling_factor != 1.0))
+  {
+    std::cerr << "Error: Gene-level collapsing of UMIs is currently incompatible with --hist, --downsample, or --rawcounts" << std::endl;
+    ret = false;
+  }
+  
+  if (opt.count_cm && (opt.count_raw_counts || opt.count_gen_hist || opt.count_downsampling_factor != 1.0))
+  {
+    std::cerr << "Error: Counting multiplicites is incompatible with --hist, --downsample, or --rawcounts" << std::endl;
+    ret = false;
+  }
+  
   if (opt.count_raw_counts && opt.count_em) 
   {
     std::cerr << "Error: Counting raw counts are not supported for the EM algorithm" << std::endl;
