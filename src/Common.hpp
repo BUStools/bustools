@@ -25,7 +25,8 @@ enum SORT_TYPE : char
   SORT_BC = 0,
   SORT_UMI,
   SORT_F,
-  SORT_COUNT
+  SORT_COUNT,
+  SORT_F_BC
 };
 enum PROJECT_TYPE : char
 {

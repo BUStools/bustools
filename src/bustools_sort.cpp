@@ -247,6 +247,79 @@ inline bool ncmp4(const TP &a, const TP &b)
   }
 };
 
+inline bool cmp5(const BUSData &a, const BUSData &b)
+{
+  if (a.flags == b.flags)
+  {
+    if (a.pad == b.pad)
+    {
+      if (a.barcode == b.barcode)
+      {
+        if (a.UMI == b.UMI)
+        {
+          return a.ec < b.ec;
+        }
+        else
+        {
+          return a.UMI < b.UMI;
+        }
+      }
+      else
+      {
+        return a.barcode < b.barcode;
+      }
+    }
+    else
+    {
+      return a.pad < b.pad;
+    }
+  }
+  else
+  {
+    return a.flags < b.flags;
+  }
+};
+
+inline bool ncmp5(const TP &a, const TP &b)
+{
+  if (a.first.flags == b.first.flags)
+  {
+    if (a.first.pad == b.first.pad)
+    {
+      if (a.first.barcode == b.first.barcode)
+      {
+        if (a.first.UMI == b.first.UMI)
+        {
+          if (a.first.ec == b.first.ec)
+          {
+            return a.second > b.second;
+          }
+          else
+          {
+            return a.first.ec > b.first.ec;
+          }
+        }
+        else
+        {
+          return a.first.UMI > b.first.UMI;
+        }
+      }
+      else
+      {
+        return a.first.barcode > b.first.barcode;
+      }
+    }
+    else
+    {
+      return a.first.pad > b.first.pad;
+    }
+  }
+  else
+  {
+    return a.first.flags > b.first.flags;
+  }
+};
+
 void bustools_sort(const Bustools_opt &opt)
 {
   BUSHeader h;
@@ -276,6 +349,10 @@ void bustools_sort(const Bustools_opt &opt)
   case SORT_COUNT:
     cmp = &cmp4;
     ncmp = &ncmp4;
+    break;
+  case SORT_F_BC:
+    cmp = &cmp5;
+    ncmp = &ncmp5;
     break;
   default:
     std::cerr << "ERROR: Unknown sort type" << std::endl;
