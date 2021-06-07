@@ -2562,8 +2562,8 @@ void print_citation()
   std::cout << "When using this program in your research, please cite" << std::endl
             << std::endl
             << "  Melsted, P., Booeshaghi, A. S., et al." << std::endl
-            << "  Modular and efficient pre-processing of single-cell RNA-seq, " << std::endl
-            << "  bioRxiv doi:10.1101/673285" << std::endl
+            << "  Modular, efficient and constant-memory single-cell RNA-seq preprocessing, " << std::endl
+            << "  Nature Biotechnology (2021), doi:10.1038/s41587-021-00870-2" << std::endl
             << std::endl;
 }
 
