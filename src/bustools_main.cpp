@@ -326,7 +326,7 @@ void parse_ProgramOptions_capture(int argc, char **argv, Bustools_opt &opt)
 
 void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
 {
-  const char *opt_string = "o:g:e:t:md";
+  const char *opt_string = "o:g:e:t:md:";
   int gene_flag = 0;
   int umigene_flag = 0;
   int em_flag = 0;
