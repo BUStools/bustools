@@ -59,6 +59,10 @@ void bustools_text(const Bustools_opt& opt) {
 				if (opt.text_dumpflags) {
 					o << "\t" << p[i].flags;
 				}
+				if (opt.text_dumppad)
+				{
+				  o << "\t" << p[i].pad;
+				}
 				o << "\n";
 			}
 		}
