@@ -121,20 +121,20 @@ inline bool cmp3(const BUSData &a, const BUSData &b)
   {
     if (a.pad == b.pad)
     {
-      if (a.barcode == b.barcode)
+      if (a.ec == b.ec)
       {
-        if (a.UMI == b.UMI)
+        if (a.barcode == b.barcode)
         {
-          return a.ec < b.ec;
+          return a.UMI < b.UMI;
         }
         else
         {
-          return a.UMI < b.UMI;
+          return a.barcode < b.barcode;
         }
       }
       else
       {
-        return a.barcode < b.barcode;
+        return a.ec < b.ec;
       }
     }
     else
@@ -154,27 +154,27 @@ inline bool ncmp3(const TP &a, const TP &b)
   {
     if (a.first.pad == b.first.pad)
     {
-      if (a.first.barcode == b.first.barcode)
+      if (a.first.ec == b.first.ec)
       {
-        if (a.first.UMI == b.first.UMI)
+        if (a.first.barcode == b.first.barcode)
         {
-          if (a.first.ec == b.first.ec)
+          if (a.first.UMI == b.first.UMI)
           {
             return a.second > b.second;
           }
           else
           {
-            return a.first.ec > b.first.ec;
+            return a.first.UMI > b.first.UMI;
           }
         }
         else
         {
-          return a.first.UMI > b.first.UMI;
+          return a.first.barcode > b.first.barcode;
         }
       }
       else
       {
-        return a.first.barcode > b.first.barcode;
+        return a.first.ec > b.first.ec;
       }
     }
     else

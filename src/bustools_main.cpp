@@ -31,6 +31,7 @@
 #include "bustools_correct.h"
 #include "bustools_merge.h"
 #include "bustools_extract.h"
+#include "bustools_mash.h"
 #include "bustools_text.h"
 #include "bustools_umicorrect.h"
 #include "bustools_predict.h"
@@ -93,22 +94,22 @@ std::vector<std::string> parseList(const std::string &s, const std::string &sep 
 
 void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt &opt)
 {
-
+  
   const char *opt_string = "t:o:m:T:cusp";
-
+  
   static struct option long_options[] = {
-      {"threads", required_argument, 0, 't'},
-      {"output", required_argument, 0, 'o'},
-      {"memory", required_argument, 0, 'm'},
-      {"temp", required_argument, 0, 'T'},
-      {"umi", no_argument, 0, 'u'},
-      {"count", no_argument, 0, 'c'},
-      {"flags", no_argument, 0, 'F'},
-      {"pipe", no_argument, 0, 'p'},
-      {0, 0, 0, 0}};
-
+    {"threads", required_argument, 0, 't'},
+    {"output", required_argument, 0, 'o'},
+    {"memory", required_argument, 0, 'm'},
+    {"temp", required_argument, 0, 'T'},
+    {"umi", no_argument, 0, 'u'},
+    {"count", no_argument, 0, 'c'},
+    {"flags", no_argument, 0, 'F'},
+    {"pipe", no_argument, 0, 'p'},
+    {0, 0, 0, 0}};
+  
   int option_index = 0, c;
-
+  
   while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1)
   {
     std::string s;
@@ -116,7 +117,7 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt &opt)
     int n = 0;
     switch (c)
     {
-
+      
     case 't':
       opt.threads = atoi(optarg);
       break;
@@ -145,7 +146,7 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt &opt)
         break;
       default:
         sh = 0;
-        break;
+      break;
       }
       opt.max_memory = atoi(s.substr(0, n).c_str());
       opt.max_memory <<= sh;
@@ -169,11 +170,11 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt &opt)
       break;
     }
   }
-
+  
   // all other arguments are fast[a/q] files to be read
   while (optind < argc)
     opt.files.push_back(argv[optind++]);
-
+  
   if (opt.files.size() == 1 && opt.files[0] == "-")
   {
     opt.stream_in = true;
@@ -182,17 +183,57 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt &opt)
 
 void parse_ProgramOptions_merge(int argc, char **argv, Bustools_opt &opt)
 {
-  const char *opt_string = "o:";
-
+  const char *opt_string = "o:e:t:";
   static struct option long_options[] = {
-      {"output", required_argument, 0, 'o'},
-      {0, 0, 0, 0}};
-
+    {"output", required_argument, 0, 'o'},
+    
+    {"ecmap", required_argument, 0, 'e'},
+    {"txnames", required_argument, 0, 't'},
+    {0, 0, 0, 0}};
+  
   int option_index = 0, c;
-
+  
   while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1)
   {
+    
+    switch (c)
+    {
+    case 'o':
+      opt.output = optarg;
+      break;
+    case 't':
+      opt.count_txp = optarg;
+      break;
+    case 'e':
+      opt.count_ecs = optarg;
+      break;
+    default:
+      break;
+    }
+  }
+  
+  while (optind < argc)
+    opt.files.push_back(argv[optind++]);
+  
+  if (opt.files.size() == 1 && opt.files[0] == "-")
+  {
+    opt.stream_in = true;
+  }
+}
 
+void parse_ProgramOptions_mash(int argc, char **argv, Bustools_opt &opt)
+{
+  const char *opt_string = "o:";
+  
+  static struct option long_options[] = {
+    {"output", required_argument, 0, 'o'},
+    {0, 0, 0, 0}};
+  
+  int option_index = 0, c;
+  
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1)
+  {
+    
     switch (c)
     {
     case 'o':
@@ -202,7 +243,7 @@ void parse_ProgramOptions_merge(int argc, char **argv, Bustools_opt &opt)
       break;
     }
   }
-
+  
   while (optind < argc)
     opt.files.push_back(argv[optind++]);
 }
@@ -210,26 +251,26 @@ void parse_ProgramOptions_merge(int argc, char **argv, Bustools_opt &opt)
 void parse_ProgramOptions_capture(int argc, char **argv, Bustools_opt &opt)
 {
   const char *opt_string = "o:xc:e:t:Fsubfp";
-
+  
   static struct option long_options[] = {
-      {"output", required_argument, 0, 'o'},
-      {"complement", no_argument, 0, 'x'},
-      {"capture", required_argument, 0, 'c'},
-      {"ecmap", required_argument, 0, 'e'},
-      {"txnames", required_argument, 0, 't'},
-      {"flags", no_argument, 0, 'F'},
-      {"transcripts", no_argument, 0, 's'},
-      {"umis", no_argument, 0, 'u'},
-      {"barcode", no_argument, 0, 'b'},
-      {"combo", no_argument, 0, 'f'},
-      {"pipe", no_argument, 0, 'p'},
-      {0, 0, 0, 0}};
-
+    {"output", required_argument, 0, 'o'},
+    {"complement", no_argument, 0, 'x'},
+    {"capture", required_argument, 0, 'c'},
+    {"ecmap", required_argument, 0, 'e'},
+    {"txnames", required_argument, 0, 't'},
+    {"flags", no_argument, 0, 'F'},
+    {"transcripts", no_argument, 0, 's'},
+    {"umis", no_argument, 0, 'u'},
+    {"barcode", no_argument, 0, 'b'},
+    {"combo", no_argument, 0, 'f'},
+    {"pipe", no_argument, 0, 'p'},
+    {0, 0, 0, 0}};
+  
   int option_index = 0, c;
-
+  
   while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1)
   {
-
+    
     switch (c)
     {
     case 'o':
@@ -269,10 +310,10 @@ void parse_ProgramOptions_capture(int argc, char **argv, Bustools_opt &opt)
       break;
     }
   }
-
+  
   while (optind < argc)
     opt.files.push_back(argv[optind++]);
-
+  
   if (opt.files.size() == 1 && opt.files[0] == "-")
   {
     opt.stream_in = true;
@@ -289,25 +330,25 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
   int hist_flag = 0;
   int rawcounts_flag = 0;
   static struct option long_options[] = {
-      {"output", required_argument, 0, 'o'},
-      {"genemap", required_argument, 0, 'g'},
-      {"ecmap", required_argument, 0, 'e'},
-      {"txnames", required_argument, 0, 't'},
-      {"genecounts", no_argument, &gene_flag, 1},
-      {"umi-gene", no_argument, &umigene_flag, 1},
-      {"multimapping", no_argument, 0, 'm'},
-      {"em", no_argument, &em_flag, 1},
-      {"cm", no_argument, &cm_flag, 1},
-      {"hist", no_argument, &hist_flag, 1},
-      {"downsample", required_argument, 0, 'd'},
-      {"rawcounts", no_argument, &rawcounts_flag, 1},
-      {0, 0, 0, 0}};
-
+    {"output", required_argument, 0, 'o'},
+    {"genemap", required_argument, 0, 'g'},
+    {"ecmap", required_argument, 0, 'e'},
+    {"txnames", required_argument, 0, 't'},
+    {"genecounts", no_argument, &gene_flag, 1},
+    {"umi-gene", no_argument, &umigene_flag, 1},
+    {"multimapping", no_argument, 0, 'm'},
+    {"em", no_argument, &em_flag, 1},
+    {"cm", no_argument, &cm_flag, 1},
+    {"hist", no_argument, &hist_flag, 1},
+    {"downsample", required_argument, 0, 'd'},
+    {"rawcounts", no_argument, &rawcounts_flag, 1},
+    {0, 0, 0, 0}};
+  
   int option_index = 0, c;
-
+  
   while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1)
   {
-
+    
     switch (c)
     {
     case 'o':
@@ -357,7 +398,7 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
   
   while (optind < argc)
     opt.files.push_back(argv[optind++]);
-
+  
   if (opt.files.size() == 1 && opt.files[0] == "-")
   {
     opt.stream_in = true;
@@ -377,13 +418,13 @@ void parse_ProgramOptions_umicorrect(int argc, char **argv, Bustools_opt& opt) {
     {"txnames",          required_argument,  0, 't'},
     {0,                 0,                  0,  0 }
   };
-
+  
   int option_index = 0, c;
-
+  
   while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
-
+    
     //reuse the same flags as for count
-	switch (c) {
+    switch (c) {
     case 'o':
       opt.output = optarg;
       break;
@@ -403,9 +444,9 @@ void parse_ProgramOptions_umicorrect(int argc, char **argv, Bustools_opt& opt) {
       break;
     }
   }
-
+  
   while (optind < argc) opt.files.push_back(argv[optind++]);
-
+  
   if (opt.files.size() == 1 && opt.files[0] == "-") {
     opt.stream_in = true;
   }
@@ -421,11 +462,11 @@ void parse_ProgramOptions_predict(int argc, char **argv, Bustools_opt& opt) {
     {"predict_t",          required_argument,  0, 't'},
     {0,                 0,                  0,  0 }
   };
-
+  
   int option_index = 0, c;
-
+  
   while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
-
+    
     switch (c) {
     case 'o':
       opt.output = optarg;
@@ -437,29 +478,29 @@ void parse_ProgramOptions_predict(int argc, char **argv, Bustools_opt& opt) {
       break;
     }
   }
-
+  
   if (optind < argc) {
-	  opt.predict_input = argv[optind++];
+    opt.predict_input = argv[optind++];
   }
 }
 
 void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt &opt)
 {
-
+  
   const char *opt_string = "o:pfd";
-
+  
   static struct option long_options[] = {
-      {"output", required_argument, 0, 'o'},
-      {"pipe", no_argument, 0, 'p'},
-      {"flags", no_argument, 0, 'f'},
-      {"pad", no_argument, 0, 'd'},
-      {0, 0, 0, 0}};
-
+    {"output", required_argument, 0, 'o'},
+    {"pipe", no_argument, 0, 'p'},
+    {"flags", no_argument, 0, 'f'},
+    {"pad", no_argument, 0, 'd'},
+    {0, 0, 0, 0}};
+  
   int option_index = 0, c;
-
+  
   while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1)
   {
-
+    
     switch (c)
     {
     case 'o':
@@ -478,11 +519,11 @@ void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt &opt)
       break;
     }
   }
-
+  
   // all other arguments are fast[a/q] files to be read
   while (optind < argc)
     opt.files.push_back(argv[optind++]);
-
+  
   if (opt.files.size() == 1 && opt.files[0] == "-")
   {
     opt.stream_in = true;
@@ -490,23 +531,23 @@ void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt &opt)
 }
 
 void parse_ProgramOptions_fromtext(int argc, char **argv, Bustools_opt& opt) {
-
+  
   const char* opt_string = "o:p";
-
+  
   static struct option long_options[] = {
     {"output",          required_argument,  0, 'o'},
     {"pipe",            no_argument, 0, 'p'},
     {"flags",           no_argument, 0, 'f'},
     {0,                 0,                  0,  0 }
   };
-
+  
   int option_index = 0, c;
-
+  
   while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) 
   {
-
+    
     switch (c) 
-	{
+    {
     case 'o':
       opt.output = optarg;
       break;
@@ -517,10 +558,10 @@ void parse_ProgramOptions_fromtext(int argc, char **argv, Bustools_opt& opt) {
       break;
     }
   }
-
+  
   // all other arguments are fast[a/q] files to be read
   while (optind < argc) opt.files.push_back(argv[optind++]);
-
+  
   if (opt.files.size() == 1 && opt.files[0] == "-") {
     opt.stream_in = true;
   }
@@ -528,21 +569,21 @@ void parse_ProgramOptions_fromtext(int argc, char **argv, Bustools_opt& opt) {
 
 void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt &opt)
 {
-
+  
   const char *opt_string = "o:w:d:sp";
   static struct option long_options[] = {
-      {"output", required_argument, 0, 'o'},
-      {"whitelist", required_argument, 0, 'w'},
-      {"dump", required_argument, 0, 'd'},
-      {"split", no_argument, 0, 's'},
-      {"pipe", no_argument, 0, 'p'},
-      {0, 0, 0, 0}};
-
+    {"output", required_argument, 0, 'o'},
+    {"whitelist", required_argument, 0, 'w'},
+    {"dump", required_argument, 0, 'd'},
+    {"split", no_argument, 0, 's'},
+    {"pipe", no_argument, 0, 'p'},
+    {0, 0, 0, 0}};
+  
   int option_index = 0, c;
-
+  
   while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1)
   {
-
+    
     switch (c)
     {
     case 'o':
@@ -565,15 +606,15 @@ void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt &opt)
       break;
     }
   }
-
+  
   //hard code options for now
   opt.ec_d = 1;
   opt.ec_dmin = 3;
-
+  
   // all other arguments are fast[a/q] files to be read
   while (optind < argc)
     opt.files.push_back(argv[optind++]);
-
+  
   if (opt.files.size() == 1 && opt.files[0] == "-")
   {
     opt.stream_in = true;
@@ -582,17 +623,17 @@ void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt &opt)
 
 void parse_ProgramOptions_whitelist(int argc, char **argv, Bustools_opt &opt)
 {
-
+  
   /* Parse options. */
   const char *opt_string = "o:f:h";
-
+  
   static struct option long_options[] = {
-      {"output", required_argument, 0, 'o'},
-      {"threshold", required_argument, 0, 'f'},
-      {0, 0, 0, 0}};
-
+    {"output", required_argument, 0, 'o'},
+    {"threshold", required_argument, 0, 'f'},
+    {0, 0, 0, 0}};
+  
   int option_index = 0, c;
-
+  
   while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1)
   {
     switch (c)
@@ -607,11 +648,11 @@ void parse_ProgramOptions_whitelist(int argc, char **argv, Bustools_opt &opt)
       break;
     }
   }
-
+  
   /* All other argumuments are (sorted) BUS files. */
   while (optind < argc)
     opt.files.push_back(argv[optind++]);
-
+  
   if (opt.files.size() == 1 && opt.files[0] == "-")
   {
     opt.stream_in = true;
@@ -620,24 +661,24 @@ void parse_ProgramOptions_whitelist(int argc, char **argv, Bustools_opt &opt)
 
 void parse_ProgramOptions_project(int argc, char **argv, Bustools_opt &opt)
 {
-
+  
   /* Parse options. */
   const char *opt_string = "o:m:e:t:s:Fbup";
-
+  
   static struct option long_options[] = {
-      {"output", required_argument, 0, 'o'},
-      {"map", required_argument, 0, 'm'},
-      {"ecmap", required_argument, 0, 'e'},
-      {"txnames", required_argument, 0, 't'},
-      {"flags", no_argument, 0, 'F'},
-      {"barcode", no_argument, 0, 'b'},
-      {"umi", no_argument, 0, 'u'},
-      {"transcripts", optional_argument, 0, 's'},
-      {"pipe", no_argument, 0, 'p'},
-      {0, 0, 0, 0}};
-
+    {"output", required_argument, 0, 'o'},
+    {"map", required_argument, 0, 'm'},
+    {"ecmap", required_argument, 0, 'e'},
+    {"txnames", required_argument, 0, 't'},
+    {"flags", no_argument, 0, 'F'},
+    {"barcode", no_argument, 0, 'b'},
+    {"umi", no_argument, 0, 'u'},
+    {"transcripts", optional_argument, 0, 's'},
+    {"pipe", no_argument, 0, 'p'},
+    {0, 0, 0, 0}};
+  
   int option_index = 0, c;
-
+  
   while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1)
   {
     switch (c)
@@ -674,11 +715,11 @@ void parse_ProgramOptions_project(int argc, char **argv, Bustools_opt &opt)
       break;
     }
   }
-
+  
   /* All other argumuments are (sorted) BUS files. */
   while (optind < argc)
     opt.files.push_back(argv[optind++]);
-
+  
   if (opt.files.size() == 1 && opt.files[0] == "-")
   {
     opt.stream_in = true;
@@ -687,19 +728,19 @@ void parse_ProgramOptions_project(int argc, char **argv, Bustools_opt &opt)
 
 void parse_ProgramOptions_inspect(int argc, char **argv, Bustools_opt &opt)
 {
-
+  
   /* Parse options. */
   const char *opt_string = "o:e:w:p";
-
+  
   static struct option long_options[] = {
-      {"output", required_argument, 0, 'o'},
-      {"ecmap", required_argument, 0, 'e'},
-      {"whitelist", required_argument, 0, 'w'},
-      {"pipe", no_argument, 0, 'p'},
-      {0, 0, 0, 0}};
-
+    {"output", required_argument, 0, 'o'},
+    {"ecmap", required_argument, 0, 'e'},
+    {"whitelist", required_argument, 0, 'w'},
+    {"pipe", no_argument, 0, 'p'},
+    {0, 0, 0, 0}};
+  
   int option_index = 0, c;
-
+  
   while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1)
   {
     switch (c)
@@ -720,11 +761,11 @@ void parse_ProgramOptions_inspect(int argc, char **argv, Bustools_opt &opt)
       break;
     }
   }
-
+  
   /* All other argumuments are (sorted) BUS files. */
   while (optind < argc)
     opt.files.push_back(argv[optind++]);
-
+  
   if (opt.files.size() == 1 && opt.files[0] == "-")
   {
     opt.stream_in = true;
@@ -733,19 +774,19 @@ void parse_ProgramOptions_inspect(int argc, char **argv, Bustools_opt &opt)
 
 void parse_ProgramOptions_linker(int argc, char **argv, Bustools_opt &opt)
 {
-
+  
   /* Parse options. */
   const char *opt_string = "o:s:e:p";
-
+  
   static struct option long_options[] = {
-      {"output", required_argument, 0, 'o'},
-      {"start", required_argument, 0, 's'},
-      {"end", required_argument, 0, 'e'},
-      {"pipe", no_argument, 0, 'p'},
-      {0, 0, 0, 0}};
-
+    {"output", required_argument, 0, 'o'},
+    {"start", required_argument, 0, 's'},
+    {"end", required_argument, 0, 'e'},
+    {"pipe", no_argument, 0, 'p'},
+    {0, 0, 0, 0}};
+  
   int option_index = 0, c;
-
+  
   while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1)
   {
     switch (c)
@@ -766,11 +807,11 @@ void parse_ProgramOptions_linker(int argc, char **argv, Bustools_opt &opt)
       break;
     }
   }
-
+  
   /* All other argumuments are (sorted) BUS files. */
   while (optind < argc)
     opt.files.push_back(argv[optind++]);
-
+  
   if (opt.files.size() == 1 && opt.files[0] == "-")
   {
     opt.stream_in = true;
@@ -778,112 +819,112 @@ void parse_ProgramOptions_linker(int argc, char **argv, Bustools_opt &opt)
 }
 
 void parse_ProgramOptions_collapse(int argc, char** argv, Bustools_opt& opt) {
-	const char* opt_string = "o:pg:e:t:";
-	int gene_flag = 0;
-	int em_flag = 0;
-	static struct option long_options[] = {
-	  {"output",          required_argument,  0, 'o'},
-	  {"pipe",            no_argument, 0, 'p'},
-	  {"genemap",         required_argument,  0, 'g'},
-	  {"ecmap",           required_argument,  0, 'e'},
-	  {"txnames",         required_argument,  0, 't'},
-	  {0,                 0,                  0,  0 }
-	};
-	int option_index = 0, c;
-
-	while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
-
-		switch (c) {
-		case 'o':
-			opt.output = optarg;
-			break;
-		case 'p':
-			opt.stream_out = true;
-			break;
-		case 'g':
-			opt.count_genes = optarg;
-			break;
-		case 't':
-			opt.count_txp = optarg;
-			break;
-		case 'e':
-			opt.count_ecs = optarg;
-			break;
-		default:
-			break;
-		}
-	}
-
-	while (optind < argc) opt.files.push_back(argv[optind++]);
-
-	if (opt.files.size() == 1 && opt.files[0] == "-") {
-		opt.stream_in = true;
-	}
+  const char* opt_string = "o:pg:e:t:";
+  int gene_flag = 0;
+  int em_flag = 0;
+  static struct option long_options[] = {
+    {"output",          required_argument,  0, 'o'},
+    {"pipe",            no_argument, 0, 'p'},
+    {"genemap",         required_argument,  0, 'g'},
+    {"ecmap",           required_argument,  0, 'e'},
+    {"txnames",         required_argument,  0, 't'},
+    {0,                 0,                  0,  0 }
+  };
+  int option_index = 0, c;
+  
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
+    
+    switch (c) {
+    case 'o':
+      opt.output = optarg;
+      break;
+    case 'p':
+      opt.stream_out = true;
+      break;
+    case 'g':
+      opt.count_genes = optarg;
+      break;
+    case 't':
+      opt.count_txp = optarg;
+      break;
+    case 'e':
+      opt.count_ecs = optarg;
+      break;
+    default:
+      break;
+    }
+  }
+  
+  while (optind < argc) opt.files.push_back(argv[optind++]);
+  
+  if (opt.files.size() == 1 && opt.files[0] == "-") {
+    opt.stream_in = true;
+  }
 }
 
 void parse_ProgramOptions_clusterhist(int argc, char** argv, Bustools_opt& opt) {
-	const char* opt_string = "o:pg:e:t:";
-	int gene_flag = 0;
-	int em_flag = 0;
-	static struct option long_options[] = {
-	  {"output",          required_argument,  0, 'o'},
-	  {"pipe",            no_argument, 0, 'p'},
-	  {"genemap",         required_argument,  0, 'g'},
-	  {"ecmap",           required_argument,  0, 'e'},
-	  {"txnames",         required_argument,  0, 't'},
-	  {"clusterfile",     required_argument,  0, 'c'},
-	  {0,                 0,                  0,  0 }
-	};
-	int option_index = 0, c;
-
-	while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
-
-		switch (c) {
-		case 'o':
-			opt.output = optarg;
-			break;
-		case 'p':
-			opt.stream_out = true;
-			break;
-		case 'g':
-			opt.count_genes = optarg;
-			break;
-		case 't':
-			opt.count_txp = optarg;
-			break;
-		case 'e':
-			opt.count_ecs = optarg;
-			break;
-		case 'c':
-			opt.cluster_input_file = optarg;
-			break;
-		default:
-			break;
-		}
-	}
-
-	while (optind < argc) opt.files.push_back(argv[optind++]);
-
-	if (opt.files.size() == 1 && opt.files[0] == "-") {
-		opt.stream_in = true;
-	}
+  const char* opt_string = "o:pg:e:t:";
+  int gene_flag = 0;
+  int em_flag = 0;
+  static struct option long_options[] = {
+    {"output",          required_argument,  0, 'o'},
+    {"pipe",            no_argument, 0, 'p'},
+    {"genemap",         required_argument,  0, 'g'},
+    {"ecmap",           required_argument,  0, 'e'},
+    {"txnames",         required_argument,  0, 't'},
+    {"clusterfile",     required_argument,  0, 'c'},
+    {0,                 0,                  0,  0 }
+  };
+  int option_index = 0, c;
+  
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1) {
+    
+    switch (c) {
+    case 'o':
+      opt.output = optarg;
+      break;
+    case 'p':
+      opt.stream_out = true;
+      break;
+    case 'g':
+      opt.count_genes = optarg;
+      break;
+    case 't':
+      opt.count_txp = optarg;
+      break;
+    case 'e':
+      opt.count_ecs = optarg;
+      break;
+    case 'c':
+      opt.cluster_input_file = optarg;
+      break;
+    default:
+      break;
+    }
+  }
+  
+  while (optind < argc) opt.files.push_back(argv[optind++]);
+  
+  if (opt.files.size() == 1 && opt.files[0] == "-") {
+    opt.stream_in = true;
+  }
 }
 
 void parse_ProgramOptions_extract(int argc, char **argv, Bustools_opt &opt)
 {
-
+  
   /* Parse options. */
   const char *opt_string = "o:f:N:p";
-
+  
   static struct option long_options[] = {
-      {"output", required_argument, 0, 'o'},
-      {"fastq", required_argument, 0, 'f'},
-      {"nFastqs", required_argument, 0, 'N'},
-      {"pipe", no_argument, 0, 'p'},
-      {0, 0, 0, 0}};
-
+    {"output", required_argument, 0, 'o'},
+    {"fastq", required_argument, 0, 'f'},
+    {"nFastqs", required_argument, 0, 'N'},
+    {"pipe", no_argument, 0, 'p'},
+    {0, 0, 0, 0}};
+  
   int option_index = 0, c;
-
+  
   while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1)
   {
     switch (c)
@@ -904,11 +945,11 @@ void parse_ProgramOptions_extract(int argc, char **argv, Bustools_opt &opt)
       break;
     }
   }
-
+  
   /* All other argumuments are (sorted) BUS files. */
   while (optind < argc)
     opt.files.push_back(argv[optind++]);
-
+  
   if (opt.files.size() == 1 && opt.files[0] == "-")
   {
     opt.stream_in = true;
@@ -917,11 +958,11 @@ void parse_ProgramOptions_extract(int argc, char **argv, Bustools_opt &opt)
 
 bool check_ProgramOptions_sort(Bustools_opt &opt)
 {
-
+  
   bool ret = true;
-
+  
   size_t max_threads = std::thread::hardware_concurrency();
-
+  
   if (opt.threads <= 0)
   {
     std::cerr << "Error: Number of threads cannot be less than or equal to 0" << std::endl;
@@ -933,7 +974,7 @@ bool check_ProgramOptions_sort(Bustools_opt &opt)
               << ". Setting number of threads to " << max_threads << std::endl;
     opt.threads = max_threads;
   }
-
+  
   if (!opt.stream_out)
   {
     if (opt.output.empty())
@@ -947,7 +988,7 @@ bool check_ProgramOptions_sort(Bustools_opt &opt)
       ret = false;
     }
   }
-
+  
   if (opt.max_memory < 1ULL << 26)
   {
     if (opt.max_memory < 128)
@@ -961,7 +1002,7 @@ bool check_ProgramOptions_sort(Bustools_opt &opt)
       opt.max_memory = 1ULL << 26; // 64Mb is absolute minimum
     }
   }
-
+  
   if (opt.temp_files.empty())
   {
     if (opt.stream_out)
@@ -976,7 +1017,7 @@ bool check_ProgramOptions_sort(Bustools_opt &opt)
   }
   else
   {
-
+    
     if (checkDirectoryExists(opt.temp_files))
     {
       // if it is a directory, create random file prefix
@@ -1009,7 +1050,7 @@ bool check_ProgramOptions_sort(Bustools_opt &opt)
       }
     }
   }
-
+  
   if (ret)
   {
     FILE *tmpf = fopen(opt.temp_files.c_str(), "a+");
@@ -1022,7 +1063,7 @@ bool check_ProgramOptions_sort(Bustools_opt &opt)
     }
     remove(opt.temp_files.c_str());
   }
-
+  
   if (opt.files.size() == 0)
   {
     std::cerr << "Error: Missing BUS input files" << std::endl;
@@ -1039,14 +1080,103 @@ bool check_ProgramOptions_sort(Bustools_opt &opt)
       }
     }
   }
-
+  
   return ret;
 }
 
 bool check_ProgramOptions_merge(Bustools_opt &opt)
 {
   bool ret = true;
+  
+  // check for output directory
+  if (!opt.stream_out)
+  {
+    if (opt.output.empty())
+    {
+      std::cerr << "Error: missing output directory" << std::endl;
+      ret = false;
+    }
+    else
+    {
+      // check if output directory exists or if we can create it
+      struct stat stFileInfo;
+      auto intStat = stat(opt.output.c_str(), &stFileInfo);
+      if (intStat == 0)
+      {
+        // file/dir exits
+        if (!S_ISDIR(stFileInfo.st_mode))
+        {
+          std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
+          ret = false;
+        }
+      }
+      else
+      {
+        // create directory
+        if (my_mkdir(opt.output.c_str(), 0777) == -1)
+        {
+          std::cerr << "Error: could not create directory " << opt.output << std::endl;
+          ret = false;
+        }
+      }
+    }
+  }
+  
+  if (opt.files.size() == 0)
+  {
+    std::cerr << "Error: Missing BUS input files" << std::endl;
+    ret = false;
+  }
+  else
+  {
+    if (!opt.stream_in)
+    {
+      for (const auto &it : opt.files)
+      {
+        if (!checkFileExists(it))
+        {
+          std::cerr << "Error: File not found, " << it << std::endl;
+          ret = false;
+        }
+      }
+    }
+  }
+  
+  if (opt.count_ecs.size() == 0)
+  {
+    std::cerr << "Error: missing equivalence class mapping file" << std::endl;
+    ret = false;
+  }
+  else
+  {
+    if (!checkFileExists(opt.count_ecs))
+    {
+      std::cerr << "Error: File not found " << opt.count_ecs << std::endl;
+      ret = false;
+    }
+  }
+  
+  if (opt.count_txp.size() == 0)
+  {
+    std::cerr << "Error: missing transcript name file" << std::endl;
+    ret = false;
+  }
+  else
+  {
+    if (!checkFileExists(opt.count_txp))
+    {
+      std::cerr << "Error: File not found " << opt.count_txp << std::endl;
+      ret = false;
+    }
+  }
+  
+  return ret;
+}
 
+bool check_ProgramOptions_mash(Bustools_opt &opt)
+{
+  bool ret = true;
+  
   if (opt.output.empty())
   {
     std::cerr << "Error: missing output directory" << std::endl;
@@ -1075,7 +1205,7 @@ bool check_ProgramOptions_merge(Bustools_opt &opt)
       }
     }
   }
-
+  
   if (opt.files.size() == 0)
   {
     std::cerr << "Error: Missing BUS input directories" << std::endl;
@@ -1100,88 +1230,75 @@ bool check_ProgramOptions_merge(Bustools_opt &opt)
         {
           std::cerr << "Error: file " << it << "/output.bus not found" << std::endl;
         }
-
+        
         if (!checkFileExists(it + "/matrix.ec"))
         {
           std::cerr << "Error: file " << it << "/matrix.ec not found" << std::endl;
         }
       }
     }
-
-    //     // check if output directory exists or if we can create it
-    //     if (checkDirectoryExists(opt.output.c_str())) {
-    //       std::cerr << "Error: file " << opt.output << " exists and is not a directory" << std::endl;
-    //       ret = false;
-    //     } else {
-    //       // create directory
-    //       if (my_mkdir(opt.output.c_str(), 0777) == -1) {
-    //         std::cerr << "Error: could not create directory " << opt.output << std::endl;
-    //         ret = false;
-    //       }
-    //     }
   }
-
+  
   return ret;
 }
 
-bool check_ProgramOptions_dump(Bustools_opt& opt) 
+bool check_ProgramOptions_dump(Bustools_opt &opt)
 {
   bool ret = true;
-
-  if (!opt.stream_out) 
+  
+  if (!opt.stream_out)
   {
-    if (opt.output.empty()) 
-	{
+    if (opt.output.empty())
+    {
       std::cerr << "Error: missing output file" << std::endl;
       ret = false;
-    } 
-	else if (!checkOutputFileValid(opt.output)) 
-	{
+    }
+    else if (!checkOutputFileValid(opt.output))
+    {
       std::cerr << "Error: unable to open output file" << std::endl;
       ret = false;
     }
-  } 
-
-
-  if (opt.files.size() == 0) 
+  }
+  
+  if (opt.files.size() == 0)
   {
     std::cerr << "Error: Missing BUS input files" << std::endl;
     ret = false;
-  } 
-  else if (!opt.stream_in) 
-  {    
-    for (const auto& it : opt.files) 
-	{  
-      if (!checkFileExists(it)) 
-	  {
+  }
+  else if (!opt.stream_in)
+  {
+    for (const auto &it : opt.files)
+    {
+      if (!checkFileExists(it))
+      {
         std::cerr << "Error: File not found, " << it << std::endl;
         ret = false;
       }
     }
   }
-
+  
   return ret;
 }
 
 bool check_ProgramOptions_fromtext(Bustools_opt& opt) 
 {
   bool ret = true;
-
+  
   if (!opt.stream_out) 
   {
     if (opt.output.empty()) 
-	{
+    {
       std::cerr << "Error: missing output file" << std::endl;
       ret = false;
     } 
-	else if (!checkOutputFileValid(opt.output)) 
-	{
+    else if (!checkOutputFileValid(opt.output)) 
+    {
       std::cerr << "Error: unable to open output file" << std::endl;
       ret = false;
     }
   } 
-
-
+  
+  
   if (opt.files.size() == 0) 
   {
     std::cerr << "Error: Missing input files" << std::endl;
@@ -1190,22 +1307,22 @@ bool check_ProgramOptions_fromtext(Bustools_opt& opt)
   else if (!opt.stream_in) 
   {    
     for (const auto& it : opt.files) 
-	{  
+    {  
       if (!checkFileExists(it)) 
-	  {
+      {
         std::cerr << "Error: File not found, " << it << std::endl;
         ret = false;
       }
     }
   }
-
+  
   return ret;
 }
 
 bool check_ProgramOptions_capture(Bustools_opt &opt)
 {
   bool ret = true;
-
+  
   if (opt.filter)
   {
     // check if output directory exists or if we can create it
@@ -1237,7 +1354,7 @@ bool check_ProgramOptions_capture(Bustools_opt &opt)
       ret = false;
     }
   }
-
+  
   if (opt.capture.empty())
   {
     std::cerr << "Error: missing capture list" << std::endl;
@@ -1251,13 +1368,13 @@ bool check_ProgramOptions_capture(Bustools_opt &opt)
       ret = false;
     }
   }
-
+  
   if (opt.type == CAPTURE_NONE)
   {
     std::cerr << "Error: capture list type must be specified (one of -s, -u, or -b)" << std::endl;
     ret = false;
   }
-
+  
   if (opt.type == CAPTURE_TX)
   {
     if (opt.count_ecs.size() == 0)
@@ -1272,7 +1389,7 @@ bool check_ProgramOptions_capture(Bustools_opt &opt)
         ret = false;
       }
     }
-
+    
     if (opt.count_txp.size() == 0)
     {
       std::cerr << "Error: missing transcript name file" << std::endl;
@@ -1286,7 +1403,7 @@ bool check_ProgramOptions_capture(Bustools_opt &opt)
       }
     }
   }
-
+  
   if (opt.files.size() == 0)
   {
     std::cerr << "Error: Missing BUS input files" << std::endl;
@@ -1303,21 +1420,21 @@ bool check_ProgramOptions_capture(Bustools_opt &opt)
       }
     }
   }
-
+  
   if (opt.filter && (opt.complement || opt.type != CAPTURE_TX))
   {
     std::cerr << "Warning: filter only meaningful without complement flag, and to"
               << " capture transcripts; no new ec file will be generated" << std::endl;
     opt.filter = false;
   }
-
+  
   return ret;
 }
 
 bool check_ProgramOptions_correct(Bustools_opt &opt)
 {
   bool ret = true;
-
+  
   if (!opt.stream_out)
   {
     if (opt.output.empty())
@@ -1331,7 +1448,7 @@ bool check_ProgramOptions_correct(Bustools_opt &opt)
       ret = false;
     }
   }
-
+  
   if (opt.files.size() == 0)
   {
     std::cerr << "Error: Missing BUS input files" << std::endl;
@@ -1351,7 +1468,7 @@ bool check_ProgramOptions_correct(Bustools_opt &opt)
       }
     }
   }
-
+  
   if (opt.whitelist.size() == 0)
   {
     std::cerr << "Error: Missing whitelist file" << std::endl;
@@ -1373,14 +1490,14 @@ bool check_ProgramOptions_correct(Bustools_opt &opt)
       ret = false;
     }
   }
-
+  
   return ret;
 }
 
 bool check_ProgramOptions_count(Bustools_opt &opt)
 {
   bool ret = true;
-
+  
   // check for output directory
   if (opt.output.empty())
   {
@@ -1409,19 +1526,19 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
         }
       }
     }
-
+    
     if (isDir)
     {
       opt.output += "output";
     }
   }
-
+  
   if (opt.count_em && opt.count_gene_multimapping)
   {
     std::cerr << "Error: EM algorithm and counting multimapping reads are incompatible" << std::endl;
     ret = false;
   }
-
+  
   if (opt.count_em && opt.count_cm)
   {
     std::cerr << "Error: EM algorithm and counting multiplicites are incompatible" << std::endl;
@@ -1433,7 +1550,7 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
     std::cerr << "Error: Gene-level collapsing of UMIs and counting multiplicites are incompatible" << std::endl;
     ret = false;
   }
-
+  
   if (opt.count_raw_counts && opt.count_em) 
   {
     std::cerr << "Error: Counting raw counts are not supported for the EM algorithm" << std::endl;
@@ -1445,7 +1562,7 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
     std::cerr << "Error: Raw counts are currently only supported for gene counting, not ec counting." << std::endl;
     ret = false;
   }
-
+  
   if (opt.files.size() == 0)
   {
     std::cerr << "Error: Missing BUS input files" << std::endl;
@@ -1465,7 +1582,7 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
       }
     }
   }
-
+  
   if (opt.count_genes.size() == 0)
   {
     std::cerr << "Error: missing gene mapping file" << std::endl;
@@ -1479,7 +1596,7 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
       ret = false;
     }
   }
-
+  
   if (opt.count_ecs.size() == 0)
   {
     std::cerr << "Error: missing equivalence class mapping file" << std::endl;
@@ -1493,7 +1610,7 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
       ret = false;
     }
   }
-
+  
   if (opt.count_txp.size() == 0)
   {
     std::cerr << "Error: missing transcript name file" << std::endl;
@@ -1507,13 +1624,13 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
       ret = false;
     }
   }
-
+  
   return ret;
 }
 
 bool check_ProgramOptions_predict(Bustools_opt& opt) {
   bool ret = true;
-
+  
   // check for output directory
   if (opt.output.empty()) {
     std::cerr << "Error: Missing output directory" << std::endl;
@@ -1532,12 +1649,12 @@ bool check_ProgramOptions_predict(Bustools_opt& opt) {
         }
       }
     }
-
+    
     if (isDir) {
       opt.output += "output";
     }
   }
-
+  
   // check for input directory
   if (opt.output.empty()) {
     std::cerr << "Error: Missing input" << std::endl;
@@ -1548,43 +1665,43 @@ bool check_ProgramOptions_predict(Bustools_opt& opt) {
       isDir = true;
     } else {
       if (opt.predict_input.at(opt.predict_input.size()-1) == '/') {
-		isDir = true;
-	  }
+        isDir = true;
+      }
     }
-
+    
     if (isDir) {
       opt.predict_input += "output"; //to match the output from count
     }
-	
-	if ( !checkFileExists(opt.predict_input + ".mtx") ) {
-		std::cerr << "Error: Matrix file missing: " << opt.predict_input + ".mtx" << std::endl;
-		ret = false;
-	}
-	if ( !checkFileExists(opt.predict_input + ".genes.txt") ) {
-		std::cerr << "Error: Genes file missing: " << opt.predict_input + ".genes.txt" << std::endl;
-		ret = false;
-	}
-	if ( !checkFileExists(opt.predict_input + ".barcodes.txt") ) {
-		std::cerr << "Error: Barcodes file missing: " << opt.predict_input + ".barcodes.txt" << std::endl;
-		ret = false;
-	}
-	if ( !checkFileExists(opt.predict_input + ".hist.txt") ) {
-		std::cerr << "Error: CPU histograms file missing: " << opt.predict_input + ".hist.txt. Did you forget the --hist flag when running count?" << std::endl;
-		ret = false;
-	}
+    
+    if ( !checkFileExists(opt.predict_input + ".mtx") ) {
+      std::cerr << "Error: Matrix file missing: " << opt.predict_input + ".mtx" << std::endl;
+      ret = false;
+    }
+    if ( !checkFileExists(opt.predict_input + ".genes.txt") ) {
+      std::cerr << "Error: Genes file missing: " << opt.predict_input + ".genes.txt" << std::endl;
+      ret = false;
+    }
+    if ( !checkFileExists(opt.predict_input + ".barcodes.txt") ) {
+      std::cerr << "Error: Barcodes file missing: " << opt.predict_input + ".barcodes.txt" << std::endl;
+      ret = false;
+    }
+    if ( !checkFileExists(opt.predict_input + ".hist.txt") ) {
+      std::cerr << "Error: CPU histograms file missing: " << opt.predict_input + ".hist.txt. Did you forget the --hist flag when running count?" << std::endl;
+      ret = false;
+    }
   }
-
+  
   if (opt.predict_t == 0.0) {
     std::cerr << "Error: Prediction range not set." << std::endl;
     ret = false;
   }
-
+  
   return ret;
 }
 
 bool check_ProgramOptions_umicorrect(Bustools_opt& opt) {
   bool ret = true;
-
+  
   if (!opt.stream_out) {
     if (opt.output.empty()) {
       std::cerr << "Error: missing output file" << std::endl;
@@ -1594,7 +1711,7 @@ bool check_ProgramOptions_umicorrect(Bustools_opt& opt) {
       ret = false;
     }
   } 
-
+  
   if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input files" << std::endl;
     ret = false;
@@ -1608,7 +1725,7 @@ bool check_ProgramOptions_umicorrect(Bustools_opt& opt) {
       }
     }
   }
-
+  
   if (opt.count_genes.size() == 0) {
     std::cerr << "Error: missing gene mapping file" << std::endl;
     ret = false;
@@ -1618,7 +1735,7 @@ bool check_ProgramOptions_umicorrect(Bustools_opt& opt) {
       ret = false;
     }
   }
-
+  
   if (opt.count_ecs.size() == 0) {
     std::cerr << "Error: missing equivalence class mapping file" << std::endl;
     ret = false;
@@ -1628,7 +1745,7 @@ bool check_ProgramOptions_umicorrect(Bustools_opt& opt) {
       ret = false;
     }
   }
-
+  
   if (opt.count_txp.size() == 0) {
     std::cerr << "Error: missing transcript name file" << std::endl;
     ret = false;
@@ -1638,14 +1755,14 @@ bool check_ProgramOptions_umicorrect(Bustools_opt& opt) {
       ret = false;
     }
   }
-
+  
   return ret;
 }
 
 bool check_ProgramOptions_whitelist(Bustools_opt &opt)
 {
   bool ret = true;
-
+  
   if (opt.output.empty())
   {
     std::cerr << "Error: missing output file" << std::endl;
@@ -1656,7 +1773,7 @@ bool check_ProgramOptions_whitelist(Bustools_opt &opt)
     std::cerr << "Error: unable to open output file" << std::endl;
     ret = false;
   }
-
+  
   if (opt.files.size() == 0)
   {
     std::cerr << "Error: Missing BUS input file" << std::endl;
@@ -1681,20 +1798,20 @@ bool check_ProgramOptions_whitelist(Bustools_opt &opt)
     std::cerr << "Error: Only one input file allowed" << std::endl;
     ret = false;
   }
-
+  
   if (opt.threshold < 0)
   { // threshold = 0 for no threshold
     std::cerr << "Error: Threshold cannot be less than or equal to 0" << std::endl;
     ret = false;
   }
-
+  
   return ret;
 }
 
 bool check_ProgramOptions_project(Bustools_opt &opt)
 {
   bool ret = true;
-
+  
   if (opt.output.empty())
   {
     std::cerr << "Error: Missing output file" << std::endl;
@@ -1735,7 +1852,7 @@ bool check_ProgramOptions_project(Bustools_opt &opt)
       }
     }
   }
-
+  
   if (opt.files.size() == 0)
   {
     std::cerr << "Error: Missing BUS input file" << std::endl;
@@ -1760,7 +1877,7 @@ bool check_ProgramOptions_project(Bustools_opt &opt)
     std::cerr << "Error: Only one input file allowed" << std::endl;
     ret = false;
   }
-
+  
   if (opt.map.size() == 0)
   {
     std::cerr << "Error: missing mapping file" << std::endl;
@@ -1773,7 +1890,7 @@ bool check_ProgramOptions_project(Bustools_opt &opt)
       ret = false;
     }
   }
-
+  
   if (opt.count_ecs.size() == 0)
   {
     std::cerr << "Error: missing equivalence class mapping file" << std::endl;
@@ -1786,7 +1903,7 @@ bool check_ProgramOptions_project(Bustools_opt &opt)
       ret = false;
     }
   }
-
+  
   if (opt.count_txp.size() == 0)
   {
     std::cerr << "Error: missing transcript name file" << std::endl;
@@ -1799,20 +1916,20 @@ bool check_ProgramOptions_project(Bustools_opt &opt)
       ret = false;
     }
   }
-
+  
   return ret;
 }
 
 bool check_ProgramOptions_inspect(Bustools_opt &opt)
 {
   bool ret = true;
-
+  
   if (opt.output.size() && !checkOutputFileValid(opt.output))
   {
     std::cerr << "Error: unable to open output file" << std::endl;
     ret = false;
   }
-
+  
   if (opt.files.size() == 0)
   {
     std::cerr << "Error: Missing BUS input file" << std::endl;
@@ -1837,7 +1954,7 @@ bool check_ProgramOptions_inspect(Bustools_opt &opt)
     std::cerr << "Error: Only one input file allowed" << std::endl;
     ret = false;
   }
-
+  
   if (opt.count_ecs.size())
   {
     if (!checkFileExists(opt.count_ecs))
@@ -1846,7 +1963,7 @@ bool check_ProgramOptions_inspect(Bustools_opt &opt)
       ret = false;
     }
   }
-
+  
   if (opt.whitelist.size())
   {
     if (!checkFileExists(opt.whitelist))
@@ -1855,14 +1972,14 @@ bool check_ProgramOptions_inspect(Bustools_opt &opt)
       ret = false;
     }
   }
-
+  
   return ret;
 }
 
 bool check_ProgramOptions_linker(Bustools_opt &opt)
 {
   bool ret = true;
-
+  
   if (!opt.stream_out)
   {
     if (opt.output.empty())
@@ -1876,7 +1993,7 @@ bool check_ProgramOptions_linker(Bustools_opt &opt)
       ret = false;
     }
   }
-
+  
   if (opt.files.size() == 0)
   {
     std::cerr << "Error: Missing BUS input files" << std::endl;
@@ -1896,192 +2013,192 @@ bool check_ProgramOptions_linker(Bustools_opt &opt)
       }
     }
   }
-
+  
   return ret;
 }
 
 bool check_ProgramOptions_collapse(Bustools_opt& opt) {
-	bool ret = true;
-
-	// check for output directory
-	if (opt.output.empty()) {
-		std::cerr << "Error: Missing output directory" << std::endl;
-		ret = false;
-	}
-	else {
-		bool isDir = false;
-		if (checkDirectoryExists(opt.output)) {
-			isDir = true;
-		}
-		else {
-			if (opt.output.at(opt.output.size() - 1) == '/') {
-				if (my_mkdir(opt.output.c_str(), 0777) == -1) {
-					std::cerr << "Error: could not create directory " << opt.output << std::endl;
-					ret = false;
-				}
-				else {
-					isDir = true;
-				}
-			}
-		}
-
-		if (isDir) {
-			opt.output += "output";
-		}
-	}
-
-	if (opt.files.size() == 0) {
-		std::cerr << "Error: Missing BUS input files" << std::endl;
-		ret = false;
-	}
-	else {
-		if (!opt.stream_in) {
-			for (const auto& it : opt.files) {
-				if (!checkFileExists(it)) {
-					std::cerr << "Error: File not found, " << it << std::endl;
-					ret = false;
-				}
-			}
-		}
-	}
-
-	if (opt.count_genes.size() == 0) {
-		std::cerr << "Error: missing gene mapping file" << std::endl;
-		ret = false;
-	}
-	else {
-		if (!checkFileExists(opt.count_genes)) {
-			std::cerr << "Error: File not found " << opt.count_genes << std::endl;
-			ret = false;
-		}
-	}
-
-	if (opt.count_ecs.size() == 0) {
-		std::cerr << "Error: missing equivalence class mapping file" << std::endl;
-		ret = false;
-	}
-	else {
-		if (!checkFileExists(opt.count_ecs)) {
-			std::cerr << "Error: File not found " << opt.count_ecs << std::endl;
-			ret = false;
-		}
-	}
-
-	if (opt.count_txp.size() == 0) {
-		std::cerr << "Error: missing transcript name file" << std::endl;
-		ret = false;
-	}
-	else {
-		if (!checkFileExists(opt.count_txp)) {
-			std::cerr << "Error: File not found " << opt.count_txp << std::endl;
-			ret = false;
-		}
-	}
-
-	return ret;
+  bool ret = true;
+  
+  // check for output directory
+  if (opt.output.empty()) {
+    std::cerr << "Error: Missing output directory" << std::endl;
+    ret = false;
+  }
+  else {
+    bool isDir = false;
+    if (checkDirectoryExists(opt.output)) {
+      isDir = true;
+    }
+    else {
+      if (opt.output.at(opt.output.size() - 1) == '/') {
+        if (my_mkdir(opt.output.c_str(), 0777) == -1) {
+          std::cerr << "Error: could not create directory " << opt.output << std::endl;
+          ret = false;
+        }
+        else {
+          isDir = true;
+        }
+      }
+    }
+    
+    if (isDir) {
+      opt.output += "output";
+    }
+  }
+  
+  if (opt.files.size() == 0) {
+    std::cerr << "Error: Missing BUS input files" << std::endl;
+    ret = false;
+  }
+  else {
+    if (!opt.stream_in) {
+      for (const auto& it : opt.files) {
+        if (!checkFileExists(it)) {
+          std::cerr << "Error: File not found, " << it << std::endl;
+          ret = false;
+        }
+      }
+    }
+  }
+  
+  if (opt.count_genes.size() == 0) {
+    std::cerr << "Error: missing gene mapping file" << std::endl;
+    ret = false;
+  }
+  else {
+    if (!checkFileExists(opt.count_genes)) {
+      std::cerr << "Error: File not found " << opt.count_genes << std::endl;
+      ret = false;
+    }
+  }
+  
+  if (opt.count_ecs.size() == 0) {
+    std::cerr << "Error: missing equivalence class mapping file" << std::endl;
+    ret = false;
+  }
+  else {
+    if (!checkFileExists(opt.count_ecs)) {
+      std::cerr << "Error: File not found " << opt.count_ecs << std::endl;
+      ret = false;
+    }
+  }
+  
+  if (opt.count_txp.size() == 0) {
+    std::cerr << "Error: missing transcript name file" << std::endl;
+    ret = false;
+  }
+  else {
+    if (!checkFileExists(opt.count_txp)) {
+      std::cerr << "Error: File not found " << opt.count_txp << std::endl;
+      ret = false;
+    }
+  }
+  
+  return ret;
 }
 
 bool check_ProgramOptions_clusterhist(Bustools_opt& opt) {
-	bool ret = true;
-
-	// check for output directory
-	if (opt.output.empty()) {
-		std::cerr << "Error: Missing output directory" << std::endl;
-		ret = false;
-	}
-	else {
-		bool isDir = false;
-		if (checkDirectoryExists(opt.output)) {
-			isDir = true;
-		}
-		else {
-			if (opt.output.at(opt.output.size() - 1) == '/') {
-				if (my_mkdir(opt.output.c_str(), 0777) == -1) {
-					std::cerr << "Error: could not create directory " << opt.output << std::endl;
-					ret = false;
-				}
-				else {
-					isDir = true;
-				}
-			}
-		}
-
-		std::string histDir = opt.output + "cluster_hists/";
-		//generate directory
-		if (!checkDirectoryExists(histDir)) {
-			if (my_mkdir(histDir.c_str(), 0777) == -1) {
-				std::cerr << "Error: could not create directory " << opt.output << std::endl;
-				ret = false;
-			}
-		}
-	}
-
-	if (opt.files.size() == 0) {
-		std::cerr << "Error: Missing BUS input files" << std::endl;
-		ret = false;
-	}
-	else {
-		if (!opt.stream_in) {
-			for (const auto& it : opt.files) {
-				if (!checkFileExists(it)) {
-					std::cerr << "Error: File not found, " << it << std::endl;
-					ret = false;
-				}
-			}
-		}
-	}
-
-	if (opt.count_genes.size() == 0) {
-		std::cerr << "Error: missing gene mapping file" << std::endl;
-		ret = false;
-	}
-	else {
-		if (!checkFileExists(opt.count_genes)) {
-			std::cerr << "Error: File not found " << opt.count_genes << std::endl;
-			ret = false;
-		}
-	}
-
-	if (opt.count_ecs.size() == 0) {
-		std::cerr << "Error: missing equivalence class mapping file" << std::endl;
-		ret = false;
-	}
-	else {
-		if (!checkFileExists(opt.count_ecs)) {
-			std::cerr << "Error: File not found " << opt.count_ecs << std::endl;
-			ret = false;
-		}
-	}
-
-	if (opt.count_txp.size() == 0) {
-		std::cerr << "Error: missing transcript name file" << std::endl;
-		ret = false;
-	}
-	else {
-		if (!checkFileExists(opt.count_txp)) {
-			std::cerr << "Error: File not found " << opt.count_txp << std::endl;
-			ret = false;
-		}
-	}
-
-	if (opt.cluster_input_file.size() == 0) {
-		std::cerr << "Error: missing cluster file" << std::endl;
-		ret = false;
-	}
-	else {
-		if (!checkFileExists(opt.cluster_input_file)) {
-			std::cerr << "Error: File not found " << opt.cluster_input_file << std::endl;
-			ret = false;
-		}
-	}
-
-	return ret;
+  bool ret = true;
+  
+  // check for output directory
+  if (opt.output.empty()) {
+    std::cerr << "Error: Missing output directory" << std::endl;
+    ret = false;
+  }
+  else {
+    bool isDir = false;
+    if (checkDirectoryExists(opt.output)) {
+      isDir = true;
+    }
+    else {
+      if (opt.output.at(opt.output.size() - 1) == '/') {
+        if (my_mkdir(opt.output.c_str(), 0777) == -1) {
+          std::cerr << "Error: could not create directory " << opt.output << std::endl;
+          ret = false;
+        }
+        else {
+          isDir = true;
+        }
+      }
+    }
+    
+    std::string histDir = opt.output + "cluster_hists/";
+    //generate directory
+    if (!checkDirectoryExists(histDir)) {
+      if (my_mkdir(histDir.c_str(), 0777) == -1) {
+        std::cerr << "Error: could not create directory " << opt.output << std::endl;
+        ret = false;
+      }
+    }
+  }
+  
+  if (opt.files.size() == 0) {
+    std::cerr << "Error: Missing BUS input files" << std::endl;
+    ret = false;
+  }
+  else {
+    if (!opt.stream_in) {
+      for (const auto& it : opt.files) {
+        if (!checkFileExists(it)) {
+          std::cerr << "Error: File not found, " << it << std::endl;
+          ret = false;
+        }
+      }
+    }
+  }
+  
+  if (opt.count_genes.size() == 0) {
+    std::cerr << "Error: missing gene mapping file" << std::endl;
+    ret = false;
+  }
+  else {
+    if (!checkFileExists(opt.count_genes)) {
+      std::cerr << "Error: File not found " << opt.count_genes << std::endl;
+      ret = false;
+    }
+  }
+  
+  if (opt.count_ecs.size() == 0) {
+    std::cerr << "Error: missing equivalence class mapping file" << std::endl;
+    ret = false;
+  }
+  else {
+    if (!checkFileExists(opt.count_ecs)) {
+      std::cerr << "Error: File not found " << opt.count_ecs << std::endl;
+      ret = false;
+    }
+  }
+  
+  if (opt.count_txp.size() == 0) {
+    std::cerr << "Error: missing transcript name file" << std::endl;
+    ret = false;
+  }
+  else {
+    if (!checkFileExists(opt.count_txp)) {
+      std::cerr << "Error: File not found " << opt.count_txp << std::endl;
+      ret = false;
+    }
+  }
+  
+  if (opt.cluster_input_file.size() == 0) {
+    std::cerr << "Error: missing cluster file" << std::endl;
+    ret = false;
+  }
+  else {
+    if (!checkFileExists(opt.cluster_input_file)) {
+      std::cerr << "Error: File not found " << opt.cluster_input_file << std::endl;
+      ret = false;
+    }
+  }
+  
+  return ret;
 }
 
 bool check_ProgramOptions_extract(Bustools_opt &opt)
 {
   bool ret = true;
-
+  
   if (opt.output.empty())
   {
     std::cerr << "Error: missing output directory" << std::endl;
@@ -2110,7 +2227,7 @@ bool check_ProgramOptions_extract(Bustools_opt &opt)
       }
     }
   }
-
+  
   if (opt.files.size() == 0)
   {
     std::cerr << "Error: Missing BUS input file" << std::endl;
@@ -2135,7 +2252,7 @@ bool check_ProgramOptions_extract(Bustools_opt &opt)
     std::cerr << "Error: Only one input file allowed" << std::endl;
     ret = false;
   }
-
+  
   if (opt.fastq.size() == 0)
   {
     std::cerr << "Error: Missing FASTQ file(s)" << std::endl;
@@ -2152,7 +2269,7 @@ bool check_ProgramOptions_extract(Bustools_opt &opt)
       }
     }
   }
-
+  
   if (opt.nFastqs == 0)
   {
     std::cerr << "Error: nFastqs is zero" << std::endl;
@@ -2166,7 +2283,7 @@ bool check_ProgramOptions_extract(Bustools_opt &opt)
       ret = false;
     }
   }
-
+  
   return ret;
 }
 
@@ -2240,12 +2357,23 @@ void Bustools_capture_Usage()
 
 void Bustools_merge_Usage()
 {
-  std::cout << "Usage: bustools merge [options] directories" << std::endl
+  std::cout << "Usage: bustools merge [options] sorted-bus-file by flag" << std::endl
+            << std::endl
+            << "Options: " << std::endl
+            << "-o, --output          Directory for merged output" << std::endl
+            << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
+            << "-t, --txnames         File with names of transcripts" << std::endl
+            << std::endl;
+}
+
+void Bustools_mash_Usage()
+{
+  std::cout << "Usage: bustools mash [options] directories" << std::endl
             << "  Note: BUS files should be sorted by flag" << std::endl
             << std::endl
             << "Options: " << std::endl
             << "-t, --threads         Number of threads to use" << std::endl
-            << "-o, --output          Directory for merged output" << std::endl
+            << "-o, --output          Directory for mashed output" << std::endl
             << std::endl;
 }
 
@@ -2305,10 +2433,10 @@ void Bustools_count_Usage()
 
 void Bustools_predict_Usage() {
   std::cout << "Usage: bustools predict [options] count_output_dir" << std::endl << std::endl
-  << "Options: " << std::endl
-  << "-o, --output          Output directory" << std::endl
-  << "-t, --predict_t       Specifies prediction range, will at predict t times the number of reads" << std::endl
-  << std::endl;
+            << "Options: " << std::endl
+            << "-o, --output          Output directory" << std::endl
+            << "-t, --predict_t       Specifies prediction range, will at predict t times the number of reads" << std::endl
+            << std::endl;
 }
 
 void Bustools_umicorrect_Usage() 
@@ -2384,7 +2512,7 @@ void Bustools_collapse_Usage()
             << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
             << "-t, --txnames         File with names of transcripts" << std::endl
             << "-p, --pipe            Write to standard output" << std::endl
-           << std::endl;
+            << std::endl;
 }
 
 void Bustools_clusterhist_Usage() 
@@ -2429,7 +2557,7 @@ void print_version()
 
 int main(int argc, char **argv)
 {
-
+  
   if (argc < 2)
   {
     // Print error message, function?
@@ -2441,7 +2569,7 @@ int main(int argc, char **argv)
     bool disp_help = argc == 2;
     std::string cmd(argv[1]);
     Bustools_opt opt;
-
+    
     if (cmd == "sort")
     {
       if (disp_help)
@@ -2480,6 +2608,25 @@ int main(int argc, char **argv)
         exit(1);
       }
     }
+    else if (cmd == "mash")
+    {
+      if (disp_help)
+      {
+        Bustools_mash_Usage();
+        exit(0);
+      }
+      parse_ProgramOptions_mash(argc - 1, argv + 1, opt);
+      if (check_ProgramOptions_mash(opt))
+      {
+        bustools_mash(opt);
+        // bustools_mash(opt);
+      }
+      else
+      {
+        Bustools_mash_Usage();
+        exit(1);
+      }
+    }
     else if (cmd == "cite")
     {
       print_citation();
@@ -2497,9 +2644,8 @@ int main(int argc, char **argv)
       }
       parse_ProgramOptions_dump(argc - 1, argv + 1, opt);
       if (check_ProgramOptions_dump(opt))
-      { 
-        //Program options are valid
-		bustools_text(opt);
+      { //Program options are valid
+        bustools_text(opt);
       }
       else
       {
@@ -2507,24 +2653,24 @@ int main(int argc, char **argv)
         exit(1);
       }
     }
-	else if (cmd == "fromtext") {
+    else if (cmd == "fromtext") {
       if (disp_help) 
-	  {
+      {
         Bustools_fromtext_Usage();
         exit(0);        
       }
       parse_ProgramOptions_fromtext(argc-1, argv+1, opt);
       if (check_ProgramOptions_fromtext(opt)) 
-	  { 
+      { 
         //Program options are valid
-		bustools_fromtext(opt); //found in the bustools_text.cpp file
+        bustools_fromtext(opt); //found in the bustools_text.cpp file
       } 
-	  else 
-	  {
+      else 
+      {
         Bustools_fromtext_Usage();
         exit(1);
       }
-	}
+    }
     else if (cmd == "correct")
     {
       if (disp_help)
@@ -2576,39 +2722,39 @@ int main(int argc, char **argv)
       }
     }
     else if (cmd == "predict") 
-	{
+    {
       if (disp_help) 
-	  {
+      {
         Bustools_predict_Usage();
         exit(0);        
       }
       parse_ProgramOptions_predict(argc-1, argv+1, opt);
       if (check_ProgramOptions_predict(opt)) 
-	  { 
+      { 
         bustools_predict(opt);
       } else {
         Bustools_predict_Usage();
         exit(1);
       }
     } 
-	else if (cmd == "umicorrect") 
-	{
+    else if (cmd == "umicorrect") 
+    {
       if (disp_help) 
-	  {
+      {
         Bustools_umicorrect_Usage();
         exit(0);        
       }
       parse_ProgramOptions_umicorrect(argc-1, argv+1, opt);
       if (check_ProgramOptions_umicorrect(opt)) 
-	  {
+      {
         bustools_umicorrect(opt);
       } 
-	  else 
-	  {
+      else 
+      {
         Bustools_umicorrect_Usage();
         exit(1);
       }
-	}
+    }
     else if (cmd == "capture")
     {
       if (disp_help)
@@ -2700,40 +2846,40 @@ int main(int argc, char **argv)
       }
     }
     else if (cmd == "collapse") 
-	{
+    {
       if (disp_help) 
-	  {
+      {
         Bustools_collapse_Usage();
         exit(0);        
       }
       parse_ProgramOptions_collapse(argc-1, argv+1, opt);
       if (check_ProgramOptions_collapse(opt)) 
-	  {
-	    bustools_collapse(opt);
+      {
+        bustools_collapse(opt);
       } 
-	  else 
-	  {
+      else 
+      {
         Bustools_collapse_Usage();
         exit(1);
       }
     } 
-	else if (cmd == "clusterhist") 
-	{
+    else if (cmd == "clusterhist") 
+    {
       if (disp_help) {
         Bustools_clusterhist_Usage();
         exit(0);        
       }
       parse_ProgramOptions_clusterhist(argc-1, argv+1, opt);
       if (check_ProgramOptions_clusterhist(opt)) 
-	  {
-	    bustools_clusterhist(opt);
+      {
+        bustools_clusterhist(opt);
       } 
-	  else 
-	  {
+      else 
+      {
         Bustools_clusterhist_Usage();
         exit(1);
       }
-	}
+    }
     else if (cmd == "extract")
     {
       if (disp_help)
