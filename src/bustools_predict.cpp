@@ -526,7 +526,7 @@ public:
 		for (int i = 0; i < numThreads; ++i) {
 			m_threads[i]->join();
 		}
-		std::cout << "\n";
+		std::cerr << "\n";
 	}
 private:
 	void ThreadFunc() {
@@ -544,7 +544,7 @@ private:
 		if (m_nextIndex == m_histLengths.size()) {
 			return false;
 		} else {
-			std::cout << "\rProcessing gene: " << m_nextIndex + 1 << " of " << m_histLengths.size();//so, we use indexes starting at 1 in the printout
+			std::cerr << "\rProcessing gene: " << m_nextIndex + 1 << " of " << m_histLengths.size();//so, we use indexes starting at 1 in the printout
 			index = m_nextIndex++;
 			return true;
 		}
@@ -646,7 +646,7 @@ void bustools_predict(Bustools_opt &opt) {
 	std::vector<double> sizeVals(n_genes, 0);
 	std::vector<double> muVals(n_genes, 0);
 	int numThreads = std::thread::hardware_concurrency();
-	std::cout << "Using " << numThreads << " threads\n";
+	std::cerr << "Using " << numThreads << " threads\n";
 	PredictionExecuter pe(histograms, histogramLengths, opt.predict_t, predVals, sizeVals, muVals, histmax);
 	pe.Execute(numThreads);
 	
@@ -678,7 +678,7 @@ void bustools_predict(Bustools_opt &opt) {
 	//Modify counts
 	//////////////////
 	
-	std::cout << "Creating corrected counts matrix...\n";
+	std::cerr << "Creating corrected counts matrix...\n";
 
 	//read and write the counts matrix
 	{
@@ -709,7 +709,7 @@ void bustools_predict(Bustools_opt &opt) {
 	}
 	
 	//write negative binomial params (file with header)
-	std::cout << "Writing negative binomial params...\n";
+	std::cerr << "Writing negative binomial params...\n";
 	{
 		std::ofstream of(nb_params_ofn);
 		

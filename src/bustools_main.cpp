@@ -867,7 +867,7 @@ void parse_ProgramOptions_collapse(int argc, char** argv, Bustools_opt& opt) {
 }
 
 void parse_ProgramOptions_clusterhist(int argc, char** argv, Bustools_opt& opt) {
-  const char* opt_string = "o:pg:e:t:";
+  const char* opt_string = "o:pg:e:t:c:";
   int gene_flag = 0;
   int em_flag = 0;
   static struct option long_options[] = {
@@ -2534,7 +2534,7 @@ void Bustools_collapse_Usage()
 
 void Bustools_clusterhist_Usage() 
 {
-  std::cout << "Usage: bustools collapse [options] sorted-bus-files" << std::endl << std::endl
+  std::cout << "Usage: bustools clusterhist [options] sorted-bus-files" << std::endl << std::endl
             << "Options: " << std::endl
             << "-o, --output          Output directory gene matrix files" << std::endl
             << "-g, --genemap         File for mapping transcripts to genes" << std::endl
