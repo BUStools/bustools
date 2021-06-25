@@ -75,7 +75,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
     }
   }
   ifn.close();
-  std::cout << "[info] parsed transcripts.txt" << std::endl;
+  std::cerr << "[info] parsed transcripts.txt" << std::endl;
 
   // read in matrix.ec
   BUSHeader h, bh;
@@ -87,7 +87,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   {
     ecmapinv.insert({h.ecs[ec], ec});
   }
-  std::cout << "[info] parsed matrix.ec" << std::endl;
+  std::cerr << "[info] parsed matrix.ec" << std::endl;
 
   // read in BUS Records grouped by flags
   std::streambuf *inbuf;

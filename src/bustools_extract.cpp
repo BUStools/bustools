@@ -136,7 +136,7 @@ void bustools_extract(const Bustools_opt &opt) {
     }
   }
 
-  std::cout << "Read in " << nr << " BUS records" << std::endl;
+  std::cerr << "Read in " << nr << " BUS records" << std::endl;
 
 end_extract:
   delete[] p;

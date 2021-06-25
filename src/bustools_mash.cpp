@@ -24,7 +24,7 @@ inline std::vector<int32_t> get_tids(const BUSHeader &oh, const std::unordered_m
 
 inline void print_bd(const BUSData &bd, const size_t bclen, const size_t umilen)
 {
-    std::cout << binaryToString(bd.barcode, bclen) << "\t" << binaryToString(bd.UMI, umilen) << "\t" << bd.ec << "\t" << bd.count << "\t" << bd.flags << "\t" << bd.pad << std::endl;
+    std::cerr << binaryToString(bd.barcode, bclen) << "\t" << binaryToString(bd.UMI, umilen) << "\t" << bd.ec << "\t" << bd.count << "\t" << bd.flags << "\t" << bd.pad << std::endl;
 }
 
 // vocab
@@ -52,7 +52,7 @@ void bustools_mash(const Bustools_opt &opt)
         parseECs(opt.files[i] + "/matrix.ec", h); // parse ecs
         vh.push_back(std::move(h));               // place the ecs into h
     }
-    std::cout << "[info] parsed output.bus files" << std::endl;
+    std::cerr << "[info] parsed output.bus files" << std::endl;
 
     // parse the transcripts.txt
     std::unordered_map<std::string, int32_t> txn_tid;
@@ -87,7 +87,7 @@ void bustools_mash(const Bustools_opt &opt)
     }
 
     ofn.close();
-    std::cout << "[info] parsed transcripts.txt" << std::endl;
+    std::cerr << "[info] parsed transcripts.txt" << std::endl;
 
     // all of the ecs are in the header
     // h.ecs is a vector<vector<ints>>
@@ -159,7 +159,7 @@ void bustools_mash(const Bustools_opt &opt)
         }
         eids_per_file.push_back(std::move(eids));
     }
-    std::cout << "[info] parsed matrix.ec files" << std::endl;
+    std::cerr << "[info] parsed matrix.ec files" << std::endl;
     // generate ecmap from ecmapinv
     // std::vector<std::vector<int32_t>> ecmap(ecmapinv.size());
     // for (const auto &ec : ecmapinv)

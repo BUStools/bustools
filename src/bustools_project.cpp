@@ -29,7 +29,7 @@ void bustools_project(Bustools_opt &opt) {
   if (opt.type == PROJECT_BC) {
     parse_ProjectMap(opt.map, project_map); // project map is an unordered map
 
-    std::cout << "Found " << project_map.size() << " elements in map" << std::endl;
+    std::cerr << "Found " << project_map.size() << " elements in map" << std::endl;
     std::streambuf *buf = nullptr;
     std::ofstream busf_out;
 
