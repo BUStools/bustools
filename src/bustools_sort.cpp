@@ -11,6 +11,14 @@
 
 #define TP std::pair<BUSData, int>
 
+//This code is for automatically creating the tmp directory supplied if it doesn't exist
+#if defined(__MINGW32__) || defined(_MSC_VER)
+//#include <filesystem> //once filesystem is acceptable for minGW, switch to that
+#include "windows.h" //Needed for CreateDirectory
+
+#endif
+
+
 inline bool cmp1(const BUSData &a, const BUSData &b)
 {
   if (a.barcode == b.barcode)
@@ -322,8 +330,23 @@ inline bool ncmp5(const TP &a, const TP &b)
 
 void bustools_sort(const Bustools_opt &opt)
 {
+  auto mem = opt.max_memory;
+  //There is a bug in Windows, where bustools sort fails. The problem is that 
+  //gcount for some reason fails here if too much is read and returns 0, even though
+  //it succeeds. Could perhaps be a 32 bit issue somewhere, does size_t become 32 bits?
+  //Anyway, this is a workaround that fixes the issue - does the same as the flag -m 100000000.
+  //An interesting observation is that opt.max_memory is set to 1 << 32, which will become exactly
+  //zero if truncated to 32 bits...
+#if defined(__MINGW32__) || defined(_MSC_VER)
+  const size_t win_mem_max = 1e8;
+  if (mem > win_mem_max)
+  {
+	mem = win_mem_max;
+  }
+  std::cerr << "code reached" << std::endl;
+#endif
   BUSHeader h;
-  size_t N = opt.max_memory / sizeof(BUSData);
+  size_t N = mem / sizeof(BUSData);
   BUSData *p = new BUSData[N];
   char magic[4];
   uint32_t version = 0;
@@ -358,6 +381,36 @@ void bustools_sort(const Bustools_opt &opt)
     std::cerr << "ERROR: Unknown sort type" << std::endl;
     exit(1);
   }
+
+#if defined(__MINGW32__) || defined(_MSC_VER)
+  //Make sure to create the tmp directory if it doesn't exist - writing temporary files fails otherwise in Windows
+  //First get the directory - in theory, opt.temp_files can look like "tmp/x_" or just "x_" (or even nothing)
+  //so we should find the last slash and make sure that directory exists
+
+  std::size_t ind = opt.temp_files.rfind('/');
+  std::size_t ind2 = opt.temp_files.rfind('\\');
+  if (ind == std::string::npos)
+  {
+	ind = ind2;
+  }
+  else if (ind2 != std::string::npos)
+  {
+	//both valid, take the largest value (representing the last slash)
+	ind = std::max(ind, ind2);
+  }
+  if (ind != std::string::npos)
+  {
+    auto dirName = opt.temp_files.substr(0, ind);
+	//When our MinGW builds support c++17, change to std::filesystem
+ 
+    //std::filesystem::path filepath = dirName;
+    //if (!std::filesystem::is_directory(filepath)) 
+    //{
+    //    std::filesystem::create_directory(filepath);
+    //}
+	CreateDirectory(dirName.c_str(), NULL); //This will do nothing if the directory exists already
+  }
+#endif
 
   size_t sc = 0;
   int tmp_file_no = 0;
