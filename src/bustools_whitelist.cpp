@@ -35,8 +35,8 @@ void bustools_whitelist(Bustools_opt &opt) {
   int wl_count = 0;
   
   uint32_t bc_r = 0, bc_u = 0;
-  uint64_t curr_umi;
-  uint64_t curr_bc;
+  uint64_t curr_umi = 0;
+  uint64_t curr_bc = 0;
   int bc_count = -1;
 
  /* Determine threshold. */ 
