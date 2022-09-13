@@ -343,7 +343,6 @@ void bustools_sort(const Bustools_opt &opt)
   {
 	mem = win_mem_max;
   }
-  std::cerr << "code reached" << std::endl;
 #endif
   BUSHeader h;
   size_t N = mem / sizeof(BUSData);
