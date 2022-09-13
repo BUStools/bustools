@@ -67,7 +67,7 @@ void bustools_split_correct(Bustools_opt &opt)
   size_t stat_corr = 0;
   size_t stat_corr_2 = 0;
   size_t stat_uncorr = 0;
-  uint64_t old_barcode;
+  uint64_t old_barcode = 0;
 
   bool dump_bool = opt.dump_bool;
 
@@ -117,10 +117,10 @@ void bustools_split_correct(Bustools_opt &opt)
   uint64_t mask_12; // = (1ULL << (2 * len_12)) - 1;
   uint64_t mask_34; // = (1ULL << (2 * (len_34))) - 1;
 
-  uint64_t mask_1 = (1ULL << (2 * len_1)) - 1;
-  uint64_t mask_2 = (1ULL << (2 * len_2)) - 1;
-  uint64_t mask_3 = (1ULL << (2 * len_3)) - 1;
-  uint64_t mask_4 = (1ULL << (2 * len_4)) - 1;
+  //uint64_t mask_1 = (1ULL << (2 * len_1)) - 1;
+  //uint64_t mask_2 = (1ULL << (2 * len_2)) - 1;
+  //uint64_t mask_3 = (1ULL << (2 * len_3)) - 1;
+  //uint64_t mask_4 = (1ULL << (2 * len_4)) - 1;
 
   while (std::getline(wf, line))
   {
@@ -155,10 +155,10 @@ void bustools_split_correct(Bustools_opt &opt)
   len_3 = len_34 / 2;     //3, 4,4
   len_4 = len_34 - len_3; //4, 4,4
 
-  mask_1 = (1ULL << (2 * len_1)) - 1;
-  mask_2 = (1ULL << (2 * len_2)) - 1;
-  mask_3 = (1ULL << (2 * len_3)) - 1;
-  mask_4 = (1ULL << (2 * len_4)) - 1;
+  uint64_t mask_1 = (1ULL << (2 * len_1)) - 1;
+  uint64_t mask_2 = (1ULL << (2 * len_2)) - 1;
+  uint64_t mask_3 = (1ULL << (2 * len_3)) - 1;
+  uint64_t mask_4 = (1ULL << (2 * len_4)) - 1;
 
   // std::vector<std::pair<Roaring, Roaring>> correct(1ULL << (2 * bc2)); // 4^(bc/2) possible barcodes
 
