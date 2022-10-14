@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <sstream>
 
-#define BUSTOOLS_VERSION "0.41.0"
+#define BUSTOOLS_VERSION "0.41.1"
 
 enum CAPTURE_TYPE : char
 {
