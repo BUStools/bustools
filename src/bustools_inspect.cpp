@@ -172,7 +172,12 @@ void bustools_inspect(Bustools_opt &opt) {
       }
 
       if (ecmap.size()) {
+        auto freq_targets_size = freq_targets.size();
         for (const auto &target : ecmap[p[i].ec]) {
+          if (target >= freq_targets_size) {
+              freq_targets.resize(target+1, 0);
+              freq_targets_size = freq_targets.size();
+          }
           ++freq_targets[target];
         }
         uint32_t targetsInSet = ecmap[p[i].ec].size();
