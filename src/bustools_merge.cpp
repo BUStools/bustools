@@ -83,7 +83,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   // put the ecs into a ecmap inv
   std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
 
-  for (int32_t ec; ec < h.ecs.size(); ec++)
+  for (std::size_t ec = 0; ec < h.ecs.size(); ec++)
   {
     ecmapinv.insert({h.ecs[ec], ec});
   }
