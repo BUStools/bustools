@@ -71,6 +71,36 @@ uint64_t stringToBinary(const char* s, const size_t len, uint32_t &flag) {
   return r;
 }
 
+int identifyParseHeader(std::istream &inf, BUSHeader &header, compressed_BUSHeader &comp_header)
+{
+  int ret = -1;
+  char magic[5];
+
+  magic[4] = '\0';
+
+  inf.read(magic, 4);
+  for (int i = 0; i < 4; ++i)
+  {
+    inf.putback(magic[3 - i]);
+  }
+
+  if (std::strcmp(magic, "BUS\0") == 0)
+  {
+    return BUSFILE_TYPE::BUSFILE * parseHeader(inf, header);
+  }
+  else if (std::strcmp(magic, "BUS\1") == 0)
+  {
+    return BUSFILE_TYPE::BUSFILE_COMPRESED * parseCompressedHeader(inf, comp_header);
+  }
+  else if(std::strcmp(magic, "BZI\0") == 0){
+    return BUSFILE_TYPE::BUSZ_INDEX;
+  }
+  else if (std::strcmp(magic, "BEC\0") == 0)
+  {
+    return BUSFILE_TYPE::EC_MATRIX_COMPRESSED;
+  }
+  return BUSFILE_TYPE::EC_MATRIX;
+}
 
 bool parseHeader(std::istream &inf, BUSHeader &header) {
   char magic[4];  
@@ -95,7 +125,80 @@ bool parseHeader(std::istream &inf, BUSHeader &header) {
   return true;
 }
 
+bool parseCompressedHeader(std::istream &inf, compressed_BUSHeader &compheader)
+{
+  char magic[5];
+  magic[4] = '\0';
 
+  BUSHeader &header = compheader.bus_header;
+  inf.read(magic, 4);
+  if (std::strcmp(magic, "BUS\1") != 0)
+  {
+    std::cerr << "Invalid header magic\n";
+    return false;
+  }
+  inf.read((char *)(&header.version), sizeof(header.version));
+  if (header.version != BUSFORMAT_VERSION)
+  {
+    return false;
+  }
+  inf.read((char *)(&header.bclen), sizeof(header.bclen));
+  inf.read((char *)(&header.umilen), sizeof(header.umilen));
+  uint32_t tlen = 0;
+  inf.read((char *)(&tlen), sizeof(tlen));
+  char *t = new char[tlen + 1];
+  inf.read(t, tlen);
+  t[tlen] = '\0';
+  header.text.assign(t);
+  delete[] t;
+
+  // We store the compressed_header-specific information after the regular header
+  inf.read((char *)&compheader.chunk_size, sizeof(compheader.chunk_size));
+  inf.read((char *)&compheader.pfd_blocksize, sizeof(compheader.pfd_blocksize));
+  inf.read((char *)&compheader.lossy_umi, sizeof(compheader.lossy_umi));
+
+  return true;
+}
+
+bool parseECs_stream(std::istream &in, BUSHeader &header)
+{
+  auto &ecs = header.ecs;
+  std::string line, t;
+  line.reserve(10000);
+
+  std::vector<int32_t> c;
+
+  int i = 0;
+  bool has_reached = false;
+  while (std::getline(in, line))
+  {
+    c.clear();
+    int ec = -1;
+    if (line.size() == 0)
+    {
+      continue;
+    }
+    std::stringstream ss(line);
+    ss >> ec;
+    assert(ec == i);
+    while (std::getline(ss, t, ','))
+    {
+      c.push_back(std::stoi(t));
+    }
+    if (!has_reached)
+    {
+      has_reached |= !(c.size() == 1 && c[0] == i);
+      if (has_reached)
+      {
+        std::cerr << "first line is " << i << '\n';
+      }
+    }
+
+    ecs.push_back(std::move(c));
+    ++i;
+  }
+  return true;
+}
 
 bool parseECs(const std::string &filename, BUSHeader &header) {
   auto &ecs = header.ecs; 
@@ -291,6 +394,27 @@ bool writeHeader(std::ostream &outf, const BUSHeader &header) {
   uint32_t tlen = header.text.size();
   outf.write((char*)(&tlen), sizeof(tlen));
   outf.write((char*)header.text.c_str(), tlen);
+
+  return true;
+}
+
+bool writeCompressedHeader(std::ostream &outf, const compressed_BUSHeader &compheader)
+{
+  outf.write("BUS\1", 4);
+
+  // We start writing out the contents of the general header
+  const auto header = compheader.bus_header;
+  outf.write((char *)(&header.version), sizeof(header.version));
+  outf.write((char *)(&header.bclen), sizeof(header.bclen));
+  outf.write((char *)(&header.umilen), sizeof(header.umilen));
+  uint32_t tlen = header.text.size();
+  outf.write((char *)(&tlen), sizeof(tlen));
+  outf.write((char *)header.text.c_str(), tlen);
+
+  // We end by writing out the compressed-header-specific data
+  outf.write((char *)(&compheader.chunk_size), sizeof(compheader.chunk_size));
+  outf.write((char *)&compheader.pfd_blocksize, sizeof(compheader.pfd_blocksize));
+  outf.write((char *)(&compheader.lossy_umi), sizeof(compheader.lossy_umi));
 
   return true;
 }

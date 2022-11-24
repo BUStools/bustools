@@ -102,6 +102,12 @@ struct Bustools_opt
   /* linker */
   int start, end;
 
+  /* Compression */
+  std::string busz_index;
+  uint32_t chunk_size = 100000;
+  uint32_t lossy_umi = 0;
+  uint32_t pfd_blocksize = 512;
+
   Bustools_opt() : threads(1), max_memory(1ULL << 32), type(0),
                    threshold(0), start(-1), end(-1) {}
 };
