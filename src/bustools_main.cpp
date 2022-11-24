@@ -37,6 +37,8 @@
 #include "bustools_predict.h"
 #include "bustools_collapse.h"
 #include "bustools_clusterhist.h"
+#include "bustools_compress.h"
+#include "bustools_decompress.h"
 
 int my_mkdir(const char *path, mode_t mode)
 {
@@ -958,6 +960,133 @@ void parse_ProgramOptions_extract(int argc, char **argv, Bustools_opt &opt)
   {
     opt.stream_in = true;
   }
+}
+
+/**
+ * @brief Parse command line arguments for bustools inflate.
+ *
+ * @param argc
+ * @param argv
+ * @param opt
+ * @return bool true iff requested from the command line.
+ */
+bool parse_ProgramOptions_inflate(int argc, char **argv, Bustools_opt &opt)
+{
+  const char *opt_string = "o:ph";
+  bool print_usage = false;
+  static struct option long_options[] = {
+      {"output", required_argument, 0, 'o'},
+      {"pipe", no_argument, 0, 'p'},
+      {"help", no_argument, 0, 'h'},
+      {0, 0, 0, 0},
+  };
+  int option_index = 0, c;
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1)
+  {
+    switch (c)
+    {
+    case 'o':
+      opt.output = optarg;
+      break;
+    case 'p':
+      opt.stream_out = true;
+      break;
+    case 'h':
+      print_usage = true;
+      break;
+    default:
+      break;
+    }
+  }
+
+  while (optind < argc)
+    opt.files.push_back(argv[optind++]);
+
+  if (opt.files.size() == 1 && opt.files[0] == "-")
+  {
+    opt.stream_in = true;
+  }
+  return print_usage;
+}
+
+/**
+ * @brief Parse command line arguments for bustools compress.
+ *
+ * @param argc
+ * @param argv
+ * @param opt
+ * @return bool true iff requested from the command line.
+ */
+bool parse_ProgramOptions_compress(int argc, char **argv, Bustools_opt &opt)
+{
+  const char *opt_string = "N:Lo:pP:h:i::";
+  const bool lossy_umi_enabled = false;
+
+  static struct option long_options[] = {
+      {"chunk-size", required_argument, 0, 'N'},
+      {"lossy-umi", no_argument, 0, 'L'},
+      {"output", required_argument, 0, 'o'},
+      {"pipe", no_argument, 0, 'p'},
+      {"pfd-size", required_argument, 0, 'P'},
+      {"index", optional_argument, 0, 'i'},
+      {"help", no_argument, 0, 'h'},
+      {0, 0, 0, 0}};
+  int option_index = 0, c;
+  bool print_usage = false;
+
+  while ((c = getopt_long(argc, argv, opt_string, long_options, &option_index)) != -1)
+  {
+    switch (c)
+    {
+    case 'i':
+    {
+      if (optarg == NULL && optind < argc - 1 && argv[optind][0] != '-')
+      {
+      optarg = argv[optind++];
+      }
+      if (optarg == NULL)
+      {
+        opt.busz_index.assign("output.busz.idx");
+      }
+      else
+      {
+        opt.busz_index.assign(optarg);
+      }
+      break;
+    }
+    case 'N':
+      opt.chunk_size = atoi(optarg);
+      break;
+    case 'L':
+      if (!lossy_umi_enabled)
+      std::cerr << "Lossy UMI not yet implemented. Using lossless instead." << std::endl;
+      opt.lossy_umi = lossy_umi_enabled;
+      break;
+    case 'o':
+      opt.output = optarg;
+      break;
+    case 'p':
+      opt.stream_out = true;
+      break;
+    case 'P':
+      opt.pfd_blocksize = atoi(optarg);
+      break;
+    case 'h':
+      print_usage = true;
+      break;
+    default:
+      break;
+    }
+  }
+  // all other arguments are fast[a/q] files to be read
+  while (optind < argc)
+    opt.files.push_back(argv[optind++]);
+
+  if (opt.files.size() == 1 && opt.files[0] == "-")
+  {
+    opt.stream_in = true;
+  }
+  return print_usage;
 }
 
 bool check_ProgramOptions_sort(Bustools_opt &opt)
@@ -2303,6 +2432,91 @@ bool check_ProgramOptions_extract(Bustools_opt &opt)
   return ret;
 }
 
+bool check_ProgramOptions_inflate(Bustools_opt &opt)
+{
+
+  bool ret = true;
+
+  if (!opt.stream_out)
+  {
+    if (opt.output.empty())
+    {
+      std::cerr << "Error: missing output file" << std::endl;
+      ret = false;
+    }
+    else if (!checkOutputFileValid(opt.output))
+    {
+      std::cerr << "Error: unable to open output file" << std::endl;
+      ret = false;
+    }
+  }
+
+  if (opt.files.size() != 1)
+  {
+    ret = false;
+    if (opt.files.size() == 0)
+    {
+      std::cerr << "Error: Missing BUSZ input file" << std::endl;
+    }
+    else
+    {
+      std::cerr << "Error: Multiple files not yet supported" << std::endl;
+    }
+  }
+  else if (!opt.stream_in)
+  {
+    if (!checkFileExists(opt.files[0]))
+    {
+      std::cerr << "Error: File not found, " << opt.files[0] << std::endl;
+      ret = false;
+    }
+  }
+
+  return ret;
+}
+
+bool check_ProgramOptions_compress(Bustools_opt &opt)
+{
+  bool ret = true;
+
+  if (!opt.stream_out)
+  {
+    if (opt.output.empty())
+    {
+      std::cerr << "Error: missing output file" << std::endl;
+      ret = false;
+    }
+    else if (!checkOutputFileValid(opt.output))
+    {
+      std::cerr << "Error: unable to open output file" << std::endl;
+      ret = false;
+    }
+  }
+
+  if (opt.files.size() != 1)
+  {
+    ret = false;
+    if (opt.files.size() == 0)
+    {
+      std::cerr << "Error: Missing BUS input file" << std::endl;
+    }
+    else
+    {
+      std::cerr << "Error: Multiple files not yet supported" << std::endl;
+    }
+  }
+  else if (!opt.stream_in)
+  {
+    if (!checkFileExists(opt.files[0]))
+    {
+      std::cerr << "Error: File not found, " << opt.files[0] << std::endl;
+      ret = false;
+    }
+  }
+
+  return ret;
+}
+
 void Bustools_Usage()
 {
   std::cout << "bustools " << BUSTOOLS_VERSION << std::endl
@@ -2326,6 +2540,8 @@ void Bustools_Usage()
             << "collapse        Turn BUS files into a BUG file" << std::endl
             << "clusterhist     Create UMI histograms per cluster" << std::endl
             << "linker          Remove section of barcodes in BUS files" << std::endl
+            << "compress        Compress a BUS file" << std::endl
+            << "inflate         Decompress a BUSZ (compressed BUS) file" << std::endl
             << "version         Prints version number" << std::endl
             << "cite            Prints citation information" << std::endl
             << std::endl
@@ -2554,6 +2770,31 @@ void Bustools_extract_Usage()
             << "-o, --output          Output directory for FASTQ files" << std::endl
             << "-f, --fastq           FASTQ file(s) from which to extract reads (comma-separated list)" << std::endl
             << "-N, --nFastqs         Number of FASTQ file(s) per run" << std::endl
+            << std::endl;
+}
+
+void Bustools_compress_Usage()
+{
+  std::cout << "Usage: bustools compress [options] sorted-bus-file" << std::endl
+            << "Note: BUS file should be sorted by barcode-umi-ec" << std::endl
+            << std::endl
+            << "Options: " << std::endl
+            << "-N, --chunk-size CHUNK_SIZE    Number of rows to compress as a single block." << std::endl
+            // << "-L, --lossy-umi                Allow lossy compression over UMIs. Each UMI will be renamed for minimal compression." << std::endl
+            << "-o, --output OUTPUT            Write compressed file to OUTPUT." << std::endl
+            << "-p, --pipe                     Write to standard output." << std::endl
+            << "-h, --help                     Print this message and exit." << std::endl
+            << std::endl;
+}
+
+void Bustools_inflate_Usage()
+{
+  std::cout << "Usage: bustools {inflate | decompress} [options] compressed-bus-file" << std::endl
+            << std::endl
+            << "Options: " << std::endl
+            << "-p, --pipe               Write to standard output." << std::endl
+            << "-o, --output OUTPUT      File for inflated output." << std::endl
+            << "-h, --help               Print this message and exit." << std::endl
             << std::endl;
 }
 
@@ -2912,6 +3153,52 @@ int main(int argc, char **argv)
       else
       {
         Bustools_extract_Usage();
+        exit(1);
+      }
+    }
+    else if(cmd == "compress")
+    {
+      if (disp_help)
+      {
+        Bustools_compress_Usage();
+        exit(0);
+      }
+      if (parse_ProgramOptions_compress(argc - 1, argv + 1, opt))
+      {
+        Bustools_compress_Usage();
+        exit(0);
+      }
+      else if (check_ProgramOptions_compress(opt))
+      {
+        bustools_compress(opt);
+        exit(0);
+      }
+      else
+      {
+        Bustools_compress_Usage();
+        exit(1);
+      }
+    }
+    else if(cmd == "inflate" || cmd == "decompress")
+    {
+      if (disp_help)
+      {
+        Bustools_inflate_Usage();
+        exit(0);
+      }
+      if (parse_ProgramOptions_inflate(argc - 1, argv + 1, opt))
+      {
+        Bustools_inflate_Usage();
+        exit(0);
+      }
+      else if (check_ProgramOptions_inflate(opt))
+      {
+        bustools_decompress(opt);
+        exit(0);
+      }
+      else
+      {
+        Bustools_inflate_Usage();
         exit(1);
       }
     }

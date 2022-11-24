@@ -28,6 +28,15 @@ struct BUSHeader {
   BUSHeader() : version(0), bclen(0), umilen(0) {}
 };
 
+struct compressed_BUSHeader
+{
+  uint32_t chunk_size;
+  uint32_t lossy_umi;
+  uint32_t pfd_blocksize = 512;
+  BUSHeader bus_header;
+  compressed_BUSHeader() : chunk_size(0), lossy_umi(0) {}
+};
+
 struct BUSData {
   uint64_t barcode;
   uint64_t UMI;
@@ -38,11 +47,23 @@ struct BUSData {
   BUSData() : barcode(0), UMI(0), ec(-1), count(0), flags(0), pad(0) {}
 };
 
+enum BUSFILE_TYPE
+{
+	BUSFILE = 1,
+	BUSFILE_COMPRESED = 2,
+	BUSZ_INDEX = 3,
+	EC_MATRIX = 4,
+	EC_MATRIX_COMPRESSED = 5
+};
 
 bool parseHeader(std::istream &inf, BUSHeader &header);
 bool writeHeader(std::ostream &outf, const BUSHeader &header);
 
+bool parseCompressedHeader(std::istream &inf, compressed_BUSHeader &header);
+bool writeCompressedHeader(std::ostream &inf, const compressed_BUSHeader &header);
+int identifyParseHeader(std::istream &inf, BUSHeader &header, compressed_BUSHeader &comp_header);
 
+bool parseECs_stream(std::istream &in, BUSHeader &header);
 bool parseECs(const std::string &filename, BUSHeader &header);
 bool writeECs(const std::string &filename, const BUSHeader &header);
 bool writeGenes(const std::string &filename, const std::unordered_map<std::string, int32_t>  &genenames);
