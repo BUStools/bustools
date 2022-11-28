@@ -2,6 +2,7 @@
 #include <fstream>
 #include <algorithm>
 #include <queue>
+#include <vector>
 #include <functional>
 #include <unordered_map>
 #include <unordered_set>
@@ -176,7 +177,7 @@ void bustools_mash(const Bustools_opt &opt)
     int32_t nr = 0, nw = 0;
 
     int32_t N = 1024;
-    std::queue<BUSData> queue[nf];
+    std::vector<std::queue<BUSData>> queue(nf);
 
     for (int i = 0; i < nf; i++)
     {
