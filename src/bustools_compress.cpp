@@ -11,7 +11,7 @@
 #include "BUSData.h"
 #include "bustools_compress.h"
 
-size_t pfd_blocksize = 1024;
+size_t pfd_blocksize = 512;
 
 /**
  * @brief Encode `num` using fibonacci encoding into buf, starting at bitpos.

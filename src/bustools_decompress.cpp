@@ -12,7 +12,7 @@
 #include "BUSData.h"
 #include "bustools_compress.h"
 #include "bustools_decompress.h"
-size_t d_pfd_blocksize = 1024;
+size_t d_pfd_blocksize = 512;
 /**
  * @brief Decode a single fibonacci number from a buffer
  * @pre buf contains at least n_buf elements.
