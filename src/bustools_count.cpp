@@ -22,7 +22,11 @@ void bustools_count(Bustools_opt &opt) {
   std::vector<std::vector<int32_t>> ecmap;
 
   std::unordered_map<std::string, int32_t> txnames;
+  auto txnames_split = txnames; // copy
   parseTranscripts(opt.count_txp, txnames);
+  if (!opt.count_split.empty()) {
+    parseTranscripts(opt.count_split, txnames_split); // subset of txnames
+  }
   std::vector<int32_t> genemap(txnames.size(), -1);
   std::unordered_map<std::string, int32_t> genenames;
   parseGenes(opt.count_genes, txnames, genemap, genenames);
@@ -437,6 +441,110 @@ void bustools_count(Bustools_opt &opt) {
       of << n_rows << " " << (x+1) << " " << val << "\n";
     }
   };
+  
+  auto write_barcode_matrix_mult = [&](const std::vector<BUSData> &v) {
+    if(v.empty()) {
+      return;
+    }
+    column_vp.resize(0);
+    n_rows+= 1;
+    
+    barcodes.push_back(v[0].barcode);
+    double val = 0.0;
+    size_t n = v.size();
+    
+    for (size_t i = 0; i < n; i++) {
+      int32_t ec = v[i].ec;
+      if (!opt.count_gene_multimapping) {
+        ecs.resize(0);
+        ecs.push_back(ec);
+        intersect_genes_of_ecs(ecs, ec2genes, glist);
+        int gn = glist.size();
+        if (gn != 1) {
+          continue;
+        }
+      }
+      column_vp.push_back({ec,v[i].count});
+    }
+    std::sort(column_vp.begin(), column_vp.end());
+    size_t m = column_vp.size();
+    for (size_t i = 0; i < m; ) {
+      size_t j = i+1;
+      double val = column_vp[i].second;
+      for (; j < m; j++) {
+        if (column_vp[i].first != column_vp[j].first) {
+          break;
+        }
+        val += column_vp[j].second;
+      }
+      n_entries++;
+      of << n_rows << " " << (column_vp[i].first+1) << " " << val << "\n";
+      i = j; // increment
+    }
+  };
+  
+  auto write_barcode_matrix_collapsed_mult = [&](const std::vector<BUSData> &v) {
+    if(v.empty()) {
+      return;
+    }
+    column_vp.resize(0);
+    n_rows+= 1;
+    
+    barcodes.push_back(v[0].barcode);
+    double val = 0.0;
+    size_t n = v.size();
+    
+    for (size_t i = 0; i < n; i++) {
+      ecs.resize(0);
+      ecs.push_back(v[i].ec);
+      
+      intersect_genes_of_ecs(ecs, ec2genes, glist);
+      int gn = glist.size();
+      if (gn > 0) {
+        if (opt.count_gene_multimapping) {
+          for (auto x : glist) {
+            column_vp.push_back({x, v[i].count/gn});
+          }
+        } else {
+          if (gn==1) {
+            column_vp.push_back({glist[0],v[i].count});
+          } 
+        }
+      }
+    }
+    
+    std::sort(column_vp.begin(), column_vp.end());
+    size_t m = column_vp.size();
+    std::unordered_map<int32_t, double> col_map(m);
+    std::vector<int32_t> cols;
+    
+    for (size_t i = 0; i < m; ) {
+      size_t j = i+1;
+      double val = column_vp[i].second;
+      for (; j < m; j++) {
+        if (column_vp[i].first != column_vp[j].first) {
+          break;
+        }
+        val += column_vp[j].second;
+      }
+      col_map.insert({column_vp[i].first,val});
+      cols.push_back(column_vp[i].first);
+      
+      n_entries++;
+      
+      i = j; // increment
+    }
+    
+    for (const auto &x : cols) {
+      double val = 0;
+      auto it = col_map.find(x);
+      if (it != col_map.end()) {
+        val = it->second;
+      }
+      of << n_rows << " " << (x+1) << " " << val << "\n";
+    }
+    
+  };
 
   for (const auto& infn : opt.files) { 
     std::streambuf *inbuf;
@@ -467,9 +575,11 @@ void bustools_count(Bustools_opt &opt) {
           // output whatever is in v
           if (!v.empty()) {
             if (!opt.count_collapse) {
-              write_barcode_matrix(v);
+              if (!opt.count_cm) write_barcode_matrix(v);
+              else write_barcode_matrix_mult(v);
             } else {
-              write_barcode_matrix_collapsed(v);
+              if (!opt.count_cm) write_barcode_matrix_collapsed(v);
+              else write_barcode_matrix_collapsed_mult(v);
             }
           }
           v.clear();
@@ -481,9 +591,11 @@ void bustools_count(Bustools_opt &opt) {
     }
     if (!v.empty()) {
       if (!opt.count_collapse) {
-        write_barcode_matrix(v);
+        if (!opt.count_cm) write_barcode_matrix(v);
+        else write_barcode_matrix_mult(v);
       } else {
-        write_barcode_matrix_collapsed(v);
+        if (!opt.count_cm) write_barcode_matrix_collapsed(v);
+        else write_barcode_matrix_collapsed_mult(v);
       }
     }
 
@@ -612,274 +724,5 @@ void bustools_count(Bustools_opt &opt) {
 }
 
 void bustools_count_mult(Bustools_opt &opt) {
-  BUSHeader h;
-  size_t nr = 0;
-  size_t N = 100000;
-  uint32_t bclen = 0;
-  BUSData* p = new BUSData[N];
-
-  // read and parse the equivalence class files
-
-  std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
-  std::vector<std::vector<int32_t>> ecmap;
-
-  std::unordered_map<std::string, int32_t> txnames;
-  parseTranscripts(opt.count_txp, txnames);
-  std::vector<int32_t> genemap(txnames.size(), -1);
-  std::unordered_map<std::string, int32_t> genenames;
-  parseGenes(opt.count_genes, txnames, genemap, genenames);
-  parseECs(opt.count_ecs, h);
-  ecmap = std::move(h.ecs);
-  ecmapinv.reserve(ecmap.size());
-  for (int32_t ec = 0; ec < ecmap.size(); ec++) {
-    ecmapinv.insert({ecmap[ec], ec});
-  }
-  std::vector<std::vector<int32_t>> ec2genes;        
-  create_ec2genes(ecmap, genemap, ec2genes);
-
-
-  std::ofstream of;
-  std::string mtx_ofn = opt.output + ".mtx";
-  std::string barcodes_ofn = opt.output + ".barcodes.txt";
-  std::string ec_ofn = opt.output + ".ec.txt";
-  std::string gene_ofn = opt.output + ".genes.txt";
-  of.open(mtx_ofn); 
-
-  // write out the initial header
-  of << "%%MatrixMarket matrix coordinate real general\n%\n";
-  // number of genes
-  auto mat_header_pos = of.tellp();
-  std::string dummy_header(66, '\n');
-  for (int i = 0; i < 33; i++) {
-    dummy_header[2*i] = '%';
-  }
-  of.write(dummy_header.c_str(), dummy_header.size());
-
-
-  size_t n_cols = 0;
-  size_t n_rows = 0;
-  size_t n_entries = 0;
-  std::vector<BUSData> v;
-  v.reserve(N);
-  uint64_t current_bc = 0xFFFFFFFFFFFFFFFFULL;
-  //temporary data
-  std::vector<int32_t> ecs;
-  std::vector<int32_t> glist;
-  ecs.reserve(100);
-  std::vector<int32_t> u;
-  u.reserve(100);
-  std::vector<int32_t> column_v;
-  std::vector<std::pair<int32_t, double>> column_vp;
-  if (!opt.count_collapse) {
-    column_vp.reserve(N); 
-  } else {
-    column_vp.reserve(N);
-    glist.reserve(100);
-  }
-  //barcodes 
-  std::vector<uint64_t> barcodes;
-  int bad_count = 0;
-  int compacted = 0;
-  int rescued = 0;
-
-
-  auto write_barcode_matrix = [&](const std::vector<BUSData> &v) {
-    if(v.empty()) {
-      return;
-    }
-    column_vp.resize(0);
-    n_rows+= 1;
-    
-    barcodes.push_back(v[0].barcode);
-    double val = 0.0;
-    size_t n = v.size();
-    
-    for (size_t i = 0; i < n; i++) {
-      int32_t ec = v[i].ec;
-      if (!opt.count_gene_multimapping) {
-        ecs.resize(0);
-        ecs.push_back(ec);
-        intersect_genes_of_ecs(ecs, ec2genes, glist);
-        int gn = glist.size();
-        if (gn != 1) {
-          continue;
-        }
-      }
-      column_vp.push_back({ec,v[i].count});
-    }
-    std::sort(column_vp.begin(), column_vp.end());
-    size_t m = column_vp.size();
-    for (size_t i = 0; i < m; ) {
-      size_t j = i+1;
-      double val = column_vp[i].second;
-      for (; j < m; j++) {
-        if (column_vp[i].first != column_vp[j].first) {
-          break;
-        }
-        val += column_vp[j].second;
-      }
-      n_entries++;
-      of << n_rows << " " << (column_vp[i].first+1) << " " << val << "\n";
-      i = j; // increment
-    }
-  };
-  
-  auto write_barcode_matrix_collapsed = [&](const std::vector<BUSData> &v) {
-    if(v.empty()) {
-      return;
-    }
-    column_vp.resize(0);
-    n_rows+= 1;
-    
-    barcodes.push_back(v[0].barcode);
-    double val = 0.0;
-    size_t n = v.size();
-
-    for (size_t i = 0; i < n; i++) {
-      ecs.resize(0);
-      ecs.push_back(v[i].ec);
-      
-      intersect_genes_of_ecs(ecs, ec2genes, glist);
-      int gn = glist.size();
-      if (gn > 0) {
-        if (opt.count_gene_multimapping) {
-          for (auto x : glist) {
-            column_vp.push_back({x, v[i].count/gn});
-          }
-        } else {
-          if (gn==1) {
-            column_vp.push_back({glist[0],v[i].count});
-          } 
-        }
-      }
-    }
-
-    std::sort(column_vp.begin(), column_vp.end());
-    size_t m = column_vp.size();
-    std::unordered_map<int32_t, double> col_map(m);
-    std::vector<int32_t> cols;
-
-    for (size_t i = 0; i < m; ) {
-      size_t j = i+1;
-      double val = column_vp[i].second;
-      for (; j < m; j++) {
-        if (column_vp[i].first != column_vp[j].first) {
-          break;
-        }
-        val += column_vp[j].second;
-      }
-      col_map.insert({column_vp[i].first,val});
-      cols.push_back(column_vp[i].first);
-
-      n_entries++;
-      
-      i = j; // increment
-    }
-
-
-
-    for (const auto &x : cols) {
-      double val = 0;
-      auto it = col_map.find(x);
-      if (it != col_map.end()) {
-        val = it->second;
-      }
-      of << n_rows << " " << (x+1) << " " << val << "\n";
-    }
-
-  };
-
-  for (const auto& infn : opt.files) { 
-    std::streambuf *inbuf;
-    std::ifstream inf;
-    if (!opt.stream_in) {
-      inf.open(infn.c_str(), std::ios::binary);
-      inbuf = inf.rdbuf();
-    } else {
-      inbuf = std::cin.rdbuf();
-    }
-    std::istream in(inbuf); 
-
-    parseHeader(in, h);
-    bclen = h.bclen;
-    
-    int rc = 0;
-    while (true) {
-      in.read((char*)p, N*sizeof(BUSData));
-      size_t rc = in.gcount() / sizeof(BUSData);
-      nr += rc;
-      if (rc == 0) {
-        break;
-      }
-
-      
-      for (size_t i = 0; i < rc; i++) {
-        if (p[i].barcode != current_bc) {                 
-          // output whatever is in v
-          if (!v.empty()) {
-            if (!opt.count_collapse) {
-              write_barcode_matrix(v);
-              } else {
-                write_barcode_matrix_collapsed(v);
-              }
-            }
-          v.clear();
-          current_bc = p[i].barcode;
-        }
-        v.push_back(p[i]);
-
-      }            
-    }
-    if (!v.empty()) {
-      if (!opt.count_collapse) {
-        write_barcode_matrix(v);
-      } else {
-        write_barcode_matrix_collapsed(v);
-      }
-    }
-
-    if (!opt.stream_in) {
-      inf.close();
-    }
-  }
-  delete[] p; p = nullptr;
-
-  if (!opt.count_collapse) {
-    n_cols = ecmap.size();
-  } else {
-    n_cols = genenames.size();
-  }
-
-  of.close();
-  
-  std::stringstream ss;
-  ss << n_rows << " " << n_cols << " " << n_entries << "\n";
-  std::string header = ss.str();
-  int hlen = header.size();
-  assert(hlen < 66);
-  of.open(mtx_ofn, std::ios::binary | std::ios::in | std::ios::out);
-  of.seekp(mat_header_pos);
-  of.write("%",1);
-  of.write(std::string(66-hlen-2,' ').c_str(),66-hlen-2);
-  of.write("\n",1);
-  of.write(header.c_str(), hlen);
-  of.close();
-
-  // write updated ec file
-  h.ecs = std::move(ecmap);
-  if (!opt.count_collapse) {
-    writeECs(ec_ofn, h);
-  } else {
-    writeGenes(gene_ofn, genenames);
-  }
-  // write barcode file
-  std::ofstream bcof;
-  bcof.open(barcodes_ofn);
-  for (const auto &x : barcodes) {
-    bcof << binaryToString(x, bclen) << "\n";
-  }
-  bcof.close();
-  //std::cerr << "bad counts = " << bad_count <<", rescued  =" << rescued << ", compacted = " << compacted << std::endl;
-
-  //std::cerr << "Read in " << nr << " BUS records" << std::endl;
+  bustools_count(opt);
 }

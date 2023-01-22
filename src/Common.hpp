@@ -62,6 +62,7 @@ struct Bustools_opt
   std::string count_genes;
   std::string count_ecs;
   std::string count_txp;
+  std::string count_split;
   bool count_em = false;
   bool count_cm = false;
   bool count_collapse = false;

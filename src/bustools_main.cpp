@@ -1770,6 +1770,15 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
     }
   }
   
+  if (opt.count_split.size() != 0)
+  {
+    if (!checkFileExists(opt.count_split))
+    {
+      std::cerr << "Error: File not found " << opt.count_split << std::endl;
+      ret = false;
+    }
+  }
+  
   return ret;
 }
 
@@ -2657,6 +2666,7 @@ void Bustools_count_Usage()
             << "    --umi-gene        Perform gene-level collapsing of UMIs" << std::endl
             << "    --em              Estimate gene abundances using EM algorithm" << std::endl
             << "    --cm              Count multiplicites instead of UMIs" << std::endl
+            << "-s, --split           Split output matrix in two (plus ambiguous) based on transcripts supplied in this file" << std::endl
             << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl
             << "    --hist            Output copy per UMI histograms for all genes" << std::endl 
             << "-d  --downsample      Specify a factor between 0 and 1 specifying how much to downsample" << std::endl 
