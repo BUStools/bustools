@@ -100,7 +100,7 @@ void bustools_inspect(Bustools_opt &opt) {
   int64_t gt_records = 0;
 
   /* Frequency of number of targets per set, with multiplicity. */
-  u_map_<uint32_t, uint32_t> freq_targetsPerSet;
+  std::unordered_map<uint32_t, uint32_t> freq_targetsPerSet;
   /* Frequency of targets (for Good-Toulmin). */
   std::vector<uint32_t> freq_targets(numTargets, 0);
 
@@ -273,7 +273,7 @@ void bustools_inspect(Bustools_opt &opt) {
   // Good-Toulmin for number of targets
   // Also number of targets detected
   uint64_t targetsDetected = 0;
-  u_map_<uint32_t, uint32_t> freq_freq_targets;
+  std::unordered_map<uint32_t, uint32_t> freq_freq_targets;
   for (const auto &elt : freq_targets) {
     if (elt) {
       ++targetsDetected;
