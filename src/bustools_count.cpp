@@ -438,7 +438,7 @@ void bustools_count(Bustools_opt &opt) {
         double val = 0;
         auto it = col_map.find(x);
         if (it != col_map.end()) {
-          val = it->second.first;
+          val = it->second;
         }
         c1.insert({x,val});
         c2.insert({x,0.0});
@@ -535,18 +535,18 @@ void bustools_count(Bustools_opt &opt) {
           continue;
         }
       }
-      column_vp.push_back({ec,{v[i].count,0}});
+      column_vp.push_back({ec,{v[i].count,COUNT_DEFAULT}});
     }
     std::sort(column_vp.begin(), column_vp.end());
     size_t m = column_vp.size();
     for (size_t i = 0; i < m; ) {
       size_t j = i+1;
-      double val = column_vp[i].second;
+      double val = column_vp[i].second.first;
       for (; j < m; j++) {
         if (column_vp[i].first != column_vp[j].first) {
           break;
         }
-        val += column_vp[j].second;
+        val += column_vp[j].second.first;
       }
       auto which_mtx = intersect_ecs_with_subset_txs(column_vp[i].first, ecmap, tx_split);
       auto& of_ = which_mtx == COUNT_DEFAULT ? of : (which_mtx == COUNT_SPLIT ? of_2 : of_A);
@@ -557,7 +557,7 @@ void bustools_count(Bustools_opt &opt) {
     }
   };
 
-  for (const auto& infn : opt.files) { 
+  for (const auto& infn : opt.files) {
     std::streambuf *inbuf;
     std::ifstream inf;
     if (!opt.stream_in) {
@@ -604,8 +604,7 @@ void bustools_count(Bustools_opt &opt) {
         if (!opt.count_cm) write_barcode_matrix(v);
         else write_barcode_matrix_mult(v);
       } else {
-        if (!opt.count_cm) write_barcode_matrix_collapsed(v);
-        else write_barcode_matrix_collapsed_mult(v);
+        write_barcode_matrix_collapsed(v); // Same signature for count_cm and !count_cm
       }
     }
 
