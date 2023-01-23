@@ -1777,6 +1777,10 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
       std::cerr << "Error: File not found " << opt.count_split << std::endl;
       ret = false;
     }
+    if (opt.count_em) {
+      std::cerr << "Cannot use -s with --em" std::endl;
+      ret = false;
+    }
   }
   
   return ret;

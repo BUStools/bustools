@@ -23,10 +23,10 @@ void bustools_count(Bustools_opt &opt) {
 
   std::unordered_map<std::string, int32_t> txnames;
   auto txnames_split = txnames; // copy
+  std::vector<int32_t> tx_split;
+  tx_split.reserve(txnames_split.size());
+  for (auto x : txnames_split) tx_split.push_back(txnames[x.first]);
   parseTranscripts(opt.count_txp, txnames);
-  if (!opt.count_split.empty()) {
-    parseTranscripts(opt.count_split, txnames_split); // subset of txnames
-  }
   std::vector<int32_t> genemap(txnames.size(), -1);
   std::unordered_map<std::string, int32_t> genenames;
   parseGenes(opt.count_genes, txnames, genemap, genenames);
@@ -40,15 +40,19 @@ void bustools_count(Bustools_opt &opt) {
   create_ec2genes(ecmap, genemap, ec2genes);
 
 
+  bool count_split = !opt.count_split.empty();
   std::ofstream of;
+  std::ofstream of_2;
+  std::ofstream of_A;
   std::string mtx_ofn = opt.output + ".mtx";
+  std::string mtx_ofn_split_2 = opt.output + ".2.mtx";
+  std::string mtx_ofn_split_A = opt.output + ".ambiguous.mtx";
   std::string barcodes_ofn = opt.output + ".barcodes.txt";
   std::string ec_ofn = opt.output + ".ec.txt";
   std::string gene_ofn = opt.output + ".genes.txt";
   std::string hist_ofn = opt.output + ".hist.txt";
   std::string cu_per_cell_ofn = opt.output + ".CUPerCell.txt";
   std::string cu_ofn = opt.output + ".cu.txt";
-  of.open(mtx_ofn);
 
   // write out the initial header
   // keep the number of newlines constant, this way it will work for both Windows and Linux
@@ -58,12 +62,22 @@ void bustools_count(Bustools_opt &opt) {
   ssHeader << headerComments;
   ssHeader << std::string(66, '%') << '\n';
   size_t headerLength = ssHeader.str().length();
+  // If we need to split matrix
+  if (count_split) {
+    parseTranscripts(opt.count_split, txnames_split); // subset of txnames
+    of_2.open(mtx_ofn_split_2);
+    of_A.open(mtx_ofn_split_A);
+    of_2 << ssHeader.str();
+    of_A << ssHeader.str();
+  }
+  of.open(mtx_ofn);
   of << ssHeader.str();
-
 
   size_t n_cols = 0;
   size_t n_rows = 0;
   size_t n_entries = 0;
+  size_t n_entries_2 = 0;
+  size_t n_entries_A = 0;
   std::vector<BUSData> v;
   v.reserve(N);
   uint64_t current_bc = 0xFFFFFFFFFFFFFFFFULL;
@@ -74,7 +88,7 @@ void bustools_count(Bustools_opt &opt) {
   std::vector<int32_t> u;
   u.reserve(100);
   std::vector<int32_t> column_v;
-  std::vector<std::pair<int32_t, double>> column_vp;
+  std::vector<std::pair<int32_t, std::pair<double, COUNT_MTX_TYPE>>> column_vp; // gene, {count, matrix type}
   if (!opt.count_collapse) {
     column_v.reserve(N); 
   } else {
@@ -217,8 +231,11 @@ void bustools_count(Bustools_opt &opt) {
         }
       }
       double val = j-i;
-      of << n_rows << " " << (column_v[i]+1) << " " << val << "\n";
-      n_entries++;
+      auto which_mtx = intersect_ecs_with_subset_txs(column_v[i], ecmap, tx_split);
+      auto& of_ = which_mtx == COUNT_DEFAULT ? of : (which_mtx == COUNT_SPLIT ? of_2 : of_A);
+      auto& n_entries_ = which_mtx == COUNT_DEFAULT ? n_entries : (which_mtx == COUNT_SPLIT ? n_entries_2 : n_entries_A);
+      of_ << n_rows << " " << (column_v[i]+1) << " " << val << "\n";
+      n_entries_++;
       
       i = j; // increment
     }
@@ -239,7 +256,7 @@ void bustools_count(Bustools_opt &opt) {
 
     std::vector<std::vector<int32_t>> ambiguous_genes;
 
-    for (size_t i = 0; i < n; ) {
+    if (!opt.count_cm) for (size_t i = 0; i < n; ) { // Entire loop is for !opt.count_cm
       size_t j = i+1;
       for (; j < n; j++) {
         if (v[i].UMI != v[j].UMI) {
@@ -270,9 +287,10 @@ void bustools_count(Bustools_opt &opt) {
         }
       }
       if (gn > 0) {
+        auto which_mtx = intersect_ecs_with_subset_txs(ecs, ecmap, tx_split);
         if (opt.count_gene_multimapping) {
           for (auto x : glist) {
-            column_vp.push_back({x, (opt.count_raw_counts ? counts : 1.0)/gn});
+            column_vp.push_back({x, {(opt.count_raw_counts ? counts : 1.0)/gn, which_mtx}});
           }
           //Fill in histograms for prediction.
           if (opt.count_gen_hist) {
@@ -288,7 +306,7 @@ void bustools_count(Bustools_opt &opt) {
           }
         } else {
           if (gn==1) {
-            column_vp.push_back({glist[0],opt.count_raw_counts ? counts : 1.0});
+            column_vp.push_back({glist[0],{opt.count_raw_counts ? counts : 1.0, which_mtx}});
             //Fill in histograms for prediction.
             if (opt.count_gen_hist) {
               if (glist[0] < n_genes) { //crasches with an invalid gene file otherwise
@@ -334,13 +352,14 @@ void bustools_count(Bustools_opt &opt) {
           }
           gn = glist.size();
           if (gn > 0) {
+            auto which_mtx = intersect_ecs_with_subset_txs(ecs_within_molecule, ecmap, tx_split);
             if (opt.count_gene_multimapping) {
               for (auto x : glist) {
-                column_vp.push_back({x, 1.0/gn});
+                column_vp.push_back({x, {1.0/gn, which_mtx}});
               }
             } else {
               if (gn==1) {
-                column_vp.push_back({glist[0],1.0});
+                column_vp.push_back({glist[0],{1.0, which_mtx}});
               } else if (opt.count_em) {
                 ambiguous_genes.push_back(std::move(glist));
               }
@@ -349,25 +368,64 @@ void bustools_count(Bustools_opt &opt) {
         }
       }
       i = j; // increment
+    } else for (size_t i = 0; i < n; i++) { // Entire loop is for opt.count_cm
+      ecs.resize(0);
+      ecs.push_back(v[i].ec);
+      
+      intersect_genes_of_ecs(ecs, ec2genes, glist);
+      int gn = glist.size();
+      if (gn > 0) {
+        auto which_mtx = intersect_ecs_with_subset_txs(ecs, ecmap, tx_split);
+        if (opt.count_gene_multimapping) {
+          for (auto x : glist) {
+            column_vp.push_back({x, {v[i].count/gn, which_mtx}});
+          }
+        } else {
+          if (gn==1) {
+            column_vp.push_back({glist[0],{v[i].count, which_mtx}});
+          } 
+        }
+      }
     }
     std::sort(column_vp.begin(), column_vp.end());
     size_t m = column_vp.size();
     std::unordered_map<int32_t, double> col_map(m);
+    auto col_map_2 = col_map; // copy
+    auto col_map_A = col_map; // copy
     std::vector<int32_t> cols;
 
     for (size_t i = 0; i < m; ) {
       size_t j = i+1;
-      double val = column_vp[i].second;
+      double val = 0;
+      double val_2 = 0;
+      double val_A = 0;
+      auto mtx_type = column_vp[i].second.second;
+      if (mtx_type == COUNT_DEFAULT) val = column_vp[i].second.first;
+      else if (mtx_type == COUNT_SPLIT) val_2 = column_vp[i].second.first;
+      else val_A = column_vp[i].second.first;
       for (; j < m; j++) {
         if (column_vp[i].first != column_vp[j].first) {
           break;
         }
-        val += column_vp[j].second;
+        auto mtx_type = column_vp[j].second.second;
+        if (mtx_type == COUNT_DEFAULT) val += column_vp[j].second.first;
+        else if (mtx_type == COUNT_SPLIT) val_2 += column_vp[j].second.first;
+        else val_A += column_vp[j].second.first;
       }
       col_map.insert({column_vp[i].first,val});
+      if (count_split) {
+        col_map_2.insert({column_vp[i].first,val_2});
+        col_map_A.insert({column_vp[i].first,val_A});
+      }
       cols.push_back(column_vp[i].first);
 
-      n_entries++;
+      if (count_split) {
+        if (val > 0) n_entries++;
+        if (val_2 > 0) n_entries_2++;
+        if (val_A > 0) n_entries_A++;
+      } else {
+        n_entries++;
+      }
       
       i = j; // increment
     }
@@ -380,7 +438,7 @@ void bustools_count(Bustools_opt &opt) {
         double val = 0;
         auto it = col_map.find(x);
         if (it != col_map.end()) {
-          val = it->second;
+          val = it->second.first;
         }
         c1.insert({x,val});
         c2.insert({x,0.0});
@@ -430,15 +488,28 @@ void bustools_count(Bustools_opt &opt) {
 
     }
 
-
-
     for (const auto &x : cols) {
       double val = 0;
       auto it = col_map.find(x);
-      if (it != col_map.end()) {
-        val = it->second;
+      if (!count_split) {
+        if (it != col_map.end()) val = it->second;
+        of << n_rows << " " << (x+1) << " " << val << "\n";
+      } else {
+        if (it != col_map.end()) {
+          val = it->second;
+          of << n_rows << " " << (x+1) << " " << val << "\n";
+        }
+        it = col_map_2.find(x);
+        if (it != col_map_2.end()) {
+          val = it->second;
+          of_2 << n_rows << " " << (x+1) << " " << val << "\n";
+        }
+        it = col_map_A.find(x);
+        if (it != col_map_A.end()) {
+          val = it->second;
+          of_A << n_rows << " " << (x+1) << " " << val << "\n";
+        }
       }
-      of << n_rows << " " << (x+1) << " " << val << "\n";
     }
   };
   
@@ -464,7 +535,7 @@ void bustools_count(Bustools_opt &opt) {
           continue;
         }
       }
-      column_vp.push_back({ec,v[i].count});
+      column_vp.push_back({ec,{v[i].count,0}});
     }
     std::sort(column_vp.begin(), column_vp.end());
     size_t m = column_vp.size();
@@ -477,73 +548,13 @@ void bustools_count(Bustools_opt &opt) {
         }
         val += column_vp[j].second;
       }
-      n_entries++;
-      of << n_rows << " " << (column_vp[i].first+1) << " " << val << "\n";
+      auto which_mtx = intersect_ecs_with_subset_txs(column_vp[i].first, ecmap, tx_split);
+      auto& of_ = which_mtx == COUNT_DEFAULT ? of : (which_mtx == COUNT_SPLIT ? of_2 : of_A);
+      auto& n_entries_ = which_mtx == COUNT_DEFAULT ? n_entries : (which_mtx == COUNT_SPLIT ? n_entries_2 : n_entries_A);
+      of_ << n_rows << " " << (column_vp[i].first+1) << " " << val << "\n";
+      n_entries_++;
       i = j; // increment
     }
-  };
-  
-  auto write_barcode_matrix_collapsed_mult = [&](const std::vector<BUSData> &v) {
-    if(v.empty()) {
-      return;
-    }
-    column_vp.resize(0);
-    n_rows+= 1;
-    
-    barcodes.push_back(v[0].barcode);
-    double val = 0.0;
-    size_t n = v.size();
-    
-    for (size_t i = 0; i < n; i++) {
-      ecs.resize(0);
-      ecs.push_back(v[i].ec);
-      
-      intersect_genes_of_ecs(ecs, ec2genes, glist);
-      int gn = glist.size();
-      if (gn > 0) {
-        if (opt.count_gene_multimapping) {
-          for (auto x : glist) {
-            column_vp.push_back({x, v[i].count/gn});
-          }
-        } else {
-          if (gn==1) {
-            column_vp.push_back({glist[0],v[i].count});
-          } 
-        }
-      }
-    }
-    
-    std::sort(column_vp.begin(), column_vp.end());
-    size_t m = column_vp.size();
-    std::unordered_map<int32_t, double> col_map(m);
-    std::vector<int32_t> cols;
-    
-    for (size_t i = 0; i < m; ) {
-      size_t j = i+1;
-      double val = column_vp[i].second;
-      for (; j < m; j++) {
-        if (column_vp[i].first != column_vp[j].first) {
-          break;
-        }
-        val += column_vp[j].second;
-      }
-      col_map.insert({column_vp[i].first,val});
-      cols.push_back(column_vp[i].first);
-      
-      n_entries++;
-      
-      i = j; // increment
-    }
-    
-    for (const auto &x : cols) {
-      double val = 0;
-      auto it = col_map.find(x);
-      if (it != col_map.end()) {
-        val = it->second;
-      }
-      of << n_rows << " " << (x+1) << " " << val << "\n";
-    }
-    
   };
 
   for (const auto& infn : opt.files) { 
@@ -578,8 +589,7 @@ void bustools_count(Bustools_opt &opt) {
               if (!opt.count_cm) write_barcode_matrix(v);
               else write_barcode_matrix_mult(v);
             } else {
-              if (!opt.count_cm) write_barcode_matrix_collapsed(v);
-              else write_barcode_matrix_collapsed_mult(v);
+              write_barcode_matrix_collapsed(v); // Same signature for count_cm and !count_cm
             }
           }
           v.clear();
@@ -612,9 +622,13 @@ void bustools_count(Bustools_opt &opt) {
   }
 
   of.close();
+  if (count_split) {
+    of_2.close();
+    of_A.close();
+  }
   
   //Rewrite header in a way that works for both Windows and Linux
-  std::stringstream ss;
+  std::stringstream ss, ss_2, ss_A;
   ss << n_rows << " " << n_cols << " " << n_entries;
   std::string header = ss.str();
   int hlen = header.size();
@@ -622,6 +636,22 @@ void bustools_count(Bustools_opt &opt) {
   of.open(mtx_ofn, std::ios::in | std::ios::out);
   of << headerComments << header;
   of.close();
+  if (count_split) {
+    ss_2 << n_rows << " " << n_cols << " " << n_entries_2;
+    header = ss_2.str();
+    hlen = header.size();
+    header = header + std::string(66 - hlen, ' ') + '\n';
+    of_2.open(mtx_ofn_split_2, std::ios::in | std::ios::out);
+    of_2 << headerComments << header;
+    of_2.close();
+    ss_A << n_rows << " " << n_cols << " " << n_entries_A;
+    header = ss_A.str();
+    hlen = header.size();
+    header = header + std::string(66 - hlen, ' ') + '\n';
+    of_A.open(mtx_ofn_split_A, std::ios::in | std::ios::out);
+    of_A << headerComments << header;
+    of_A.close();
+  }
 
   // write updated ec file
   h.ecs = std::move(ecmap);

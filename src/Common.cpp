@@ -327,6 +327,33 @@ void create_ec2genes(const std::vector<std::vector<int32_t>> &ecmap, const std::
   }
 }
 
+COUNT_MTX_TYPE intersect_ecs_with_subset_txs(int32_t ec, const std::vector<std::vector<int32_t>> &ecmap, const std::vector<int32_t>& tx_split) {
+  if (tx_split.size() == 0) return COUNT_DEFAULT;
+  std::vector<int32_t> ecs;
+  ecs.push_back(ec);
+  return intersect_ecs_with_subset_txs(ecs, ecmap, tx_split);
+}
+
+COUNT_MTX_TYPE intersect_ecs_with_subset_txs(const std::vector<int32_t>& ecs, const std::vector<std::vector<int32_t>> &ecmap, const std::vector<int32_t>& tx_split) {
+  if (tx_split.size() == 0) return COUNT_DEFAULT;
+  if (ecs.size() == 0) return COUNT_AMBIGUOUS; // Shouldn't happen
+  size_t n_1 = 0;
+  size_t n_2 = 0;
+  for (auto ec : ecs) { // We still need to optimize this
+    for (auto t: ecmap[ec]) {
+      if(std::find(tx_split.begin(), tx_split.end(), t) != tx_split.end()) {
+        n_2++;
+      } else {
+        n_1++;
+      }
+      if (n_1 > 0 && n_2 > 0) break; // Stop searching
+    }
+    if (n_1 > 0 && n_2 > 0) break; // Stop searching
+  }
+  return (n_1 > 0 && n_2 > 0 ? COUNT_AMBIGUOUS : (n_1 > 0 ? COUNT_DEFAULT : COUNT_SPLIT));
+}
+
+
 void copy_file(std::string src, std::string dest) {
 	std::ifstream  isrc(src, std::ios::binary);
 	std::ofstream  idest(dest, std::ios::binary);
