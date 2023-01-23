@@ -13,7 +13,7 @@
 
 #define BUSTOOLS_VERSION "0.42.0"
 
-typedef robin_hood::unordered_flat_map u_map_;
+#define u_map_ robin_hood::unordered_flat_map
 enum CAPTURE_TYPE : char
 {
   CAPTURE_NONE = 0,
