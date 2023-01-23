@@ -1778,7 +1778,7 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
       ret = false;
     }
     if (opt.count_em) {
-      std::cerr << "Cannot use -s with --em" std::endl;
+      std::cerr << "Cannot use -s with --em" << std::endl;
       ret = false;
     }
   }
