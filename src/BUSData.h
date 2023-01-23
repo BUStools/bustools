@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <stdint.h>
 #include <fstream>
+#include "Common.hpp"
 
 const uint32_t BUSFORMAT_VERSION = 1;
 
@@ -66,15 +67,15 @@ int identifyParseHeader(std::istream &inf, BUSHeader &header, compressed_BUSHead
 bool parseECs_stream(std::istream &in, BUSHeader &header);
 bool parseECs(const std::string &filename, BUSHeader &header);
 bool writeECs(const std::string &filename, const BUSHeader &header);
-bool writeGenes(const std::string &filename, const std::unordered_map<std::string, int32_t>  &genenames);
-bool parseGenes(const std::string &filename, const std::unordered_map<std::string, int32_t> &txnames, std::vector<int32_t> &genemap, std::unordered_map<std::string, int32_t> &genenames);
+bool writeGenes(const std::string &filename, const u_map_<std::string, int32_t>  &genenames);
+bool parseGenes(const std::string &filename, const u_map_<std::string, int32_t> &txnames, std::vector<int32_t> &genemap, u_map_<std::string, int32_t> &genenames);
 bool parseGenesList(const std::string& filename, std::vector<std::string>& geneNames);
-bool parseTxCaptureList(const std::string &filename, std::unordered_map<std::string, int32_t> &txnames, std::unordered_set<uint64_t> &captures);
+bool parseTxCaptureList(const std::string &filename, u_map_<std::string, int32_t> &txnames, std::unordered_set<uint64_t> &captures);
 bool parseBcUmiCaptureList(const std::string &filename, std::unordered_set<uint64_t> &captures);
 bool parseFlagsCaptureList(const std::string &filename, std::unordered_set<uint64_t> &captures);
-bool parseTranscripts(const std::string &filename, std::unordered_map<std::string, int32_t> &txnames);
+bool parseTranscripts(const std::string &filename, u_map_<std::string, int32_t> &txnames);
 
-bool parse_ProjectMap(const std::string &filename, std::unordered_map<uint64_t, uint64_t> &project_map);
+bool parse_ProjectMap(const std::string &filename, u_map_<uint64_t, uint64_t> &project_map);
 
 uint64_t stringToBinary(const std::string &s, uint32_t &flag);
 uint64_t stringToBinary(const char* s, const size_t len, uint32_t &flag);

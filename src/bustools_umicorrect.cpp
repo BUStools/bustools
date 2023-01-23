@@ -231,13 +231,13 @@ void bustools_umicorrect(const Bustools_opt& opt) {
 
 	// read and parse the equivelence class files
 
-	std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
+	u_map_<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
 	std::vector<std::vector<int32_t>> ecmap;
 
-	std::unordered_map<std::string, int32_t> txnames;
+	u_map_<std::string, int32_t> txnames;
 	parseTranscripts(opt.count_txp, txnames);
 	std::vector<int32_t> genemap(txnames.size(), -1);
-	std::unordered_map<std::string, int32_t> genenames;
+	u_map_<std::string, int32_t> genenames;
 	parseGenes(opt.count_genes, txnames, genemap, genenames);
 	parseECs(opt.count_ecs, h);
 	ecmap = std::move(h.ecs);

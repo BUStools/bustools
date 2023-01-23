@@ -12,7 +12,7 @@
 
 #include "bustools_merge.h"
 
-inline std::vector<int32_t> get_tids(const BUSHeader &oh, const std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, const int32_t &eid)
+inline std::vector<int32_t> get_tids(const BUSHeader &oh, const u_map_<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, const int32_t &eid)
 {
 
     std::vector<int32_t> tids = oh.ecs[eid];
@@ -56,7 +56,7 @@ void bustools_mash(const Bustools_opt &opt)
     std::cerr << "[info] parsed output.bus files" << std::endl;
 
     // parse the transcripts.txt
-    std::unordered_map<std::string, int32_t> txn_tid;
+    u_map_<std::string, int32_t> txn_tid;
     std::vector<std::vector<int32_t>> tids_per_file; // list of tids as they occur for each file
     std::vector<int32_t> tids;                       // a vector of tids
     int32_t tid = 0;
@@ -101,7 +101,7 @@ void bustools_mash(const Bustools_opt &opt)
     oh.bclen = vh[0].bclen;
     oh.umilen = vh[0].umilen;
 
-    std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv; // set{tids} (ec) to eid it came from
+    u_map_<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv; // set{tids} (ec) to eid it came from
 
     for (int32_t i = 0; i < tid; i++)
     {

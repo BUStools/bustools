@@ -9,9 +9,11 @@
 #include <string>
 #include <unordered_map>
 #include <sstream>
+#include "robin_hood.h"
 
 #define BUSTOOLS_VERSION "0.42.0"
 
+typedef robin_hood::unordered_flat_map u_map_;
 enum CAPTURE_TYPE : char
 {
   CAPTURE_NONE = 0,
@@ -169,10 +171,10 @@ struct SortedVectorHasher
 std::vector<int32_t> intersect(std::vector<int32_t> &u, std::vector<int32_t> &v);
 std::vector<int32_t> union_vectors(const std::vector<std::vector<int32_t>> &v);
 std::vector<int32_t> intersect_vectors(const std::vector<std::vector<int32_t>> &v);
-int32_t intersect_ecs(const std::vector<int32_t> &ecs, std::vector<int32_t> &u, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes);
+int32_t intersect_ecs(const std::vector<int32_t> &ecs, std::vector<int32_t> &u, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, u_map_<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes);
 void vt2gene(const std::vector<int32_t> &v, const std::vector<int32_t> &genemap, std::vector<int32_t> &glist);
 void intersect_genes_of_ecs(const std::vector<int32_t> &ecs, const std::vector<std::vector<int32_t>> &ec2genes, std::vector<int32_t> &glist);
-int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes, bool assumeIntersectionIsEmpty = true);
+int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, u_map_<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes, bool assumeIntersectionIsEmpty = true);
 void create_ec2genes(const std::vector<std::vector<int32_t>> &ecmap, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ec2gene);
 COUNT_MTX_TYPE intersect_ecs_with_subset_txs(int32_t ec, const std::vector<std::vector<int32_t>> &ecmap, const std::vector<int32_t>& tx_split);
 COUNT_MTX_TYPE intersect_ecs_with_subset_txs(const std::vector<int32_t>& ecs, const std::vector<std::vector<int32_t>> &ecmap, const std::vector<int32_t>& tx_split);

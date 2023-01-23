@@ -12,11 +12,11 @@ void bustools_capture(Bustools_opt &opt) {
 
   std::unordered_set<uint64_t> captures;
   std::vector<std::vector<int32_t>> ecmap;
-  std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
+  u_map_<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
 
   if (opt.type == CAPTURE_TX) {
     // parse ecmap and capture list
-    std::unordered_map<std::string, int32_t> txnames;
+    u_map_<std::string, int32_t> txnames;
     std::cerr << "Parsing transcripts .. "; std::cerr.flush();
     parseTranscripts(opt.count_txp, txnames);
     std::cerr << "done" << std::endl;

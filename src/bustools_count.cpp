@@ -18,17 +18,17 @@ void bustools_count(Bustools_opt &opt) {
 
   // read and parse the equivalence class files
 
-  std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
+  u_map_<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
   std::vector<std::vector<int32_t>> ecmap;
 
-  std::unordered_map<std::string, int32_t> txnames;
+  u_map_<std::string, int32_t> txnames;
   auto txnames_split = txnames; // copy
   std::vector<int32_t> tx_split;
   tx_split.reserve(txnames_split.size());
   for (auto x : txnames_split) tx_split.push_back(txnames[x.first]);
   parseTranscripts(opt.count_txp, txnames);
   std::vector<int32_t> genemap(txnames.size(), -1);
-  std::unordered_map<std::string, int32_t> genenames;
+  u_map_<std::string, int32_t> genenames;
   parseGenes(opt.count_genes, txnames, genemap, genenames);
   parseECs(opt.count_ecs, h);
   ecmap = std::move(h.ecs);
@@ -389,7 +389,7 @@ void bustools_count(Bustools_opt &opt) {
     }
     std::sort(column_vp.begin(), column_vp.end());
     size_t m = column_vp.size();
-    std::unordered_map<int32_t, double> col_map(m);
+    u_map_<int32_t, double> col_map(m);
     auto col_map_2 = col_map; // copy
     auto col_map_A = col_map; // copy
     std::vector<int32_t> cols;
@@ -432,7 +432,7 @@ void bustools_count(Bustools_opt &opt) {
 
     if (opt.count_em) {
       //std::cerr << "Running EM algorithm" << std::endl;
-      std::unordered_map<int32_t, double> c1,c2;
+      u_map_<int32_t, double> c1,c2;
       // initialize with unique counts
       for (const auto &x : cols) {
         double val = 0;
