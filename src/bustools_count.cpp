@@ -18,7 +18,7 @@ void bustools_count(Bustools_opt &opt) {
 
   // read and parse the equivalence class files
 
-  u_map_<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
+  EcMapInv ecmapinv;
   std::vector<std::vector<int32_t>> ecmap;
 
   u_map_<std::string, int32_t> txnames;
@@ -34,7 +34,8 @@ void bustools_count(Bustools_opt &opt) {
   ecmap = std::move(h.ecs);
   ecmapinv.reserve(ecmap.size());
   for (int32_t ec = 0; ec < ecmap.size(); ec++) {
-    ecmapinv.insert({ecmap[ec], ec});
+    uint32_t *data = reinterpret_cast<uint32_t*>(const_cast<int32_t*>(&(ecmap[ec][0])));
+    ecmapinv.insert({Roaring(ecmap[ec].size(), data), ec});
   }
   std::vector<std::vector<int32_t>> ec2genes;        
   create_ec2genes(ecmap, genemap, ec2genes);
@@ -85,8 +86,7 @@ void bustools_count(Bustools_opt &opt) {
   std::vector<int32_t> ecs;
   std::vector<int32_t> glist;
   ecs.reserve(100);
-  std::vector<int32_t> u;
-  u.reserve(100);
+  Roaring u;
   std::vector<int32_t> column_v;
   std::vector<std::pair<int32_t, std::pair<double, COUNT_MTX_TYPE>>> column_vp; // gene, {count, matrix type}
   if (!opt.count_collapse) {
