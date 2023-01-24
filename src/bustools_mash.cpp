@@ -105,8 +105,10 @@ void bustools_mash(const Bustools_opt &opt)
 
     for (int32_t i = 0; i < tid; i++)
     {
-        oh.ecs.push_back({i});
-        ecmapinv.insert({{i}, i});
+        std::vector<int32_t> tmp_vec;
+        tmp_vec.push_back(i);
+        oh.ecs.push_back(tmp_vec);
+        ecmapinv.insert({tmp_vec, i});
     }
 
     std::vector<std::vector<int32_t>> eids_per_file;
