@@ -10,6 +10,8 @@
 #include <unordered_map>
 #include <sstream>
 #include "robin_hood.h"
+#include "roaring.h"
+#include "hash.hpp"
 
 #define BUSTOOLS_VERSION "0.42.0"
 
@@ -160,14 +162,32 @@ struct SortedVectorHasher
     int i = 0;
     for (auto x : v)
     {
-      uint64_t t = std::hash<int32_t>{}(x);
+      uint64_t t;
+      MurmurHash3_x64_64(&x,sizeof(x), 0,&t);
       t = (x >> i) | (x << (64 - i));
       r = r ^ t;
-      i = (i + 1) % 64;
+      i = (i+1)&63;
     }
     return r;
   }
 };
+
+struct RoaringHasher {
+  size_t operator()(const Roaring& rr) const {
+    uint64_t r = 0;
+    int i=0;
+    for (auto x : rr) {
+      uint64_t t;
+      MurmurHash3_x64_64(&x, sizeof(x), 0, &t);
+      t = (x>>i) | (x<<(64-i));
+      r ^= t;
+      i = (i+1)&63; // (i+1)%64
+    }
+    return r;
+  }
+};
+typedef u_map_<Roaring, int32_t, RoaringHasher> EcMapInv;
+
 std::vector<int32_t> intersect(std::vector<int32_t> &u, std::vector<int32_t> &v);
 std::vector<int32_t> union_vectors(const std::vector<std::vector<int32_t>> &v);
 std::vector<int32_t> intersect_vectors(const std::vector<std::vector<int32_t>> &v);
