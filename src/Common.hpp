@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <sstream>
 #include "robin_hood.h"
-#include "roaring.h"
+#include "roaring.hh"
 #include "hash.hpp"
 
 #define BUSTOOLS_VERSION "0.42.0"
