@@ -328,7 +328,7 @@ void parse_ProgramOptions_capture(int argc, char **argv, Bustools_opt &opt)
 
 void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
 {
-  const char *opt_string = "o:g:e:t:md:";
+  const char *opt_string = "o:g:e:t:md:s:";
   int gene_flag = 0;
   int umigene_flag = 0;
   int em_flag = 0;
@@ -348,6 +348,7 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
     {"hist", no_argument, &hist_flag, 1},
     {"downsample", required_argument, 0, 'd'},
     {"rawcounts", no_argument, &rawcounts_flag, 1},
+    {"split", required_argument, 0, 's'},
     {0, 0, 0, 0}};
   
   int option_index = 0, c;
@@ -374,6 +375,9 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
       break;
     case 'm':
       opt.count_gene_multimapping = true;
+      break;
+    case 's':
+      opt.count_split = optarg;
       break;
     default:
       break;
