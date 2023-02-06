@@ -24,8 +24,6 @@ void bustools_count(Bustools_opt &opt) {
   u_map_<std::string, int32_t> txnames;
   auto txnames_split = txnames; // copy
   std::vector<int32_t> tx_split;
-  tx_split.reserve(txnames_split.size());
-  for (auto x : txnames_split) tx_split.push_back(txnames[x.first]);
   parseTranscripts(opt.count_txp, txnames);
   std::vector<int32_t> genemap(txnames.size(), -1);
   u_map_<std::string, int32_t> genenames;
@@ -66,6 +64,10 @@ void bustools_count(Bustools_opt &opt) {
   // If we need to split matrix
   if (count_split) {
     parseTranscripts(opt.count_split, txnames_split); // subset of txnames
+    tx_split.reserve(txnames_split.size());
+    for (auto x : txnames_split) {
+        if (txnames.count(x.first)) tx_split.push_back(txnames[x.first]);
+    }
     of_2.open(mtx_ofn_split_2);
     of_A.open(mtx_ofn_split_A);
     of_2 << ssHeader.str();
