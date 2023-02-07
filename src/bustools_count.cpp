@@ -414,17 +414,17 @@ void bustools_count(Bustools_opt &opt) {
         else if (mtx_type == COUNT_SPLIT) val_2 += column_vp[j].second.first;
         else val_A += column_vp[j].second.first;
       }
-      col_map.insert({column_vp[i].first,val});
+      if (!count_split || val != 0) col_map.insert({column_vp[i].first,val});
       if (count_split) {
-        col_map_2.insert({column_vp[i].first,val_2});
-        col_map_A.insert({column_vp[i].first,val_A});
+        if (val_2 != 0) col_map_2.insert({column_vp[i].first,val_2});
+        if (val_A != 0) col_map_A.insert({column_vp[i].first,val_A});
       }
       cols.push_back(column_vp[i].first);
 
       if (count_split) {
-        if (val > 0) n_entries++;
-        if (val_2 > 0) n_entries_2++;
-        if (val_A > 0) n_entries_A++;
+        if (val != 0) n_entries++;
+        if (val_2 != 0) n_entries_2++;
+        if (val_A != 0) n_entries_A++;
       } else {
         n_entries++;
       }
