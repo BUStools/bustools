@@ -258,6 +258,7 @@ void bustools_split_correct(Bustools_opt &opt)
     }
 
     int rc = 0;
+    uint64_t len_mask = ((1 << bclen) - 1); // Only include n least significant bits where n=bclen
     while (true)
     {
       in.read((char *)p, N * sizeof(BUSData));
@@ -276,7 +277,7 @@ void bustools_split_correct(Bustools_opt &opt)
 
         bd = p[i];
 
-        uint64_t b = bd.barcode;
+        uint64_t b = bd.barcode & len_mask;
         uint64_t bc12 = b & mask_12;
         uint64_t bc34 = (b >> (2 * len_12)) & mask_34;
 
@@ -366,14 +367,14 @@ void bustools_split_correct(Bustools_opt &opt)
 
             if (dump_bool)
             {
-              if (bd.barcode != old_barcode)
+              if (bd.barcode & len_mask != old_barcode)
               {
-                of << binaryToString(bd.barcode, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
-                old_barcode = bd.barcode;
+                of << binaryToString(bd.barcode & len_mask, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
+                old_barcode = bd.barcode & len_mask;
               }
             }
 
-            bd.barcode = b_corrected;
+            bd.barcode = b_corrected | (bd.barcode & ~len_mask);
             bus_out.write((char *)&bd, sizeof(bd));
 
             if (corrected_12_flag && corrected_34_flag)
@@ -533,6 +534,7 @@ void bustools_correct(Bustools_opt &opt)
     }
 
     int rc = 0;
+    uint64_t len_mask = ((1 << bclen) - 1); // Only include n least significant bits where n=bclen
     while (true)
     {
       in.read((char *)p, N * sizeof(BUSData));
@@ -546,7 +548,7 @@ void bustools_correct(Bustools_opt &opt)
       for (size_t i = 0; i < rc; i++)
       {
         bd = p[i];
-        auto it = wbc.find(bd.barcode);
+        auto it = wbc.find(bd.barcode & len_mask);
         if (it != wbc.end())
         {
           stat_white++;
@@ -554,7 +556,7 @@ void bustools_correct(Bustools_opt &opt)
         }
         else
         {
-          uint64_t b = bd.barcode;
+          uint64_t b = bd.barcode & len_mask;
           uint64_t lb = b & lower_mask;
           uint64_t ub = (b >> (2 * bc2)) & upper_mask;
           uint64_t lbc = 0, ubc = 0;
@@ -572,14 +574,14 @@ void bustools_correct(Bustools_opt &opt)
               uint64_t b_corrected = (ub << (2 * bc2)) | lbc;
               if (dump_bool)
               {
-                if (bd.barcode != old_barcode)
+                if (bd.barcode & len_mask != old_barcode)
                 {
-                  of << binaryToString(bd.barcode, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
-                  old_barcode = bd.barcode;
+                  of << binaryToString(bd.barcode & len_mask, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
+                  old_barcode = bd.barcode & len_mask;
                 }
               }
 
-              bd.barcode = b_corrected;
+              bd.barcode = b_corrected | (bd.barcode & ~len_mask);
               bus_out.write((char *)&bd, sizeof(bd));
               stat_corr++;
             }
@@ -588,14 +590,14 @@ void bustools_correct(Bustools_opt &opt)
               uint64_t b_corrected = (ubc << (2 * bc2)) | lb;
               if (dump_bool)
               {
-                if (bd.barcode != old_barcode)
+                if (bd.barcode & len_mask != old_barcode)
                 {
-                  of << binaryToString(bd.barcode, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
-                  old_barcode = bd.barcode;
+                  of << binaryToString(bd.barcode & len_mask, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
+                  old_barcode = bd.barcode & len_mask;
                 }
               }
 
-              bd.barcode = b_corrected;
+              bd.barcode = b_corrected | (bd.barcode & ~len_mask);
               bus_out.write((char *)&bd, sizeof(bd));
               stat_corr++;
             }
