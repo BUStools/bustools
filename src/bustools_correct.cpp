@@ -258,7 +258,7 @@ void bustools_split_correct(Bustools_opt &opt)
     }
 
     int rc = 0;
-    uint64_t len_mask = ((1 << bclen) - 1); // Only include n least significant bits where n=bclen
+    uint64_t len_mask = ((1 << (2*bclen)) - 1); // Only include n least significant bits where n=bclen
     while (true)
     {
       in.read((char *)p, N * sizeof(BUSData));
@@ -534,7 +534,7 @@ void bustools_correct(Bustools_opt &opt)
     }
 
     int rc = 0;
-    uint64_t len_mask = ((1 << bclen) - 1); // Only include n least significant bits where n=bclen
+    uint64_t len_mask = ((1 << (2*bclen)) - 1); // Only include n least significant bits where n=bclen
     while (true)
     {
       in.read((char *)p, N * sizeof(BUSData));
