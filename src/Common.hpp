@@ -9,12 +9,13 @@
 #include <string>
 #include <unordered_map>
 #include <sstream>
+#include "robin_hood.h"
 #include "roaring.hh"
 #include "hash.hpp"
 
 #define BUSTOOLS_VERSION "0.42.0"
 
-#define u_map_ std::unordered_map
+#define u_map_ robin_hood::unordered_flat_map
 enum CAPTURE_TYPE : char
 {
   CAPTURE_NONE = 0,
@@ -185,12 +186,12 @@ struct RoaringHasher {
     return r;
   }
 };
-typedef u_map_<std::vector<int32_t>, int32_t, SortedVectorHasher> EcMapInv;
+typedef u_map_<Roaring, int32_t, RoaringHasher> EcMapInv;
 
 std::vector<int32_t> intersect(std::vector<int32_t> &u, std::vector<int32_t> &v);
 std::vector<int32_t> union_vectors(const std::vector<std::vector<int32_t>> &v);
 std::vector<int32_t> intersect_vectors(const std::vector<std::vector<int32_t>> &v);
-int32_t intersect_ecs(const std::vector<int32_t> &ecs, std::vector<int32_t> &u, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, EcMapInv &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes);
+int32_t intersect_ecs(const std::vector<int32_t> &ecs, Roaring &u, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, EcMapInv &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes);
 void vt2gene(const std::vector<int32_t> &v, const std::vector<int32_t> &genemap, std::vector<int32_t> &glist);
 void intersect_genes_of_ecs(const std::vector<int32_t> &ecs, const std::vector<std::vector<int32_t>> &ec2genes, std::vector<int32_t> &glist);
 int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, EcMapInv &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes, bool assumeIntersectionIsEmpty = true);
