@@ -9,13 +9,12 @@
 #include <string>
 #include <unordered_map>
 #include <sstream>
-#include "robin_hood.h"
 #include "roaring.hh"
 #include "hash.hpp"
 
 #define BUSTOOLS_VERSION "0.42.0"
 
-#define u_map_ robin_hood::unordered_flat_map
+#define u_map_ std::unordered_map
 enum CAPTURE_TYPE : char
 {
   CAPTURE_NONE = 0,
