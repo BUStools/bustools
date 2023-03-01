@@ -367,7 +367,7 @@ void bustools_split_correct(Bustools_opt &opt)
 
             if (dump_bool)
             {
-              if (bd.barcode & len_mask != old_barcode)
+              if ((bd.barcode & len_mask) != old_barcode)
               {
                 of << binaryToString(bd.barcode & len_mask, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
                 old_barcode = bd.barcode & len_mask;
@@ -574,7 +574,7 @@ void bustools_correct(Bustools_opt &opt)
               uint64_t b_corrected = (ub << (2 * bc2)) | lbc;
               if (dump_bool)
               {
-                if (bd.barcode & len_mask != old_barcode)
+                if ((bd.barcode & len_mask) != old_barcode)
                 {
                   of << binaryToString(bd.barcode & len_mask, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
                   old_barcode = bd.barcode & len_mask;
@@ -590,7 +590,7 @@ void bustools_correct(Bustools_opt &opt)
               uint64_t b_corrected = (ubc << (2 * bc2)) | lb;
               if (dump_bool)
               {
-                if (bd.barcode & len_mask != old_barcode)
+                if ((bd.barcode & len_mask) != old_barcode)
                 {
                   of << binaryToString(bd.barcode & len_mask, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
                   old_barcode = bd.barcode & len_mask;
