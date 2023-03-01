@@ -73,7 +73,7 @@ std::vector<int32_t> intersect_vectors(const std::vector<std::vector<int32_t>> &
   return std::move(u);
 }
 
-int32_t intersect_ecs(const std::vector<int32_t> &ecs, Roaring &u, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, EcMapInv &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes) {
+int32_t intersect_ecs(const std::vector<int32_t> &ecs, std::vector<int32_t> &u, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, EcMapInv &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes) {
   if (ecs.empty()) {
     return -1;
   }
@@ -85,36 +85,59 @@ int32_t intersect_ecs(const std::vector<int32_t> &ecs, Roaring &u, const std::ve
   if (ecs.size() == 1) {
     return ecs[0]; // no work
   }
-
-  uint32_t *data = reinterpret_cast<uint32_t*>(const_cast<int32_t*>(&(ecmap[ecs[0]][0])));
-  u = Roaring(ecmap[ecs[0]].size(), data);
   
+  u.resize(0);
+  auto &v = ecmap[ecs[0]]; // copy
+  for (size_t i = 0; i< v.size(); i++) {
+    u.push_back(v[i]);
+  }
+
   for (size_t i = 1; i < ecs.size(); i++) {
     if (ecs[i] < 0 || ecs[i] >= ecmap.size()) {
       return -1;
     }
-    data = reinterpret_cast<uint32_t*>(const_cast<int32_t*>(&(ecmap[ecs[i]][0])));
-    u &= Roaring(ecmap[ecs[i]].size(), data);
+    const auto &v = ecmap[ecs[i]];
+    
+    int j = 0;
+    int k = 0;
+    int l = 0;
+    int n = u.size();
+    int m = v.size();
+    // u and v are sorted, j,k,l = 0
+    while (j < n && l < m) {
+      // invariant: u[:k] is the intersection of u[:j] and v[:l], j <= n, l <= m
+      //            u[:j] <= u[j:], v[:l] <= v[l:], u[j:] is sorted, v[l:] is sorted, u[:k] is sorted
+      if (u[j] < v[l]) {
+        j++;
+      } else if (u[j] > v[l]) {
+        l++;
+      } else {
+        // match
+        if (k < j) {
+          std::swap(u[k], u[j]);
+        }
+        k++;
+        j++;
+        i++;
+      }
+    }
+    if (k < n) {
+      u.resize(k);
+    }
   }
 
-  if (u.isEmpty()) {
+  if (u.empty()) {
     return -1;
   }
   auto iit = ecmapinv.find(u);
   if (iit == ecmapinv.end()) { 
     // create new equivalence class
     int32_t ec = ecmap.size();
-    uint32_t* u_arr = new uint32_t[u.cardinality()];
-    u.toUint32Array(u_arr);
-    std::vector<int32_t> u_vec;
-    u_vec.reserve(u.cardinality());
-    for (size_t i = 0; i < u.cardinality(); i++) u_vec.push_back(static_cast<int32_t>(u_arr[i]));
-    delete[] u_arr;
-    ecmap.push_back(u_vec);
+    ecmap.push_back(u);
     ecmapinv.insert({u,ec});
     // figure out the gene list
     std::vector<int32_t> v;
-    vt2gene(u_vec, genemap, v);
+    vt2gene(u, genemap, v);
     ec2genes.push_back(std::move(v));
     return ec;
   } else {
@@ -192,7 +215,7 @@ void intersect_genes_of_ecs(const std::vector<int32_t> &ecs, const  std::vector<
 int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, EcMapInv &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes, bool assumeIntersectionIsEmpty) {
   
   std::vector<std::vector<int32_t>> gu; // per gene transcript results
-  Roaring u; // final list of transcripts
+  std::vector<int32_t> u; // final list of transcripts
   std::vector<int32_t> glist;
 
   int32_t lastg = -2;
@@ -222,9 +245,11 @@ int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vec
     // frequent case, single gene replace with union
     for (auto ec : ecs) {
       for (const auto &t : ecmap[ec]) {      
-        u.add(t);
+        u.push_back(t);
       }
     }
+    std::sort(u.begin(), u.end());
+    u.erase(std::unique(u.begin(), u.end()), u.end());
 
     // look up ecs based on u
     int32_t ec = -1;
@@ -235,15 +260,9 @@ int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vec
     } else {
       ec = ecmapinv.size();
       ecmapinv.insert({u,ec});  
-      uint32_t* u_arr = new uint32_t[u.cardinality()];
-      u.toUint32Array(u_arr);
-      std::vector<int32_t> u_vec;
-      u_vec.reserve(u.cardinality());
-      for (size_t i = 0; i < u.cardinality(); i++) u_vec.push_back(static_cast<int32_t>(u_arr[i]));
-      delete[] u_arr;
-      ecmap.push_back(u_vec);
+      ecmap.push_back(u);
       std::vector<int32_t> v;
-      vt2gene(u_vec, genemap, v);
+      vt2gene(u, genemap, v);
       ec2genes.push_back(std::move(v));
     }
 
@@ -272,13 +291,14 @@ int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vec
       }
 
       for (auto t : uu) { 
-        u.add(t);
+        u.push_back(t);
       }
     }
 
-    if (u.isEmpty()) {
+    if (u.empty()) {
       return -1;
     }
+    std::sort(u.begin(), u.end());
 
     int32_t ec = -1;
     auto it = ecmapinv.find(u);
@@ -287,15 +307,9 @@ int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vec
     } else {
       ec = ecmapinv.size();
       ecmapinv.insert({u,ec});
-      uint32_t* u_arr = new uint32_t[u.cardinality()];
-      u.toUint32Array(u_arr);
-      std::vector<int32_t> u_vec;
-      u_vec.reserve(u.cardinality());
-      for (size_t i = 0; i < u.cardinality(); i++) u_vec.push_back(static_cast<int32_t>(u_arr[i]));
-      delete[] u_arr;
-      ecmap.push_back(u_vec);
+      ecmap.push_back(u);
       std::vector<int32_t> v;
-      vt2gene(u_vec, genemap, v);
+      vt2gene(u, genemap, v);
       ec2genes.push_back(std::move(v));
     }
     return ec;
