@@ -415,6 +415,7 @@ void sort_bus_array(BUSData* busdata, size_t N, const int t, bool (*cmp)(const B
     double partition_time = 0;
     clock_t start, end;
     start = clock();
+    /*
     for (int i = 0; i < t-1; i++) {
       BUSData p = pivots[i];
       //std::cerr << "partitioning around " << binaryToString(p.barcode, 16) << std::endl;
@@ -423,7 +424,28 @@ void sort_bus_array(BUSData* busdata, size_t N, const int t, bool (*cmp)(const B
       //std::cerr << "bucket " << i << " has " << buckets[i+1] - buckets[i] << " elements, mid =  " << mid << std::endl;
     }
     //std::cerr << "bucket " << t-1 << " has " << buckets[t] - buckets[t-1] << " elements" << std::endl;
+    */
 
+    // partition the busdata based on the middle pivot
+    std::function<void(int,int)> mid_partition = [&](int i, int j) { 
+      if (j-i <= 1) {
+        return;
+      }
+      size_t k = i + (j-i)/2;
+      //std::cerr << "partitioning " << i << " to " << j << " with middle " << k << std::endl;
+      //std::cerr << "buckets i and j are " << buckets[i] << " and " << buckets[j] << std::endl;
+      BUSData p = pivots[k-1];
+      //std::cerr << "pivot element is " << binaryToString(p.barcode, 16) << std::endl;
+      buckets[k] = std::partition(busdata + buckets[i], busdata + buckets[j], [&p, &cmp](const BUSData &a) { return cmp(a, p); }) - busdata;
+      //std::cerr << "bucket " << k << " is " <<  buckets[k] << std::endl;
+      mid_partition(i, k);
+      mid_partition(k, j);
+    };
+
+    mid_partition(0, t);
+    
+
+    /*
     // verify that the pivots are sorted
     for (int i = 0; i < t-2; i++) {
       if (!cmp(pivots[i], pivots[i+1])) {
@@ -431,7 +453,11 @@ void sort_bus_array(BUSData* busdata, size_t N, const int t, bool (*cmp)(const B
         exit(1);
       }
     }
-
+    
+    for (int i = 0; i < t; i++) {
+      std::cerr << "bucket " << i << " at " << buckets[i] <<  " has " << buckets[i+1] - buckets[i] << " elements" << std::endl;
+    }
+    
     //verify that each partition is smaller than the pivot
     for (int i = 0; i < t; i++) {
       for (size_t j = buckets[i]; j < buckets[i+1]; j++) {
@@ -445,27 +471,14 @@ void sort_bus_array(BUSData* busdata, size_t N, const int t, bool (*cmp)(const B
         if (i > 0 && cmp(busdata[j], pivots[i-1])) {
           std::cerr << "partition " << i << " has an element smaller than the next pivot" << std::endl;
           std::cerr << "element " << j << " = " << binaryToString(busdata[j].barcode, 16) << std::endl;
-          std::cerr << "pivot " << i+1 << " = " << binaryToString(pivots[i+1].barcode, 16) << std::endl;
+          std::cerr << "pivot " << i-1 << " = " << binaryToString(pivots[i-1].barcode, 16) << std::endl;
           exit(1);
         }
       }
     }
-
-    // partition the busdata based on the middle pivot
-    /*
-    std::function<void(int,int)> mid_partition = [&](int i, int j) { 
-      if (j-i <= 1) {
-        return;
-      }
-      size_t k = (j-i)/2;
-      BUSData p = pivots[k-1];
-      buckets[j] = std::partition(busdata + buckets[i], busdata + buckets[j], [&p, &cmp](const BUSData &a) { return cmp(a, p); });
-      mid_partition(i, k);
-      mid_partition(k, j);
-    };
-
-    mid_partition(0, t);
     */
+
+    
     end = clock();
     partition_time  += ((double) (end - start)) / CLOCKS_PER_SEC;
     std::cerr << "partition time: " << partition_time << "s" << std::endl;
