@@ -558,6 +558,10 @@ void bustools_sort(const Bustools_opt &opt)
 
 
   const auto collapse_and_write = [&](BUSData *p, size_t rc, std::ostream &outf) {
+    size_t batch = 1<<20;
+    std::vector<BUSData> v;
+    v.reserve(batch);
+
     for (size_t i = 0; i < rc;) {
       size_t j = i + 1;
       uint32_t c = p[i].count;
@@ -571,9 +575,22 @@ void bustools_sort(const Bustools_opt &opt)
       }
       // merge identical things
       p[i].count = c;
-      outf.write((char *)(&(p[i])), sizeof(p[i]));
+
+      // push back p to the vector
+      v.push_back(p[i]);
+
+      if (v.size() >= batch) {
+        outf.write((char *)v.data(), v.size() * sizeof(BUSData));
+        v.clear();
+      }
+
+      //outf.write((char *)(&(p[i])), sizeof(p[i]));
       // increment
       i = j;
+    }
+    if (v.size() > 0) {
+      outf.write((char *)v.data(), v.size() * sizeof(BUSData));
+      v.clear();
     }
   };
 
