@@ -72,6 +72,7 @@ struct Bustools_opt
   std::string count_ecs;
   std::string count_txp;
   std::string count_split;
+  int count_mtx_priority = 0;
   bool count_em = false;
   bool count_cm = false;
   bool count_collapse = false;
