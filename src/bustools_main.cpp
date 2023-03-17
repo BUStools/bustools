@@ -335,8 +335,6 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
   int cm_flag = 0;
   int hist_flag = 0;
   int rawcounts_flag = 0;
-  int priority_one = 0;
-  int priority_two = 0;
   static struct option long_options[] = {
     {"output", required_argument, 0, 'o'},
     {"genemap", required_argument, 0, 'g'},
@@ -351,8 +349,6 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
     {"downsample", required_argument, 0, 'd'},
     {"rawcounts", no_argument, &rawcounts_flag, 1},
     {"split", required_argument, 0, 's'},
-    {"priority-1", no_argument, &priority_one, 1},
-    {"priority-2", no_argument, &priority_two, 1},
     {0, 0, 0, 0}};
   
   int option_index = 0, c;
@@ -404,15 +400,6 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
   }
   if (rawcounts_flag) {
     opt.count_raw_counts = true;
-  }
-  if (priority_one) {
-    opt.count_mtx_priority = 1;
-  }
-  if (priority_two) {
-    opt.count_mtx_priority = 2;
-  }
-  if (priority_one && priority_two) {
-    opt.count_mtx_priority = -1; // Can't supply both, raise an error later
   }
   
   while (optind < argc)
@@ -1767,15 +1754,6 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
     }
   }
   
-  if (opt.count_mtx_priority == -1) {
-    std::cerr << "Error: Cannot specify multiply options for priority " << std::endl;
-    ret = false;
-  }
-  if (opt.count_mtx_priority > 0 && opt.count_split.size() == 0) {
-    std::cerr << "Error: Cannot use priority unless -s is specified " << std::endl;
-    ret = false;
-  }
-  
   return ret;
 }
 
@@ -2664,8 +2642,6 @@ void Bustools_count_Usage()
             << "    --em              Estimate gene abundances using EM algorithm" << std::endl
             << "    --cm              Count multiplicites instead of UMIs" << std::endl
             << "-s, --split           Split output matrix in two (plus ambiguous) based on transcripts supplied in this file" << std::endl
-            << "    --priority-1      For --split, prioritize first matrix in split matrix for UMIs that multimap to both splits" << std::endl
-            << "    --priority-2      For --split, prioritize second matrix in split matrix for UMIs that multimap to both splits" << std::endl
             << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl
             << "    --hist            Output copy per UMI histograms for all genes" << std::endl 
             << "-d  --downsample      Specify a factor between 0 and 1 specifying how much to downsample" << std::endl 

@@ -335,11 +335,57 @@ COUNT_MTX_TYPE intersect_ecs_with_subset_txs(int32_t ec, const std::vector<std::
 }
 
 COUNT_MTX_TYPE intersect_ecs_with_subset_txs(const std::vector<int32_t>& ecs, const std::vector<std::vector<int32_t>> &ecmap, const std::vector<int32_t>& tx_split) {
+  // Note: tx_split indices are tx ids and values are 1 (exists in split) or 0 (does not exist in split)
   if (tx_split.size() == 0) return COUNT_DEFAULT;
   if (ecs.size() == 0) return COUNT_AMBIGUOUS; // Shouldn't happen
+  std::vector<int32_t> u;
+  u.resize(0);
+  auto &v = ecmap[ecs[0]]; // copy
+  for (size_t i = 0; i< v.size(); i++) {
+    u.push_back(v[i]);
+  }
+  for (size_t i = 1; i < ecs.size(); i++) {
+    const auto &v = ecmap[ecs[i]];
+    
+    int j = 0;
+    int k = 0;
+    int l = 0;
+    int n = u.size();
+    int m = v.size();
+    // u and v are sorted, j,k,l = 0
+    while (j < n && l < m) {
+      // invariant: u[:k] is the intersection of u[:j] and v[:l], j <= n, l <= m
+      //            u[:j] <= u[j:], v[:l] <= v[l:], u[j:] is sorted, v[l:] is sorted, u[:k] is sorted
+      if (u[j] < v[l]) {
+        j++;
+      } else if (u[j] > v[l]) {
+        l++;
+      } else {
+        // match
+        if (k < j) {
+          std::swap(u[k], u[j]);
+        }
+        k++;
+        j++;
+        l++;
+      }
+    }
+    if (k < n) {
+      u.resize(k);
+    }
+  }
   size_t n_1 = 0;
   size_t n_2 = 0;
-  for (auto ec : ecs) { // We still need to optimize this
+  for (auto t : u) {
+      if(tx_split[t]) {
+        n_2++;
+      } else {
+        n_1++;
+      }
+      if (n_1 > 0 && n_2 > 0) break; // Stop searching
+  }
+  return (n_1 > 0 && n_2 > 0 ? COUNT_AMBIGUOUS : (n_1 > 0 ? COUNT_DEFAULT : COUNT_SPLIT));
+  /*for (auto ec : ecs) { // We still need to optimize this
     for (auto t: ecmap[ec]) {
       if(std::find(tx_split.begin(), tx_split.end(), t) != tx_split.end()) {
         n_2++;
@@ -349,8 +395,8 @@ COUNT_MTX_TYPE intersect_ecs_with_subset_txs(const std::vector<int32_t>& ecs, co
       if (n_1 > 0 && n_2 > 0) break; // Stop searching
     }
     if (n_1 > 0 && n_2 > 0) break; // Stop searching
-  }
-  return (n_1 > 0 && n_2 > 0 ? COUNT_AMBIGUOUS : (n_1 > 0 ? COUNT_DEFAULT : COUNT_SPLIT));
+  }*/
+  //return (n_1 > 0 && n_2 > 0 ? COUNT_AMBIGUOUS : (n_1 > 0 ? COUNT_DEFAULT : COUNT_SPLIT));
 }
 
 
