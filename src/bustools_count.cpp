@@ -48,6 +48,7 @@ void bustools_count(Bustools_opt &opt) {
   std::string mtx_ofn_split_2 = opt.output + ".2.mtx";
   std::string mtx_ofn_split_A = opt.output + ".ambiguous.mtx";
   std::string barcodes_ofn = opt.output + ".barcodes.txt";
+  std::string barcodes_prefix_ofn = opt.output + ".barcodes.prefix.txt";
   std::string ec_ofn = opt.output + ".ec.txt";
   std::string gene_ofn = opt.output + ".genes.txt";
   std::string hist_ofn = opt.output + ".hist.txt";
@@ -691,10 +692,21 @@ void bustools_count(Bustools_opt &opt) {
     writeGenes(gene_ofn, genenames);
   }
   // write barcode file
+  bool write_prefix = false;
   std::ofstream bcof;
   bcof.open(barcodes_ofn);
+  uint64_t len_mask = ((1ULL << (2*bclen)) - 1);
   for (const auto &x : barcodes) {
+    if (x != (x & len_mask)) write_prefix = true;
     bcof << binaryToString(x, bclen) << "\n";
+  }
+  if (write_prefix) {
+    std::ofstream bcprefixof;
+    bcprefixof.open(barcodes_prefix_ofn);
+    for (const auto &x : barcodes) {
+      bcprefixof << binaryToString(x >> (2*bclen), 32-bclen) << "\n";
+    }
+    bcprefixof.close();
   }
   bcof.close();
 
