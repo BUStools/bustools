@@ -25,7 +25,8 @@ void bustools_count(Bustools_opt &opt) {
   auto txnames_split = txnames; // copy
   std::vector<int32_t> tx_split; // Store transcript names for split
   std::vector<int32_t> tx_split_lookup; // Map transcript IDs to mtx status
-  int count_mtx_priority = !opt.count_gene_multimapping ? 1 : 0; // 1 = when something in tx_split overlaps something not in tx_split, prioritize the latter (useful for dealing in cases when introns of one gene overlap exons of another gene [we prioritize the exons]
+  bool count_split = !opt.count_split.empty();
+  int count_mtx_priority = !opt.count_gene_multimapping && count_split ? 1 : 0; // 1 = when something in tx_split overlaps something not in tx_split, prioritize the latter (useful for dealing in cases when introns of one gene overlap exons of another gene [we prioritize the exons]
   parseTranscripts(opt.count_txp, txnames);
   std::vector<int32_t> genemap(txnames.size(), -1);
   u_map_<std::string, int32_t> genenames;
@@ -40,7 +41,6 @@ void bustools_count(Bustools_opt &opt) {
   create_ec2genes(ecmap, genemap, ec2genes);
 
 
-  bool count_split = !opt.count_split.empty();
   std::ofstream of;
   std::ofstream of_2;
   std::ofstream of_A;
