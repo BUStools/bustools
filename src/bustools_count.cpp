@@ -184,7 +184,6 @@ void bustools_count(Bustools_opt &opt) {
           for (size_t k = 0; k < ecs.size(); k++) {
             ecs_within_molecule.push_back(ecs[k]);
             intersect_genes_of_ecs(ecs_within_molecule, ec2genes, glist);
-	    if (count_mtx_priority != 0 && glist.size() > 1) intersect_genes_of_ecs(ecs_within_molecule, ec2genes_priority, glist);
             if (glist.size() == 0) {
               ecs_within_molecule.pop_back();
             } else {
@@ -368,7 +367,6 @@ void bustools_count(Bustools_opt &opt) {
           for (size_t k = 0; k < ecs.size(); k++) {
             ecs_within_molecule.push_back(ecs[k]);
             intersect_genes_of_ecs(ecs_within_molecule, ec2genes, glist);
-	    if (count_mtx_priority != 0 && glist.size() > 1) intersect_genes_of_ecs(ecs_within_molecule, ec2genes_priority, glist);
             if (glist.size() == 0) {
               ecs_within_molecule.pop_back();
             } else {
