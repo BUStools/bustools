@@ -464,7 +464,7 @@ void bustools_correct(Bustools_opt &opt) {
         exit(1);
       } else if (barcode.length() != wc_bclen[i]) {
         std::cerr << "Error: whitelist file malformed; encountered barcode length " << wc_bclen[i]
-                  << " on a line but barcode length " << wc_bclen[i].length() << " on another line"
+                  << " on a line but barcode length " << barcode.length() << " on another line"
                   << std::endl;
         exit(1);
       } else {
@@ -502,7 +502,7 @@ void bustools_correct(Bustools_opt &opt) {
     std::vector<std::pair<Roaring, Roaring>> correct(1ULL << (2 * bc2)); // 4^(bc/2) possible barcodes
     uint64_t mask_size = (1ULL << (2 * bc2));
     uint64_t lower_mask = (1ULL << (2 * bc2)) - 1;
-    uint64_t upper_mask = (1ULL << (2 * (wc_bclen - bc2))) - 1;
+    uint64_t upper_mask = (1ULL << (2 * (bclen2 - bc2))) - 1;
     for (uint64_t b : wbc[i]) { // Iterate through barcodes of current barcode set
       uint64_t lb = b & lower_mask;
       uint64_t ub = (b >> (2 * bc2)) & upper_mask;
