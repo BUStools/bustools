@@ -472,8 +472,9 @@ void bustools_correct(Bustools_opt &opt) {
       }
       i++;
     }
-    if (i != wbc[i].size()) { // Incorrect number of barcodes on this line
-      std::cerr << "Error: whitelist file malformed; encountered " << (i+1)
+    if (i == 0) continue; // empty line
+    if (i != wbc.size()) { // Incorrect number of barcodes on this line
+      std::cerr << "Error: whitelist file malformed; encountered " << i
                 << " barcodes on a line while " << wbc.size() << " barcodes on another line"
                 << std::endl;
       exit(1);
