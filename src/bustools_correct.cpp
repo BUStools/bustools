@@ -464,7 +464,7 @@ void bustools_correct(Bustools_opt &opt) {
         exit(1);
       } else if (barcode.length() != wc_bclen[i]) {
         std::cerr << "Error: whitelist file malformed; encountered barcode length " << wc_bclen[i]
-                  << " on a line while " << wbc[i].length() << " barcodes on another line"
+                  << " on a line but barcode length " << wc_bclen[i].length() << " on another line"
                   << std::endl;
         exit(1);
       } else {
@@ -496,7 +496,7 @@ void bustools_correct(Bustools_opt &opt) {
   std::vector<std::vector<std::pair<Roaring, Roaring>>> correct_vec; // size of vector = how many barcode sets there are
   std::vector<std::pair<uint64_t,uint64_t> > lower_upper_mask_vec; // size of vector = how many barcode sets there are
   std::vector<size_t > bc2_vec; // size of vector = how many barcode sets there are
-  for (int i = 0; i < wc_bclen.size() : i++) {
+  for (int i = 0; i < wc_bclen.size(); i++) {
     auto bclen2 = wc_bclen[i]; // i = index of current barcode set
     size_t bc2 = (bclen2 + 1) / 2;
     std::vector<std::pair<Roaring, Roaring>> correct(1ULL << (2 * bc2)); // 4^(bc/2) possible barcodes
@@ -556,7 +556,7 @@ void bustools_correct(Bustools_opt &opt) {
       }
 
       if (bclen != final_wc_bclen) {
-        std::cerr << "Error: barcode length and whitelist length differ, barcodes = " << bclen << ", whitelist = " << wc_bclen << std::endl
+        std::cerr << "Error: barcode length and whitelist length differ, barcodes = " << bclen << ", whitelist = " << final_wc_bclen << std::endl
                   << "       check that your whitelist matches the technology used" << std::endl;
 
         exit(1);
@@ -585,8 +585,6 @@ void bustools_correct(Bustools_opt &opt) {
         size_t stat_uncorr_ = 0;
         size_t stat_corr_ = 0;
         uint64_t correction = 0;
-        std::vector<std::pair<uint64_t,uint32_t> > correction; // TODO: pair: first = corrected barcode; second = length
-        correction.resize(wbc.size());
         for (int j = wbc.size()-1; j >= 0; j--) { // Iterate through all the barcode sets
           auto bclen2 = wc_bclen[j];
           running_len += bclen2;
@@ -646,7 +644,7 @@ void bustools_correct(Bustools_opt &opt) {
           bus_out.write((char *)&bd, sizeof(bd));
           if (dump_bool) {
             if (b != old_barcode) {
-              of << binaryToString(b, bclen) << "\t" << binaryToString(b_corrected, bclen) << "\n";
+              of << binaryToString(b, bclen) << "\t" << binaryToString(correction, bclen) << "\n";
               old_barcode = b & len_mask;
             }
           }
