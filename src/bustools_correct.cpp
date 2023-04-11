@@ -633,14 +633,12 @@ void bustools_correct(Bustools_opt &opt) {
             }
           }
         }
-        if (stat_uncorr_ == 0 && stat_white_ == wbc.size()) {
+        if (stat_uncorr_ > 0) {
+          stat_uncorr++; // Uncorrected; do not write BUS record
+        } else if (stat_white_ == wbc.size()) {
           stat_white++;
           bus_out.write((char *)&bd, sizeof(bd)); // No correction; just write BUS record as-is
-        }
-        if (stat_uncorr_ == wbc.size()) {
-          stat_uncorr++; // Uncorrected; do not write BUS record
-        }
-        if (stat_uncorr_ == 0 && stat_corr_ > 0) {
+        } else if (stat_corr_ > 0) {
           stat_corr++; // Corrected; and write it out
           bd.barcode = correction | (bd.barcode & ~len_mask); // Correction plus preserve the metadata bits outside barcode length
           bus_out.write((char *)&bd, sizeof(bd));
