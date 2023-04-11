@@ -451,15 +451,18 @@ void bustools_correct(Bustools_opt &opt) {
     while (ss >> barcode) {
       std::transform(barcode.begin(), barcode.end(), barcode.begin(), ::toupper);
       uint64_t bc = stringToBinary(barcode, f);
-      if (first_line) {
+      if (first_line) { // First line establishes all the barcode sets (can't have any empty barcodes here)
         std::unordered_set<uint64_t> bc_set;
         bc_set.insert(bc);
         wbc.push_back(bc_set);
         wbc[i].reserve(100000);
         wc_bclen.push_back(barcode.size());
+      } else if (barcode == "-") {
+        i++;
+        continue; // Empty barcode
       } else if (i >= wbc.size()) { // Too many barcodes in this line
         std::cerr << "Error: whitelist file malformed; encountered " << (i+1)
-                  << " barcodes on a line while " << wbc.size() << " barcodes on another line"
+                  << " barcodes on a line while " << wbc.size() << " barcodes on a previous line"
                   << std::endl;
         exit(1);
       } else if (barcode.length() != wc_bclen[i]) {
@@ -473,12 +476,6 @@ void bustools_correct(Bustools_opt &opt) {
       i++;
     }
     if (i == 0) continue; // empty line
-    if (i != wbc.size()) { // Incorrect number of barcodes on this line
-      std::cerr << "Error: whitelist file malformed; encountered " << i
-                << " barcodes on a line while " << wbc.size() << " barcodes on another line"
-                << std::endl;
-      exit(1);
-    }
     first_line = false;
   }
   wf.close();
