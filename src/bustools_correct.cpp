@@ -484,8 +484,13 @@ void bustools_correct(Bustools_opt &opt) {
     std::cerr << "Error: whitelist file malformed; no barcodes found" <<std::endl;
     exit(1);
   }
-  
-  std::cerr << "Found " << wbc[0].size() << " barcodes in the whitelist" << std::endl;
+  size_t n_barcodes_in_whitelist = 0;
+  for (auto nbc : wbc) {
+    if (n_barcodes_in_whitelist < nbc.size()) {
+      n_barcodes_in_whitelist = nbc.size();
+    }
+  }
+  std::cerr << "Found " << n_barcodes_in_whitelist << " barcodes in the whitelist" << std::endl;
   if (wbc.size() > 1) {
     std::cerr << "Found " << wbc.size() << " barcode sets" << std::endl;
   }
