@@ -597,18 +597,19 @@ void bustools_correct(Bustools_opt &opt) {
           }
           len_mask2 &= ((1ULL << (2*running_len)) - 1);
           len_mask2 &= len_mask; // not necessary
-          b &= len_mask2;
-          auto it = wbc[j].find(b);
+          uint64_t b_ = b & len_mask2; // The barcode alone in the location that it appears in
+          uint64_t b_shifted = b_ >> shift_len; // The barcode shifted into the least significant bits location
+          auto it = wbc[j].find(b_shifted);
           if (it != wbc[j].end()) { // Barcode is in the whitelist
             stat_white_++;
-            correction |= (b & len_mask2);
+            correction |= b_;
           } else {
             auto lower_mask = lower_upper_mask_vec[j].first;
             auto upper_mask = lower_upper_mask_vec[j].second;
             auto bc2 = bc2_vec[j];
             auto& correct = correct_vec[j];
-            uint64_t lb = b & lower_mask;
-            uint64_t ub = (b >> (2 * bc2)) & upper_mask;
+            uint64_t lb = b_shifted & lower_mask;
+            uint64_t ub = (b_shifted >> (2 * bc2)) & upper_mask;
             uint64_t lbc = 0, ubc = 0;
             int correct_lower = search_for_mismatch(correct[ub].second, bc2, lb, lbc);
             int correct_upper = search_for_mismatch(correct[lb].first, bclen2 - bc2, ub, ubc);
@@ -620,33 +621,33 @@ void bustools_correct(Bustools_opt &opt) {
               stat_corr_++;
               if (correct_lower == 1) {
                 uint64_t b_corrected = (ub << (2 * bc2)) | lbc;
-                b_corrected = b_corrected << (2*shift_len); // We have the corrected barcode in the correct location
+                b_corrected = b_corrected << shift_len; // We have the corrected barcode in the correct location
                 b_corrected &= len_mask2;
                 correction |= b_corrected; // Add onto existing correction
               } else if (correct_upper == 1) {
                 uint64_t b_corrected = (ubc << (2 * bc2)) | lb;
-                b_corrected = b_corrected << (2*shift_len); // We have the corrected barcode in the correct location
+                b_corrected = b_corrected << shift_len; // We have the corrected barcode in the correct location
                 b_corrected &= len_mask2;
                 correction |= b_corrected; // Add onto existing correction
               }
             }
           }
         }
-        if (stat_white_ == wbc.size()) {
+        if (stat_uncorr_ == 0 && stat_white_ == wbc.size()) {
           stat_white++;
           bus_out.write((char *)&bd, sizeof(bd)); // No correction; just write BUS record as-is
         }
         if (stat_uncorr_ == wbc.size()) {
           stat_uncorr++; // Uncorrected; do not write BUS record
         }
-        if (stat_corr_ > 0) {
+        if (stat_uncorr_ == 0 && stat_corr_ > 0) {
           stat_corr++; // Corrected; and write it out
           bd.barcode = correction | (bd.barcode & ~len_mask); // Correction plus preserve the metadata bits outside barcode length
           bus_out.write((char *)&bd, sizeof(bd));
           if (dump_bool) {
             if (b != old_barcode) {
               of << binaryToString(b, bclen) << "\t" << binaryToString(correction, bclen) << "\n";
-              old_barcode = b & len_mask;
+              old_barcode = b;
             }
           }
         }
@@ -659,13 +660,11 @@ void bustools_correct(Bustools_opt &opt) {
             << "Corrected    = " << stat_corr << std::endl
             << "Uncorrected  = " << stat_uncorr << std::endl;
 
-  if (!opt.stream_out)
-  {
+  if (!opt.stream_out) {
     busf_out.close();
   }
 
-  if (opt.dump_bool)
-  {
+  if (opt.dump_bool) {
     of.close(); // if of is open
   }
 
