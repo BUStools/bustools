@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "Common.hpp"
@@ -416,7 +417,161 @@ void bustools_split_correct(Bustools_opt &opt)
   p = nullptr;
 }
 
+void bustools_correct_replace(Bustools_opt &opt) {
+  uint32_t bclen = 0;
+  uint32_t umilen = 0;
+  std::unordered_set<uint32_t> wc_bclen;
+  BUSHeader h;
+  size_t nr = 0;
+  size_t N = 100000;
+  BUSData *p = new BUSData[N];
+  char magic[4];
+  uint32_t version = 0;
+  size_t stat_white = 0;
+  size_t stat_uncorr = 0;
+  uint64_t old_barcode;
+  
+  bool dump_bool = opt.dump_bool;
+  std::ofstream of;
+  if (dump_bool) {
+    of.open(opt.dump);
+  }
+  
+  std::ifstream wf(opt.whitelist, std::ios::in);
+  std::string line;
+  line.reserve(100);
+  std::unordered_map<uint64_t,std::pair<uint64_t,char>> rp_map; // Replacement map (key = onlisted bc; pair.first = replacement bc; pair.second = type)
+  uint32_t f = 0;
+  
+  while (std::getline(wf, line)) {
+    std::stringstream ss(line);
+    std::string barcode;
+    std::string replacement;
+    ss >> barcode >> replacement;
+    if (barcode.empty() || replacement.empty()) continue;
+    if (!barcode.empty() && replacement.empty()) { 
+      std::cerr << "Error: replacement file malformed; no replacement found for barcode: " << barcode << std::endl;
+      exit(1);
+    }
+    std::transform(barcode.begin(), barcode.end(), barcode.begin(), ::toupper);
+    std::transform(replacement.begin(), replacement.end(), replacement.begin(), ::toupper);
+    uint64_t bc = stringToBinary(barcode, f);
+    uint64_t rp = stringToBinary(replacement, f);
+    rp_map.insert(std::make_pair(bc, std::make_pair(rp,0)));
+    wc_bclen.insert(barcode.length());
+    wc_bclen.insert(replacement.length());
+  }
+  wf.close();
+  
+  if (rp_map.size() == 0) {
+    std::cerr << "Error: replacement file malformed; no barcodes found" <<std::endl;
+    exit(1);
+  }
+  size_t n_barcodes_in_whitelist = rp_map.size();
+  std::cerr << "Found " << n_barcodes_in_whitelist << " barcodes in the replacement list" << std::endl;
+  
+  std::streambuf *buf = nullptr;
+  std::ofstream busf_out;
+  
+  if (!opt.stream_out) {
+    busf_out.open(opt.output, std::ios::out | std::ios::binary);
+    buf = busf_out.rdbuf();
+  }
+  else {
+    buf = std::cout.rdbuf();
+  }
+  std::ostream bus_out(buf);
+  
+  bool outheader_written = false;
+  
+  nr = 0;
+  BUSData bd;
+  for (const auto &infn : opt.files) {
+    std::streambuf *inbuf;
+    std::ifstream inf;
+    if (!opt.stream_in) {
+      inf.open(infn.c_str(), std::ios::binary);
+      inbuf = inf.rdbuf();
+    } else {
+      inbuf = std::cin.rdbuf();
+    }
+    std::istream in(inbuf);
+    parseHeader(in, h);
+    
+    if (!outheader_written) {
+      writeHeader(bus_out, h);
+      outheader_written = true;
+    }
+    
+    if (bclen == 0) {
+      bclen = h.bclen;
+      
+      for (auto l : wc_bclen) {
+        if (l != bclen) {
+          std::cerr << "Error: barcode length and replacement list length differ, barcodes = " << bclen << ", replacement list = " << l << std::endl;
+          exit(1);
+        }
+      }
+    }
+    if (umilen == 0) {
+      umilen = h.umilen;
+    }
+    
+    int rc = 0;
+    uint64_t len_mask = ((1ULL << (2*bclen)) - 1); // Only include n least significant bits where n=2*bclen
+    while (true) {
+      in.read((char *)p, N * sizeof(BUSData));
+      size_t rc = in.gcount() / sizeof(BUSData);
+      if (rc == 0) {
+        break;
+      }
+      nr += rc;
+      
+      for (size_t i = 0; i < rc; i++) {
+        bd = p[i];
+        uint64_t b = bd.barcode & len_mask;
+        uint64_t correction = 0;
+        auto it = rp_map.find(b);
+        if (it != rp_map.end()) {
+          stat_white++;
+          correction = it->second.first;
+          bd.barcode = correction | (bd.barcode & ~len_mask); // Correction plus preserve the metadata bits outside barcode length
+          bus_out.write((char *)&bd, sizeof(bd));
+          if (dump_bool) {
+            if (b != old_barcode) {
+              of << binaryToString(b, bclen) << "\t" << binaryToString(correction, bclen) << "\n";
+              old_barcode = b;
+            }
+          }
+        } else {
+          bus_out.write((char *)&bd, sizeof(bd)); // No correction; just write BUS record as-is
+          stat_uncorr++;
+        }
+      }
+    }
+  }
+  
+  std::cerr << "Processed " << nr << " BUS records" << std::endl
+            << "Replaced = " << stat_white << std::endl
+            << "Not replaced = " << stat_uncorr << std::endl;
+  
+  if (!opt.stream_out) {
+    busf_out.close();
+  }
+  
+  if (opt.dump_bool) {
+    of.close(); // if of is open
+  }
+  
+  delete[] p;
+  p = nullptr;
+}
+
 void bustools_correct(Bustools_opt &opt) {
+  if (opt.barcode_replacement) { // Run in replacement mode
+    bustools_correct_replace(opt);
+    return;
+  }
   uint32_t bclen = 0;
   std::vector<uint32_t> wc_bclen;
   uint32_t umilen = 0;
@@ -461,12 +616,12 @@ void bustools_correct(Bustools_opt &opt) {
         i++;
         continue; // Empty barcode
       } else if (i >= wbc.size()) { // Too many barcodes in this line
-        std::cerr << "Error: whitelist file malformed; encountered " << (i+1)
+        std::cerr << "Error: on-list file malformed; encountered " << (i+1)
                   << " barcodes on a line while " << wbc.size() << " barcodes on a previous line"
                   << std::endl;
         exit(1);
       } else if (barcode.length() != wc_bclen[i]) {
-        std::cerr << "Error: whitelist file malformed; encountered barcode length " << wc_bclen[i]
+        std::cerr << "Error: on-list file malformed; encountered barcode length " << wc_bclen[i]
                   << " on a line but barcode length " << barcode.length() << " on another line"
                   << std::endl;
         exit(1);
@@ -481,7 +636,7 @@ void bustools_correct(Bustools_opt &opt) {
   wf.close();
 
   if (wbc.size() == 0) {
-    std::cerr << "Error: whitelist file malformed; no barcodes found" <<std::endl;
+    std::cerr << "Error: on-list file malformed; no barcodes found" <<std::endl;
     exit(1);
   }
   size_t n_barcodes_in_whitelist = 0;
@@ -490,7 +645,7 @@ void bustools_correct(Bustools_opt &opt) {
       n_barcodes_in_whitelist = nbc.size();
     }
   }
-  std::cerr << "Found " << n_barcodes_in_whitelist << " barcodes in the whitelist" << std::endl;
+  std::cerr << "Found " << n_barcodes_in_whitelist << " barcodes in the on-list" << std::endl;
   if (wbc.size() > 1) {
     std::cerr << "Found " << wbc.size() << " barcode sets" << std::endl;
   }
@@ -559,8 +714,8 @@ void bustools_correct(Bustools_opt &opt) {
       }
 
       if (bclen != final_wc_bclen) {
-        std::cerr << "Error: barcode length and whitelist length differ, barcodes = " << bclen << ", whitelist = " << final_wc_bclen << std::endl
-                  << "       check that your whitelist matches the technology used" << std::endl;
+        std::cerr << "Error: barcode length and on-list length differ, barcodes = " << bclen << ", on-list = " << final_wc_bclen << std::endl
+                  << "       check that your on-list matches the technology used" << std::endl;
 
         exit(1);
       }
@@ -656,7 +811,7 @@ void bustools_correct(Bustools_opt &opt) {
   }
 
   std::cerr << "Processed " << nr << " BUS records" << std::endl
-            << "In whitelist = " << stat_white << std::endl
+            << "In on-list = " << stat_white << std::endl
             << "Corrected    = " << stat_corr << std::endl
             << "Uncorrected  = " << stat_uncorr << std::endl;
 

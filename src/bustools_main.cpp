@@ -576,13 +576,14 @@ void parse_ProgramOptions_fromtext(int argc, char **argv, Bustools_opt& opt) {
 void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt &opt)
 {
   
-  const char *opt_string = "o:w:d:sp";
+  const char *opt_string = "o:w:d:spr";
   static struct option long_options[] = {
     {"output", required_argument, 0, 'o'},
     {"whitelist", required_argument, 0, 'w'},
     {"dump", required_argument, 0, 'd'},
     {"split", no_argument, 0, 's'},
     {"pipe", no_argument, 0, 'p'},
+    {"replace", no_argument, 0, 'r'},
     {0, 0, 0, 0}};
   
   int option_index = 0, c;
@@ -607,6 +608,9 @@ void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt &opt)
       break;
     case 'p':
       opt.stream_out = true;
+      break;
+    case 'r':
+      opt.barcode_replacement = true;
       break;
     default:
       break;
@@ -1604,7 +1608,7 @@ bool check_ProgramOptions_correct(Bustools_opt &opt)
   
   if (opt.whitelist.size() == 0)
   {
-    std::cerr << "Error: Missing whitelist file" << std::endl;
+    std::cerr << "Error: Missing on-list file" << std::endl;
     ret = false;
   }
   else
@@ -2621,10 +2625,10 @@ void Bustools_correct_Usage()
             << std::endl
             << "Options: " << std::endl
             << "-o, --output          File for corrected bus output" << std::endl
-            << "-w, --whitelist       File of whitelisted barcodes to correct to" << std::endl
+            << "-w, --whitelist       File of on-list barcodes to correct to" << std::endl
             << "-p, --pipe            Write to standard output" << std::endl
             << "-d, --dump            Dump uncorrected to corrected barcodes (optional)" << std::endl
-            << "-s, --split           Split the whitelist and correct each half independently (optional)" << std::endl
+            << "-r, --replace         The file of on-list barcodes is a barcode replacement file" << std::endl
             << std::endl;
 }
 
