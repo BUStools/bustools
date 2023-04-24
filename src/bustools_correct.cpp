@@ -602,7 +602,7 @@ void bustools_correct_replace(Bustools_opt &opt) {
             }
             case lsb_bus:
             {
-              bd.barcode = correction | (bd.barcode & (~(1ULL << (2*rplen)) - 1));// Set 2*rplen LSBs to 0, and put the new replacement in
+              bd.barcode = correction | (bd.barcode & ~((1ULL << (2*rplen)) - 1));// Set 2*rplen LSBs to 0, and put the new replacement in
               break;
             }
           }
