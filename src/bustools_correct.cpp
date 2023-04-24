@@ -420,7 +420,9 @@ void bustools_split_correct(Bustools_opt &opt)
 void bustools_correct_replace(Bustools_opt &opt) {
   uint32_t bclen = 0;
   uint32_t umilen = 0;
+  uint32_t rplen = 0;
   std::unordered_set<uint32_t> wc_bclen;
+  std::unordered_set<uint32_t> r_len;
   BUSHeader h;
   size_t nr = 0;
   size_t N = 100000;
@@ -430,6 +432,15 @@ void bustools_correct_replace(Bustools_opt &opt) {
   size_t stat_white = 0;
   size_t stat_uncorr = 0;
   uint64_t old_barcode;
+  enum replacement_type { bc_record, msb_meta, lsb_meta, msb_bus, lsb_bus };
+  
+  // There are five replacement types:
+  // bc_record: simply replace the barcode of length 'bclen' with another barcode of length 'bclen' (while preserving metadata)
+  // msb_meta: put replacement (format: NNNN<) into most significant bits of metadata in BUS record (preserve barcode record)
+  // lsb_meta: put replacement (format: <NNNN) into least significant bits of metadata in BUS record (existing metadata shifted left; preserve barcode record)
+  // msb_bus: put replacement (format: NNNN*) into most significant bits of barcode (replacing existing bits of barcode)
+  // lsb_bus: put replacement (format: *NNNN) into least significant bits of barcode (replacing existing bits of barcode)
+  
   
   bool dump_bool = opt.dump_bool;
   std::ofstream of;
@@ -455,11 +466,29 @@ void bustools_correct_replace(Bustools_opt &opt) {
     }
     std::transform(barcode.begin(), barcode.end(), barcode.begin(), ::toupper);
     std::transform(replacement.begin(), replacement.end(), replacement.begin(), ::toupper);
+    replacement_type rtype = bc_record;
+    if (replacement[0] == '<') rtype = lsb_meta;
+    if (replacement[0] == '*') rtype = lsb_bus;
+    if (rtype != bc_record) {
+      replacement = replacement.substr(1);
+    } else {
+      if (replacement[replacement.length()-1] == '<') rtype = msb_meta;
+      if (replacement[replacement.length()-1] == '*') rtype = msb_bus;
+      if (rtype != bc_record) {
+        replacement = replacement.substr(0, replacement.length()-1);
+      }
+    }
+    if (replacement.length() == 0) continue;
+
     uint64_t bc = stringToBinary(barcode, f);
     uint64_t rp = stringToBinary(replacement, f);
-    rp_map.insert(std::make_pair(bc, std::make_pair(rp,0)));
+    if (rp_map.find(bc) != rp_map.end()) {
+      std::cerr << "Error: Duplicate entries found: " << barcode << std::endl;
+      exit(1);
+    }
+    rp_map.insert(std::make_pair(bc, std::make_pair(rp,rtype)));
     wc_bclen.insert(barcode.length());
-    wc_bclen.insert(replacement.length());
+    r_len.insert(replacement.length());
   }
   wf.close();
   
@@ -505,13 +534,15 @@ void bustools_correct_replace(Bustools_opt &opt) {
     
     if (bclen == 0) {
       bclen = h.bclen;
-      
-      for (auto l : wc_bclen) {
-        if (l != bclen) {
-          std::cerr << "Error: barcode length and replacement list length differ, barcodes = " << bclen << ", replacement list = " << l << std::endl;
-          exit(1);
-        }
+      if (wc_bclen.size() != 1) {
+        std::cerr << "Error: barcode length in list inconsistent" << std::endl;
+        exit(1);
       }
+      if (r_len.size() != 1) {
+        std::cerr << "Error: replacement length in list inconsistent" << std::endl;
+        exit(1);
+      }
+      rplen = *(r_len.begin());
     }
     if (umilen == 0) {
       umilen = h.umilen;
@@ -535,7 +566,46 @@ void bustools_correct_replace(Bustools_opt &opt) {
         if (it != rp_map.end()) {
           stat_white++;
           correction = it->second.first;
-          bd.barcode = correction | (bd.barcode & ~len_mask); // Correction plus preserve the metadata bits outside barcode length
+          auto rtype = it->second.second;
+          switch (rtype) {
+            case bc_record:
+            {
+              uint64_t len_mask2 = ((1ULL << (2*std::max(rplen, bclen))) - 1); // n least significant bits where n=2*max(rplen,bclen) [if rplen > bclen, overwrite based on rplen]
+              bd.barcode = correction | (bd.barcode & ~len_mask2); // Correction plus preserve the metadata bits outside barcode length (or overwrites the part where the barcode length exceeds it)
+              break;
+            }
+            case msb_meta:
+            {
+              uint64_t clen = 32-rplen; // 32 minus correction length
+              bd.barcode = bd.barcode & ((1ULL << (2*clen)) - 1); // Unset the MSBs
+              bd.barcode = (correction << (2*clen) ) | bd.barcode; // Shift the corrected sequence into the MSBs
+              break;
+            }
+            case lsb_meta:
+            {
+              uint64_t original_bc = bd.barcode & len_mask; // The original barcode sequence (no metadata)
+              bd.barcode = bd.barcode << (2*rplen); // Shift the barcode+metadata to the left based on rplen
+              uint64_t mlen = (rplen+bclen); // How much space the new metadata plus the original barcode will take up
+              bd.barcode = bd.barcode & (~((1ULL << (2*mlen)) - 1)); // Preserve only the bits containing the (shifted) metadata
+              bd.barcode = bd.barcode | original_bc; // Throw the original barcode back in
+              bd.barcode = (correction << (2*bclen) ) | bd.barcode; // Throw the new metadata in
+              break;
+            }
+            case msb_bus:
+            {
+              if (bclen >= rplen) { // Only do the substitution if barcode encapsulates the replacement
+                uint64_t mdata = bd.barcode & (~((1ULL << (2*bclen)) - 1)); // Preserve only the bits containing the metadata (not the barcode)
+                uint64_t bdata = bd.barcode & ((1ULL << (2*(bclen-rplen))) - 1); // Preserve only the bits containing the part of the barcode we want to keep
+                bd.barcode = (mdata | bdata) | (correction << (2*(bclen-rplen))); // Merge everything together
+              }
+              break;
+            }
+            case lsb_bus:
+            {
+              bd.barcode = correction | (bd.barcode & (~(1ULL << (2*rplen)) - 1));// Set 2*rplen LSBs to 0, and put the new replacement in
+              break;
+            }
+          }
           bus_out.write((char *)&bd, sizeof(bd));
           if (dump_bool) {
             if (b != old_barcode) {

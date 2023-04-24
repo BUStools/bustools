@@ -493,13 +493,14 @@ void parse_ProgramOptions_predict(int argc, char **argv, Bustools_opt& opt) {
 void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt &opt)
 {
   
-  const char *opt_string = "o:pfd";
+  const char *opt_string = "o:pfda";
   
   static struct option long_options[] = {
     {"output", required_argument, 0, 'o'},
     {"pipe", no_argument, 0, 'p'},
     {"flags", no_argument, 0, 'f'},
     {"pad", no_argument, 0, 'd'},
+    {"showAll", no_argument, 0, 'a'},
     {0, 0, 0, 0}};
   
   int option_index = 0, c;
@@ -520,6 +521,9 @@ void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt &opt)
       break;
     case 'd':
       opt.text_dumppad = true;
+      break;
+    case 'a':
+      opt.text_showall = true;
       break;
     default:
       break;
@@ -2607,6 +2611,7 @@ void Bustools_dump_Usage()
             << "-f, --flags           Write the flag column" << std::endl
             << "-d, --pad             Write the pad column" << std::endl
             << "-p, --pipe            Write to standard output" << std::endl
+            << "-a, --showAll         Show hidden metadata in barcodes" << std::endl
             << std::endl;
 }
 

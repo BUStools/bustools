@@ -109,6 +109,7 @@ struct Bustools_opt
   /* text */
   bool text_dumpflags = false;
   bool text_dumppad = false;
+  bool text_showall = false;
 
   /* linker */
   int start, end;
