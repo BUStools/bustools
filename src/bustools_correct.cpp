@@ -643,7 +643,7 @@ void bustools_correct_replace(Bustools_opt &opt) {
           }
         } else {
           // No correction; except shift metadata right if necessary
-          if (rplen < bclen) {
+          if (rtype == bc_record && rplen < bclen) {
             uint64_t shifted_bc = bd.barcode >> (2*(bclen-rplen));
             shifted_bc = shifted_bc & ~((1ULL << (2*(rplen))) - 1); // Delete everything within rplen (i.e. where the replacement would be)
             bd.barcode = (bd.barcode & ((1ULL << (2*(rplen))) - 1)); // Preserve only the LSB rlen stuff
