@@ -73,7 +73,7 @@ std::vector<int32_t> intersect_vectors(const std::vector<std::vector<int32_t>> &
   return std::move(u);
 }
 
-int32_t intersect_ecs(const std::vector<int32_t> &ecs, std::vector<int32_t> &u, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes) {
+int32_t intersect_ecs(const std::vector<int32_t> &ecs, std::vector<int32_t> &u, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, EcMapInv &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes) {
   if (ecs.empty()) {
     return -1;
   }
@@ -91,13 +91,13 @@ int32_t intersect_ecs(const std::vector<int32_t> &ecs, std::vector<int32_t> &u, 
   for (size_t i = 0; i< v.size(); i++) {
     u.push_back(v[i]);
   }
-
+  
   for (size_t i = 1; i < ecs.size(); i++) {
     if (ecs[i] < 0 || ecs[i] >= ecmap.size()) {
       return -1;
     }
     const auto &v = ecmap[ecs[i]];
-
+    
     int j = 0;
     int k = 0;
     int l = 0;
@@ -212,7 +212,7 @@ void intersect_genes_of_ecs(const std::vector<int32_t> &ecs, const  std::vector<
 }
 
 
-int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes, bool assumeIntersectionIsEmpty) {
+int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, EcMapInv &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes, bool assumeIntersectionIsEmpty) {
   
   std::vector<std::vector<int32_t>> gu; // per gene transcript results
   std::vector<int32_t> u; // final list of transcripts
@@ -326,6 +326,79 @@ void create_ec2genes(const std::vector<std::vector<int32_t>> &ecmap, const std::
     ec2gene.push_back(std::move(u));
   }
 }
+
+COUNT_MTX_TYPE intersect_ecs_with_subset_txs(int32_t ec, const std::vector<std::vector<int32_t>> &ecmap, const std::vector<int32_t>& tx_split) {
+  if (tx_split.size() == 0) return COUNT_DEFAULT;
+  std::vector<int32_t> ecs;
+  ecs.push_back(ec);
+  return intersect_ecs_with_subset_txs(ecs, ecmap, tx_split);
+}
+
+COUNT_MTX_TYPE intersect_ecs_with_subset_txs(const std::vector<int32_t>& ecs, const std::vector<std::vector<int32_t>> &ecmap, const std::vector<int32_t>& tx_split) {
+  // Note: tx_split indices are tx ids and values are 1 (exists in split) or 0 (does not exist in split)
+  if (tx_split.size() == 0) return COUNT_DEFAULT;
+  if (ecs.size() == 0) return COUNT_AMBIGUOUS; // Shouldn't happen
+  std::vector<int32_t> u;
+  u.resize(0);
+  auto &v = ecmap[ecs[0]]; // copy
+  for (size_t i = 0; i< v.size(); i++) {
+    u.push_back(v[i]);
+  }
+  for (size_t i = 1; i < ecs.size(); i++) {
+    const auto &v = ecmap[ecs[i]];
+    
+    int j = 0;
+    int k = 0;
+    int l = 0;
+    int n = u.size();
+    int m = v.size();
+    // u and v are sorted, j,k,l = 0
+    while (j < n && l < m) {
+      // invariant: u[:k] is the intersection of u[:j] and v[:l], j <= n, l <= m
+      //            u[:j] <= u[j:], v[:l] <= v[l:], u[j:] is sorted, v[l:] is sorted, u[:k] is sorted
+      if (u[j] < v[l]) {
+        j++;
+      } else if (u[j] > v[l]) {
+        l++;
+      } else {
+        // match
+        if (k < j) {
+          std::swap(u[k], u[j]);
+        }
+        k++;
+        j++;
+        l++;
+      }
+    }
+    if (k < n) {
+      u.resize(k);
+    }
+  }
+  size_t n_1 = 0;
+  size_t n_2 = 0;
+  for (auto t : u) {
+      if(tx_split[t]) {
+        n_2++;
+      } else {
+        n_1++;
+      }
+      if (n_1 > 0 && n_2 > 0) break; // Stop searching
+  }
+  return (n_1 > 0 && n_2 > 0 ? COUNT_AMBIGUOUS : (n_1 > 0 ? COUNT_DEFAULT : COUNT_SPLIT));
+  /*for (auto ec : ecs) { // We still need to optimize this
+    for (auto t: ecmap[ec]) {
+      if(std::find(tx_split.begin(), tx_split.end(), t) != tx_split.end()) {
+        n_2++;
+      } else {
+        n_1++;
+      }
+      if (n_1 > 0 && n_2 > 0) break; // Stop searching
+    }
+    if (n_1 > 0 && n_2 > 0) break; // Stop searching
+  }*/
+  //return (n_1 > 0 && n_2 > 0 ? COUNT_AMBIGUOUS : (n_1 > 0 ? COUNT_DEFAULT : COUNT_SPLIT));
+}
+
 
 void copy_file(std::string src, std::string dest) {
 	std::ifstream  isrc(src, std::ios::binary);

@@ -328,7 +328,7 @@ void parse_ProgramOptions_capture(int argc, char **argv, Bustools_opt &opt)
 
 void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
 {
-  const char *opt_string = "o:g:e:t:md:";
+  const char *opt_string = "o:g:e:t:md:s:";
   int gene_flag = 0;
   int umigene_flag = 0;
   int em_flag = 0;
@@ -348,6 +348,7 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
     {"hist", no_argument, &hist_flag, 1},
     {"downsample", required_argument, 0, 'd'},
     {"rawcounts", no_argument, &rawcounts_flag, 1},
+    {"split", required_argument, 0, 's'},
     {0, 0, 0, 0}};
   
   int option_index = 0, c;
@@ -375,24 +376,23 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
     case 'm':
       opt.count_gene_multimapping = true;
       break;
+    case 's':
+      opt.count_split = optarg;
+      break;
     default:
       break;
     }
   }
-  if (gene_flag)
-  {
+  if (gene_flag) {
     opt.count_collapse = true;
   }
-  if (umigene_flag)
-  {
+  if (umigene_flag) {
     opt.umi_gene_collapse = true;
   }
-  if (em_flag)
-  {
+  if (em_flag) {
     opt.count_em = true;
   }
-  if (cm_flag)
-  {
+  if (cm_flag) {
     opt.count_cm = true;
   }
   if (hist_flag) {
@@ -493,13 +493,14 @@ void parse_ProgramOptions_predict(int argc, char **argv, Bustools_opt& opt) {
 void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt &opt)
 {
   
-  const char *opt_string = "o:pfd";
+  const char *opt_string = "o:pfda";
   
   static struct option long_options[] = {
     {"output", required_argument, 0, 'o'},
     {"pipe", no_argument, 0, 'p'},
     {"flags", no_argument, 0, 'f'},
     {"pad", no_argument, 0, 'd'},
+    {"showAll", no_argument, 0, 'a'},
     {0, 0, 0, 0}};
   
   int option_index = 0, c;
@@ -520,6 +521,9 @@ void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt &opt)
       break;
     case 'd':
       opt.text_dumppad = true;
+      break;
+    case 'a':
+      opt.text_showall = true;
       break;
     default:
       break;
@@ -576,13 +580,14 @@ void parse_ProgramOptions_fromtext(int argc, char **argv, Bustools_opt& opt) {
 void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt &opt)
 {
   
-  const char *opt_string = "o:w:d:sp";
+  const char *opt_string = "o:w:d:spr";
   static struct option long_options[] = {
     {"output", required_argument, 0, 'o'},
     {"whitelist", required_argument, 0, 'w'},
     {"dump", required_argument, 0, 'd'},
     {"split", no_argument, 0, 's'},
     {"pipe", no_argument, 0, 'p'},
+    {"replace", no_argument, 0, 'r'},
     {0, 0, 0, 0}};
   
   int option_index = 0, c;
@@ -607,6 +612,9 @@ void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt &opt)
       break;
     case 'p':
       opt.stream_out = true;
+      break;
+    case 'r':
+      opt.barcode_replacement = true;
       break;
     default:
       break;
@@ -1604,7 +1612,7 @@ bool check_ProgramOptions_correct(Bustools_opt &opt)
   
   if (opt.whitelist.size() == 0)
   {
-    std::cerr << "Error: Missing whitelist file" << std::endl;
+    std::cerr << "Error: Missing on-list file" << std::endl;
     ret = false;
   }
   else
@@ -1632,95 +1640,75 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
   bool ret = true;
   
   // check for output directory
-  if (opt.output.empty())
-  {
+  if (opt.output.empty()) {
     std::cerr << "Error: Missing output directory" << std::endl;
     ret = false;
   }
-  else
-  {
+  else {
     bool isDir = false;
-    if (checkDirectoryExists(opt.output))
-    {
+    if (checkDirectoryExists(opt.output)) {
       isDir = true;
     }
-    else
-    {
-      if (opt.output.at(opt.output.size() - 1) == '/')
-      {
-        if (my_mkdir(opt.output.c_str(), 0777) == -1)
-        {
+    else {
+      if (opt.output.at(opt.output.size() - 1) == '/') {
+        if (my_mkdir(opt.output.c_str(), 0777) == -1) {
           std::cerr << "Error: could not create directory " << opt.output << std::endl;
           ret = false;
         }
-        else
-        {
+        else {
           isDir = true;
         }
       }
     }
     
-    if (isDir)
-    {
+    if (isDir) {
       opt.output += "output";
     }
   }
   
-  if (opt.count_em && opt.count_gene_multimapping)
-  {
+  if (opt.count_em && opt.count_gene_multimapping) {
     std::cerr << "Error: EM algorithm and counting multimapping reads are incompatible" << std::endl;
     ret = false;
   }
   
-  if (opt.count_em && opt.count_cm)
-  {
+  if (opt.count_em && opt.count_cm) {
     std::cerr << "Error: EM algorithm and counting multiplicites are incompatible" << std::endl;
     ret = false;
   }
   
-  if (opt.umi_gene_collapse && opt.count_cm)
-  {
+  if (opt.umi_gene_collapse && opt.count_cm) {
     std::cerr << "Error: Gene-level collapsing of UMIs and counting multiplicites are incompatible" << std::endl;
     ret = false;
   }
   
-  if (opt.umi_gene_collapse && (opt.count_raw_counts || opt.count_gen_hist || opt.count_downsampling_factor != 1.0))
-  {
+  if (opt.umi_gene_collapse && (opt.count_raw_counts || opt.count_gen_hist || opt.count_downsampling_factor != 1.0)) {
     std::cerr << "Error: Gene-level collapsing of UMIs is currently incompatible with --hist, --downsample, or --rawcounts" << std::endl;
     ret = false;
   }
   
-  if (opt.count_cm && (opt.count_raw_counts || opt.count_gen_hist || opt.count_downsampling_factor != 1.0))
-  {
+  if (opt.count_cm && (opt.count_raw_counts || opt.count_gen_hist || opt.count_downsampling_factor != 1.0)) {
     std::cerr << "Error: Counting multiplicites is incompatible with --hist, --downsample, or --rawcounts" << std::endl;
     ret = false;
   }
   
-  if (opt.count_raw_counts && opt.count_em) 
-  {
+  if (opt.count_raw_counts && opt.count_em)  {
     std::cerr << "Error: Counting raw counts are not supported for the EM algorithm" << std::endl;
     ret = false;
   }
   
-  if (opt.count_raw_counts && !opt.count_collapse) 
-  {
+  if (opt.count_raw_counts && !opt.count_collapse)  {
     std::cerr << "Error: Raw counts are currently only supported for gene counting, not ec counting." << std::endl;
     ret = false;
   }
   
-  if (opt.files.size() == 0)
-  {
+  if (opt.files.size() == 0) {
     std::cerr << "Error: Missing BUS input files" << std::endl;
     ret = false;
   }
-  else
-  {
-    if (!opt.stream_in)
-    {
-      for (const auto &it : opt.files)
-      {
-        if (!checkFileExists(it))
-        {
+  else {
+    if (!opt.stream_in) {
+      for (const auto &it : opt.files) {
+        if (!checkFileExists(it)) {
           std::cerr << "Error: File not found, " << it << std::endl;
           ret = false;
         }
@@ -1728,13 +1716,11 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
     }
   }
   
-  if (opt.count_genes.size() == 0)
-  {
+  if (opt.count_genes.size() == 0) {
     std::cerr << "Error: missing gene mapping file" << std::endl;
     ret = false;
   }
-  else
-  {
+  else {
     if (!checkFileExists(opt.count_genes))
     {
       std::cerr << "Error: File not found " << opt.count_genes << std::endl;
@@ -1742,13 +1728,11 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
     }
   }
   
-  if (opt.count_ecs.size() == 0)
-  {
+  if (opt.count_ecs.size() == 0) {
     std::cerr << "Error: missing equivalence class mapping file" << std::endl;
     ret = false;
   }
-  else
-  {
+  else {
     if (!checkFileExists(opt.count_ecs))
     {
       std::cerr << "Error: File not found " << opt.count_ecs << std::endl;
@@ -1756,16 +1740,24 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
     }
   }
   
-  if (opt.count_txp.size() == 0)
-  {
+  if (opt.count_txp.size() == 0) {
     std::cerr << "Error: missing transcript name file" << std::endl;
     ret = false;
   }
-  else
-  {
-    if (!checkFileExists(opt.count_txp))
-    {
+  else {
+    if (!checkFileExists(opt.count_txp)) {
       std::cerr << "Error: File not found " << opt.count_txp << std::endl;
+      ret = false;
+    }
+  }
+  
+  if (opt.count_split.size() != 0) {
+    if (!checkFileExists(opt.count_split)) {
+      std::cerr << "Error: File not found " << opt.count_split << std::endl;
+      ret = false;
+    }
+    if (opt.count_em) {
+      std::cerr << "Cannot use -s with --em" << std::endl;
       ret = false;
     }
   }
@@ -2619,6 +2611,7 @@ void Bustools_dump_Usage()
             << "-f, --flags           Write the flag column" << std::endl
             << "-d, --pad             Write the pad column" << std::endl
             << "-p, --pipe            Write to standard output" << std::endl
+            << "-a, --showAll         Show hidden metadata in barcodes" << std::endl
             << std::endl;
 }
 
@@ -2637,10 +2630,10 @@ void Bustools_correct_Usage()
             << std::endl
             << "Options: " << std::endl
             << "-o, --output          File for corrected bus output" << std::endl
-            << "-w, --whitelist       File of whitelisted barcodes to correct to" << std::endl
+            << "-w, --whitelist       File of on-list barcodes to correct to" << std::endl
             << "-p, --pipe            Write to standard output" << std::endl
             << "-d, --dump            Dump uncorrected to corrected barcodes (optional)" << std::endl
-            << "-s, --split           Split the whitelist and correct each half independently (optional)" << std::endl
+            << "-r, --replace         The file of on-list barcodes is a barcode replacement file" << std::endl
             << std::endl;
 }
 
@@ -2657,6 +2650,7 @@ void Bustools_count_Usage()
             << "    --umi-gene        Perform gene-level collapsing of UMIs" << std::endl
             << "    --em              Estimate gene abundances using EM algorithm" << std::endl
             << "    --cm              Count multiplicites instead of UMIs" << std::endl
+            << "-s, --split           Split output matrix in two (plus ambiguous) based on transcripts supplied in this file" << std::endl
             << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl
             << "    --hist            Output copy per UMI histograms for all genes" << std::endl 
             << "-d  --downsample      Specify a factor between 0 and 1 specifying how much to downsample" << std::endl 

@@ -258,7 +258,7 @@ bool writeECs(const std::string &filename, const BUSHeader &header) {
   return true;
 }
 
-bool writeGenes(const std::string &filename, const std::unordered_map<std::string, int32_t>  &genenames) {
+bool writeGenes(const std::string &filename, const u_map_<std::string, int32_t>  &genenames) {
   std::ofstream outf;
   outf.open(filename.c_str(), std::ios::out);
 
@@ -279,7 +279,7 @@ bool writeGenes(const std::string &filename, const std::unordered_map<std::strin
   return true;
 }
 
-bool parseTranscripts(const std::string &filename, std::unordered_map<std::string, int32_t> &txnames) {
+bool parseTranscripts(const std::string &filename, u_map_<std::string, int32_t> &txnames) {
   std::ifstream inf(filename.c_str());
 
   int i = 0;
@@ -291,7 +291,7 @@ bool parseTranscripts(const std::string &filename, std::unordered_map<std::strin
   return true;
 }
 
-bool parseTxCaptureList(const std::string &filename, std::unordered_map<std::string, int32_t> &txnames, std::unordered_set<uint64_t> &captures) {
+bool parseTxCaptureList(const std::string &filename, u_map_<std::string, int32_t> &txnames, std::unordered_set<uint64_t> &captures) {
   std::ifstream inf(filename.c_str());
 
   std::string txp;
@@ -318,7 +318,7 @@ bool parseBcUmiCaptureList(const std::string &filename, std::unordered_set<uint6
   return true;
 }
 
-bool parse_ProjectMap(const std::string &filename, std::unordered_map<uint64_t, uint64_t> &project_map) {
+bool parse_ProjectMap(const std::string &filename, u_map_<uint64_t, uint64_t> &project_map) {
   // This function occurs in 3 places: here, BUSData.h, and bustools_project.cpp
   std::ifstream inf(filename.c_str());
 
@@ -346,7 +346,7 @@ bool parseFlagsCaptureList(const std::string &filename, std::unordered_set<uint6
   return true;
 }
 
-bool parseGenes(const std::string &filename, const std::unordered_map<std::string, int32_t> &txnames, std::vector<int32_t> &genemap, std::unordered_map<std::string, int32_t> &genenames) {
+bool parseGenes(const std::string &filename, const u_map_<std::string, int32_t> &txnames, std::vector<int32_t> &genemap, u_map_<std::string, int32_t> &genenames) {
   std::ifstream inf(filename.c_str());
 
   std::string line, t;

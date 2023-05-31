@@ -20,7 +20,7 @@ void bustools_project(Bustools_opt &opt) {
   size_t stat_map = 0;
   size_t stat_unmap = 0;
 
-  std::unordered_map<uint64_t, uint64_t> project_map;
+  u_map_<uint64_t, uint64_t> project_map;
 
   /* Load the map into project_map variable
   parse bus records and map each object (barcode, umi) with project_map
@@ -175,18 +175,18 @@ void bustools_project(Bustools_opt &opt) {
   }
   if (opt.type == PROJECT_TX) {
     std::ofstream of;
-    std::unordered_map<std::string, int32_t> txnames;
+    u_map_<std::string, int32_t> txnames;
     parseTranscripts(opt.count_txp, txnames);
 
     std::vector<int32_t> genemap(txnames.size(), -1);
-    std::unordered_map<std::string, int32_t> genenames;
+    u_map_<std::string, int32_t> genenames;
     parseGenes(opt.map, txnames, genemap, genenames);
     std::vector<std::string> genenamesinv(genenames.size(), "");
     for (const auto &gene : genenames) {
       genenamesinv[gene.second] = gene.first;
     }
 
-    std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
+    u_map_<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
     std::vector<std::vector<int32_t>> ecmap;
     parseECs(opt.count_ecs, h);
     ecmap = std::move(h.ecs);
@@ -199,7 +199,7 @@ void bustools_project(Bustools_opt &opt) {
     create_ec2genes(ecmap, genemap, ec2genes);
 
     std::vector<std::vector<int32_t>> geneEc2genes = ec2genes;
-    std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> geneEc2genesinv;
+    u_map_<std::vector<int32_t>, int32_t, SortedVectorHasher> geneEc2genesinv;
     std::sort(geneEc2genes.begin(), geneEc2genes.end());
     auto firstNonempty = geneEc2genes.begin();
     while (firstNonempty->size() == 0 && firstNonempty != geneEc2genes.end()) {
@@ -284,7 +284,7 @@ void bustools_project(Bustools_opt &opt) {
     BUSData *p = new BUSData[N];
     BUSData currRec;
     // Gene EC --> counts for current barcode/UMI pair
-    std::unordered_map<uint32_t, uint32_t> counts;
+    u_map_<uint32_t, uint32_t> counts;
     
     while (true) {
       in.read((char*) p, N * sizeof(BUSData));
