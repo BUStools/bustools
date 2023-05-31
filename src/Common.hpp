@@ -12,7 +12,7 @@
 #include "roaring.hh"
 #include "hash.hpp"
 
-#define BUSTOOLS_VERSION "0.42.0"
+#define BUSTOOLS_VERSION "0.43.0"
 
 #define u_map_ std::unordered_map
 enum CAPTURE_TYPE : char
