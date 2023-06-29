@@ -702,7 +702,7 @@ void bustools_count(Bustools_opt &opt) {
     std::ofstream bcprefixof;
     bcprefixof.open(barcodes_prefix_ofn);
     for (const auto &x : barcodes) {
-      bcprefixof << binaryToString(x >> (2*bclen), 32-bclen) << "\n";
+      bcprefixof << binaryToString(x >> (2*bclen), 16) << "\n"; // Always make prefix length 16
     }
     bcprefixof.close();
   }
