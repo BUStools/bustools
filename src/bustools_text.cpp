@@ -46,6 +46,9 @@ void bustools_text(const Bustools_opt& opt) {
 		parseHeader(in, h);
 		uint32_t bclen = h.bclen;
 		uint32_t umilen = h.umilen;
+		if (opt.text_showall) {
+		  bclen = 32;
+		}
 		int rc = 0;
 		while (true) {
 			in.read((char*)p, N * sizeof(BUSData));

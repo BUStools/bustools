@@ -57,7 +57,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   std::ifstream ifn(opt.count_txp);
   std::string txn;
   int32_t tid;
-  std::unordered_map<std::string, int32_t> txn_tid;
+  u_map_<std::string, int32_t> txn_tid;
   std::vector<int32_t> tids;
 
   // insert tids into a vector
@@ -81,7 +81,7 @@ void bustools_merge_different_index(const Bustools_opt &opt)
   BUSHeader h, bh;
   parseECs(opt.count_ecs, h);
   // put the ecs into a ecmap inv
-  std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
+  u_map_<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
 
   for (std::size_t ec = 0; ec < h.ecs.size(); ec++)
   {
