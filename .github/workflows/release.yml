@@ -8,7 +8,7 @@ on:
 jobs:
   build-linux:
     name: Build linux
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     env:
       RELEASE_OS: linux
     steps:
@@ -57,7 +57,7 @@ jobs:
 
   build-windows:
     name: Build windows
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     env:
       RELEASE_OS: windows
     steps:
