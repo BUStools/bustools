@@ -57,6 +57,8 @@ void bustools_inspect(Bustools_opt &opt) {
     std::string inp;
     uint32_t flag; // Unused
     while (std::getline(wl, inp)) {
+      inp.erase(std::remove(inp.begin(),inp.end(),' '),inp.end());
+      inp.erase(std::remove(inp.begin(),inp.end(),'\t'),inp.end());
       whitelist.insert(stringToBinary(inp, flag));
     }
     wl.close();
@@ -76,6 +78,8 @@ void bustools_inspect(Bustools_opt &opt) {
   }
   std::istream in(inbuf);
   parseHeader(in, h);
+  uint32_t bclen = h.bclen;
+  uint64_t len_mask = ((1ULL << (2*bclen)) - 1); // Only include n least significant bits where n=2*bclen
 
   /* Number of records. */
   size_t nr = 0;
@@ -133,7 +137,7 @@ void bustools_inspect(Bustools_opt &opt) {
 
     for (size_t i = 0; i < rc; i++) {
       if (curr_bc != p[i].barcode) {
-        if (whitelist.find(curr_bc) != whitelist.end()) {
+        if (whitelist.find(curr_bc & len_mask) != whitelist.end()) {
           reads_wl += readsPerBc_count;
         }
 
@@ -148,7 +152,7 @@ void bustools_inspect(Bustools_opt &opt) {
         umisPerBc.push_back(umisPerBc_count);
         umisPerBc_count = 1;
 
-        if (whitelist.find(p[i].barcode) != whitelist.end()) {
+        if (whitelist.find(p[i].barcode & len_mask) != whitelist.end()) {
           ++bc_wl;
         }
       } else if (curr_umi != p[i].UMI) {
@@ -198,7 +202,7 @@ void bustools_inspect(Bustools_opt &opt) {
   /* Done reading BUS file. */
 
   // Some stats have stragglers
-  if (whitelist.find(curr_bc) != whitelist.end()) {
+  if (whitelist.find(curr_bc & len_mask) != whitelist.end()) {
     reads_wl += readsPerBc_count;
   }
   umisPerBc.push_back(umisPerBc_count);
