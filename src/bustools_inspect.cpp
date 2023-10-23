@@ -329,11 +329,11 @@ void bustools_inspect(Bustools_opt &opt) {
 
     if (opt.whitelist.size()) {
       of
-        << to_json("numBarcodesOnWhitelist", std::to_string(bc_wl), false) << std::endl
-        << to_json("percentageBarcodesOnWhitelist", std::to_string((double) bc_wl / bc_count * 100), false) << std::endl
+        << to_json("numBarcodesOnOnlist", std::to_string(bc_wl), false) << std::endl
+        << to_json("percentageBarcodesOnOnlist", std::to_string((double) bc_wl / bc_count * 100), false) << std::endl
 
-        << to_json("numReadsOnWhitelist", std::to_string(reads_wl), false) << std::endl
-        << to_json("percentageReadsOnWhitelist", std::to_string((double) reads_wl / reads * 100), false, false) << std::endl
+        << to_json("numReadsOnOnlist", std::to_string(reads_wl), false) << std::endl
+        << to_json("percentageReadsOnOnlist", std::to_string((double) reads_wl / reads * 100), false, false) << std::endl
 
         << std::flush;
     }
@@ -384,9 +384,9 @@ void bustools_inspect(Bustools_opt &opt) {
 
     if (opt.whitelist.size()) {
       std::cout
-        << "Number of barcodes in agreement with whitelist: " << std::to_string(bc_wl)
+        << "Number of barcodes in agreement with on-list: " << std::to_string(bc_wl)
           << " (" << std::to_string((double) bc_wl / bc_count * 100) << "%)" << std::endl
-        << "Number of reads with barcode in agreement with whitelist: " << std::to_string(reads_wl)
+        << "Number of reads with barcode in agreement with on-list: " << std::to_string(reads_wl)
           << " (" << std::to_string((double) reads_wl / reads * 100) << "%)" << std::endl
         << std::endl
 
