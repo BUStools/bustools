@@ -348,6 +348,7 @@ bool parseFlagsCaptureList(const std::string &filename, std::unordered_set<uint6
 
 bool parseGenes(const std::string &filename, const u_map_<std::string, int32_t> &txnames, std::vector<int32_t> &genemap, u_map_<std::string, int32_t> &genenames) {
   std::ifstream inf(filename.c_str());
+  bool ret = true;
 
   std::string line, t;
   line.reserve(10000);
@@ -369,10 +370,12 @@ bool parseGenes(const std::string &filename, const u_map_<std::string, int32_t> 
         gi = git->second;
       }
       genemap[i] = gi;
+    } else {
+      ret = false;
     }
   }
 
-  return true;
+  return ret;
 }
 
 bool parseGenesList(const std::string& filename, std::vector<std::string>& geneNames) {
