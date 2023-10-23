@@ -97,7 +97,7 @@ std::vector<std::string> parseList(const std::string &s, const std::string &sep 
 void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt &opt)
 {
   
-  const char *opt_string = "t:o:m:T:cusp";
+  const char *opt_string = "t:o:m:T:cuspn";
   
   static struct option long_options[] = {
     {"threads", required_argument, 0, 't'},
@@ -105,6 +105,7 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt &opt)
     {"memory", required_argument, 0, 'm'},
     {"temp", required_argument, 0, 'T'},
     {"umi", no_argument, 0, 'u'},
+    {"noflag", no_argument, 0, 'n'},
     {"count", no_argument, 0, 'c'},
     {"flags", no_argument, 0, 'F'},
     {"flags-bc", no_argument, 0, 'f'},
@@ -126,6 +127,9 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt &opt)
       break;
     case 'o':
       opt.output = optarg;
+      break;
+    case 'n':
+      opt.sort_noflag = true;
       break;
     case 'm':
       s = optarg;
@@ -2681,13 +2685,14 @@ void Bustools_sort_Usage()
   std::cout << "Usage: bustools sort [options] bus-files" << std::endl
             << std::endl
             << "Options: " << std::endl
-            << "Default behavior (with no flag) is to sort by barcode, UMI, ec, then flag" << std::endl
+            << "Default behavior is to sort by barcode, UMI, ec, then flag" << std::endl
             << "-t, --threads         Number of threads to use" << std::endl
             << "-m, --memory          Maximum memory used" << std::endl
             << "-T, --temp            Location and prefix for temporary files " << std::endl
             << "                      required if using -p, otherwise defaults to output" << std::endl
             << "-o, --output          File for sorted output" << std::endl
             << "-p, --pipe            Write to standard output" << std::endl
+            << "    --noflag          Default behavior except flag is ignored" << std::endl
             << "    --umi             Sort by UMI, barcode, then ec" << std::endl
             << "    --count           Sort by multiplicity, barcode, UMI, then ec" << std::endl
             << "    --flags           Sort by flag, ec, barcode, then UMI" << std::endl
