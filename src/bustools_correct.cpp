@@ -149,7 +149,7 @@ void bustools_split_correct(Bustools_opt &opt)
   }
   wf.close();
 
-  std::cerr << "Found " << wbc_12.size() << "," << wbc_34.size() << " barcodes in the half whitelists" << std::endl;
+  std::cerr << "Found " << wbc_12.size() << "," << wbc_34.size() << " barcodes in the half on-lists" << std::endl;
 
   len_1 = len_12 / 2;     // = 3, 3, 4
   len_2 = len_12 - len_1; // =4, 4, 4
@@ -247,8 +247,8 @@ void bustools_split_correct(Bustools_opt &opt)
 
       if (bclen != len_12 + len_34)
       {
-        std::cerr << "Error: barcode length and whitelist length differ, barcodes = " << bclen << ", whitelist = " << len_12 + len_34 << std::endl
-                  << "       check that your whitelist matches the technology used" << std::endl;
+        std::cerr << "Error: barcode length and on-list length differ, barcodes = " << bclen << ", on-list = " << len_12 + len_34 << std::endl
+                  << "       check that your on-list matches the technology used" << std::endl;
 
         exit(1);
       }
@@ -399,7 +399,7 @@ void bustools_split_correct(Bustools_opt &opt)
   }
 
   std::cerr << "Processed " << nr << " BUS records" << std::endl
-            << "In whitelist = " << stat_white << std::endl
+            << "In on-list = " << stat_white << std::endl
             << "Corrected 1  = " << stat_corr << std::endl
             << "Corrected 2  = " << stat_corr_2 << std::endl
             << "Uncorrected  = " << stat_uncorr << std::endl;
