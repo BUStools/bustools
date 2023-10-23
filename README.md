@@ -120,6 +120,7 @@ Options:
 -e, --ecmap           File for mapping equivalence classes to transcripts
 -t, --txnames         File with names of transcripts
 --genecounts          Aggregate counts to genes only
+--cm                  Count multiplicites instead of UMIs
 ~~~
 
 
@@ -239,8 +240,7 @@ Options:
 
 Reference for bustools compression:
 
-Einarsson, P and Melsted, Páll [BUSZ: compressed BUS files 
-](https://doi.org/10.1093/bioinformatics/btad295), Bioinformatics, 2023.
+Einarsson, P and Melsted, Páll [BUSZ: compressed BUS files](https://doi.org/10.1093/bioinformatics/btad295), Bioinformatics, 2023.
 
 
 ### decompress
