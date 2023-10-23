@@ -80,6 +80,7 @@ struct Bustools_opt
   bool count_gen_hist = false;
   double count_downsampling_factor = 1.0;
   bool count_raw_counts = false;
+  bool sort_noflag = false;
 
   /* correct */
   std::string dump;
