@@ -611,6 +611,7 @@ void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt &opt)
   static struct option long_options[] = {
     {"output", required_argument, 0, 'o'},
     {"whitelist", required_argument, 0, 'w'},
+    {"onlist", required_argument, 0, 'w'},
     {"dump", required_argument, 0, 'd'},
     {"split", no_argument, 0, 's'},
     {"pipe", no_argument, 0, 'p'},
@@ -786,6 +787,7 @@ void parse_ProgramOptions_inspect(int argc, char **argv, Bustools_opt &opt)
     {"output", required_argument, 0, 'o'},
     {"ecmap", required_argument, 0, 'e'},
     {"whitelist", required_argument, 0, 'w'},
+    {"onlist", required_argument, 0, 'w'},
     {"pipe", no_argument, 0, 'p'},
     {0, 0, 0, 0}};
   
@@ -2654,7 +2656,7 @@ void Bustools_Usage()
             << "umicorrect      Error correct the UMIs in a BUS file" << std::endl
             << "count           Generate count matrices from a BUS file" << std::endl
             << "inspect         Produce a report summarizing a BUS file" << std::endl
-            << "whitelist       Generate a whitelist from a BUS file" << std::endl
+            << "allowlist       Generate an on-list from a BUS file" << std::endl
             << "project         Project a BUS file to gene sets" << std::endl
             << "capture         Capture records from a BUS file" << std::endl
             << "merge           Merge bus files from same experiment" << std::endl
@@ -2762,7 +2764,7 @@ void Bustools_correct_Usage()
             << std::endl
             << "Options: " << std::endl
             << "-o, --output          File for corrected bus output" << std::endl
-            << "-w, --whitelist       File of on-list barcodes to correct to" << std::endl
+            << "-w, --onlist          File of on-list barcodes to correct to" << std::endl
             << "-p, --pipe            Write to standard output" << std::endl
             << "-d, --dump            Dump uncorrected to corrected barcodes (optional)" << std::endl
             << "-r, --replace         The file of on-list barcodes is a barcode replacement file" << std::endl
@@ -2812,11 +2814,11 @@ void Bustools_umicorrect_Usage()
 
 void Bustools_whitelist_Usage()
 {
-  std::cout << "Usage: bustools whitelist [options] sorted-bus-file" << std::endl
+  std::cout << "Usage: bustools allowlist [options] sorted-bus-file" << std::endl
             << std::endl
             << "Options: " << std::endl
-            << "-o, --output        File for the whitelist" << std::endl
-            << "-f, --threshold     Minimum number of times a barcode must appear to be included in whitelist" << std::endl
+            << "-o, --output        File for the on-list" << std::endl
+            << "-f, --threshold     Minimum number of times a barcode must appear to be included in on-list" << std::endl
             << std::endl;
 }
 
@@ -2845,7 +2847,7 @@ void Bustools_inspect_Usage()
             << "Options: " << std::endl
             << "-o, --output          File for JSON output (optional)" << std::endl
             << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
-            << "-w, --whitelist       File of whitelisted barcodes to correct to" << std::endl
+            << "-w, --onlist          File of on-list barcodes to correct to" << std::endl
             << "-p, --pipe            Write to standard output" << std::endl
             << std::endl;
 }
@@ -3157,7 +3159,7 @@ int main(int argc, char **argv)
         exit(1);
       }
     }
-    else if (cmd == "whitelist")
+    else if (cmd == "whitelist" || cmd == "allowlist")
     {
       if (disp_help)
       {
