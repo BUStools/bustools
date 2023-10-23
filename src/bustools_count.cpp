@@ -30,7 +30,10 @@ void bustools_count(Bustools_opt &opt) {
   parseTranscripts(opt.count_txp, txnames);
   std::vector<int32_t> genemap(txnames.size(), -1);
   u_map_<std::string, int32_t> genenames;
-  parseGenes(opt.count_genes, txnames, genemap, genenames);
+  if (!parseGenes(opt.count_genes, txnames, genemap, genenames)) {
+    std::cerr << "Warning: Some transcripts exist in the transcripts file but not in the transcript-to-gene mapping file; this will likely cause errors." << std::endl;
+  }
+  
   parseECs(opt.count_ecs, h);
   ecmap = std::move(h.ecs);
   ecmapinv.reserve(ecmap.size());
