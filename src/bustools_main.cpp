@@ -129,7 +129,7 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt &opt)
       opt.output = optarg;
       break;
     case 'n':
-      opt.sort_noflag = true;
+      opt.sort_noflag = true; // Not implemented (ideally, would want to have this remove the flag column while sorting)
       break;
     case 'm':
       s = optarg;
@@ -2692,7 +2692,6 @@ void Bustools_sort_Usage()
             << "                      required if using -p, otherwise defaults to output" << std::endl
             << "-o, --output          File for sorted output" << std::endl
             << "-p, --pipe            Write to standard output" << std::endl
-            << "    --noflag          Default behavior except flag is ignored" << std::endl
             << "    --umi             Sort by UMI, barcode, then ec" << std::endl
             << "    --count           Sort by multiplicity, barcode, UMI, then ec" << std::endl
             << "    --flags           Sort by flag, ec, barcode, then UMI" << std::endl
