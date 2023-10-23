@@ -57,8 +57,6 @@ void bustools_inspect(Bustools_opt &opt) {
     std::string inp;
     uint32_t flag; // Unused
     while (std::getline(wl, inp)) {
-      inp.erase(std::remove(inp.begin(),inp.end(),' '),inp.end());
-      inp.erase(std::remove(inp.begin(),inp.end(),'\t'),inp.end());
       whitelist.insert(stringToBinary(inp, flag));
     }
     wl.close();
