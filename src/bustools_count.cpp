@@ -698,7 +698,7 @@ void bustools_count(Bustools_opt &opt) {
   bcof.open(barcodes_ofn);
   uint64_t len_mask = ((1ULL << (2*bclen)) - 1);
   for (const auto &x : barcodes) {
-    if (x != (x & len_mask)) write_prefix = true;
+    if (x != (x & len_mask) && bclen < 32) write_prefix = true;
     bcof << binaryToString(x, bclen) << "\n";
   }
   if (write_prefix) {
