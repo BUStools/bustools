@@ -94,7 +94,7 @@ void bustools_fromtext(const Bustools_opt& opt) {
 	uint32_t f;
 	bool out_header_written = false;
 	std::string line, bc, umi;
-	int32_t ec = 0, count = 0;
+	int32_t ec = 0, count = 0, flag = 0;
 
 	for (const auto& infn : opt.files) {
 		std::streambuf* inbuf;
@@ -113,9 +113,11 @@ void bustools_fromtext(const Bustools_opt& opt) {
 			if (line.empty() || line[0] == '#') {
 				continue;
 			}
+			line += " 0";
+			std::string flag_str;
 			std::stringstream ss(line);
 			//this will automatically allow for comments after count on each line, as long as there is a whitespace in between
-			if (ss >> bc >> umi >> ec >> count) { //if the if is not here, empty lines at the end  of the file will add extra entries identical to the last one...
+			if (ss >> bc >> umi >> ec >> count >> flag_str) { //if the if is not here, empty lines at the end  of the file will add extra entries identical to the last one...
 				if (!out_header_written) {
 					h.bclen = (uint32_t)bc.size();
 					h.umilen = (uint32_t)umi.size();
@@ -130,6 +132,11 @@ void bustools_fromtext(const Bustools_opt& opt) {
 				b.ec = ec;
 				b.count = count;
 				b.flags = 0;
+				std::stringstream ss_flag(flag_str);
+				if (ss_flag >> flag) { 
+					b.flags = flag;
+				}
+
 				o.write((char*)&b, sizeof(b));
 				++nr;
 			}
