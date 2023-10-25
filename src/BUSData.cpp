@@ -315,7 +315,7 @@ bool parseBcUmiCaptureList(const std::string &filename, std::unordered_set<uint6
   while (getline(inf, inp)) {
     uint64_t binary_val;
     if (inp.back() == '*' && inp.length() == 17) { // 16-bp barcode that ends in *
-	    inf.pop_back(); // Remove * from end of string
+	    inp.pop_back(); // Remove * from end of string
 	    binary_val = stringToBinary(inp, flag);
 	    binary_val |= (static_cast<uint64_t>(1) << 63); // Set MSB to 1 if * found at end of string (to label the barcode as "prefix")
 	    captures.insert(std::numeric_limits<uint64_t>::max()); // Tells us to look for prefix barcodes
