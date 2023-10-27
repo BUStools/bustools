@@ -114,7 +114,9 @@ void bustools_capture(Bustools_opt &opt) {
 
         } else if (opt.type == CAPTURE_BC) {
           if (capture_prefixes) {
-            uint64_t potential_prefix_barcode = (bd.barcode >> 32) & 0xFFFFFFFF;
+            uint64_t bitmask = (1ULL << (2*(32-bd.bclen))) - 1;
+            uint64_t potential_prefix_barcode = (bd.barcode >> (2*bd.bclen)) & bitmask;
+            // Now we have the sequence preceding the actual cell barcode, let's find it in the captures set
             capt = captures.count((static_cast<uint64_t>(1) << 63) | potential_prefix_barcode) > 0; // If prefix exists in the "capture prefix" set
             if (!capt) capt = captures.count(bd.barcode & len_mask) > 0; // If not, then check the barcode as-is
           } else {
