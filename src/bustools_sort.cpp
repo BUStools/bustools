@@ -575,7 +575,7 @@ void bustools_sort(const Bustools_opt &opt)
       }
       // merge identical things
       p[i].count = c;
-      if (opt.sort_noflag) p[i].flag = 0;
+      if (opt.sort_noflag) p[i].flags = 0;
 
       // push back p to the vector
       v.push_back(p[i]);
