@@ -567,7 +567,7 @@ void bustools_sort(const Bustools_opt &opt)
       uint32_t c = p[i].count;
       auto ec = p[i].ec;
       for (; j < rc; j++) {
-        if (p[i].barcode == p[j].barcode && p[i].UMI == p[j].UMI && p[i].ec == p[j].ec && p[i].flags == p[j].flags && p[i].pad == p[j].pad) {
+        if (p[i].barcode == p[j].barcode && p[i].UMI == p[j].UMI && p[i].ec == p[j].ec && (p[i].flags == p[j].flags || opt.sort_noflag) && p[i].pad == p[j].pad) {
           c += p[j].count;
         } else {
           break;
@@ -575,6 +575,7 @@ void bustools_sort(const Bustools_opt &opt)
       }
       // merge identical things
       p[i].count = c;
+      if (opt.sort_noflag) p[i].flag = 0;
 
       // push back p to the vector
       v.push_back(p[i]);
@@ -791,7 +792,7 @@ void bustools_sort(const Bustools_opt &opt)
   }
 }
 
-void bustools_sort_orig(const Bustools_opt &opt)
+void bustools_sort_orig(const Bustools_opt &opt) // Note: does not support opt.sort_noflag
 {
   BUSHeader h;
   std::vector<BUSData> b;
