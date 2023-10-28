@@ -105,7 +105,7 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt &opt)
     {"memory", required_argument, 0, 'm'},
     {"temp", required_argument, 0, 'T'},
     {"umi", no_argument, 0, 'u'},
-    {"noflag", no_argument, 0, 'n'},
+    {"no-flags", no_argument, 0, 'n'},
     {"count", no_argument, 0, 'c'},
     {"flags", no_argument, 0, 'F'},
     {"flags-bc", no_argument, 0, 'f'},
@@ -2696,6 +2696,7 @@ void Bustools_sort_Usage()
             << "    --count           Sort by multiplicity, barcode, UMI, then ec" << std::endl
             << "    --flags           Sort by flag, ec, barcode, then UMI" << std::endl
             << "    --flags-bc        Sort by flag, barcode, UMI, then ec" << std::endl
+            << "    --no-flags        Ignore and reset the flag while sorting" << std::endl
             << std::endl;
 }
 
