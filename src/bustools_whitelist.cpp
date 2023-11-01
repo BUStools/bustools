@@ -155,5 +155,5 @@ void bustools_whitelist(Bustools_opt &opt) {
 
   delete[] p; p = nullptr;
   of.close();
-  std::cerr << "Read in " << nr << " BUS records, wrote " << wl_count << " barcodes to whitelist with threshold " << threshold << std::endl;
+  std::cerr << "Read in " << nr << " BUS records, wrote " << wl_count << " barcodes to on-list with threshold " << threshold << std::endl;
 }

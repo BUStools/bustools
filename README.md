@@ -5,11 +5,11 @@ RNA-Seq datasets. It can be used to error correct barcodes, collapse UMIs, produ
 
 If you use __bustools__ please cite
 
-Melsted, Páll, Booeshaghi, A. Sina et al. [Modular and efficient pre-processing of single-cell RNA-seq.](https://www.biorxiv.org/content/10.1101/673285v2) BioRxiv (2019): 673285, doi.org/10.1101/673285.
+Melsted, Páll, Booeshaghi, A. Sina et al. [Modular, efficient and constant-memory single-cell RNA-seq preprocessing.](https://doi.org/10.1038/s41587-021-00870-2) Nature Biotechnology, 2021.
 
 For some background on the design and motivation for the __BUS__ format and __bustools__ see 
 
-Melsted, Páll, Ntranos, Vasilis and Pachter, Lior [The Barcode, UMI, Set format and BUStools](https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/btz279/5487510), Bioinformatics, btz279, 2019.
+Melsted, Páll, Ntranos, Vasilis and Pachter, Lior [The Barcode, UMI, Set format and BUStools](https://doi.org/10.1093/bioinformatics/btz279), Bioinformatics, 2019.
 
 
 ## BUS format
@@ -56,35 +56,45 @@ Usage: bustools <CMD> [arguments] ..
 
 Where <CMD> can be one of: 
 
-capture         Capture records from a BUS file
-correct         Error correct a BUS file
-count           Generate count matrices from a BUS file
-inspect         Produce a report summarizing a BUS file
-linker          Remove section of barcodes in BUS files
-project         Project a BUS file to gene sets
 sort            Sort a BUS file by barcodes and UMIs
+correct         Error correct a BUS file
+count           Generate count matrices from a sorted BUS file
+inspect         Produce a report summarizing a sorted BUS file
+allowlist       Generate an on-list from a sorted BUS file
+capture         Capture records from a BUS file
 text            Convert a binary BUS file to a tab-delimited text file
-whitelist       Generate a whitelist from a BUS file
+fromtext        Convert tab-delimited text file to a binary BUS file
+extract         Extracts reads from input FASTQ files based on BUS file
+umicorrect      Use a UMI correction algorithm
+compress        Compress a sorted BUS file
+decompress      Decompress a compressed BUS file
 
 Running bustools <CMD> without arguments prints usage information for <CMD>
 ~~~
 
-### capture
-`bustools capture` can separate BUS files into multiple files according to the capture criteria.
+
+### sort
+
+Raw BUS output from pseudoalignment programs may be unsorted. To simply and accelerate downstream processing BUS files can be sorted using `bustools sort`
 
 ~~~
-Usage: bustools capture [options] bus-files
+> bustools sort 
+Usage: bustools sort [options] bus-files
 
 Options: 
--o, --output          Directory for output 
--c, --capture         List of transcripts to capture
--e, --ecmap           File for mapping equivalence classes to transcripts
--t, --txnames         File with names of transcripts
+-t, --threads         Number of threads to use
+-m, --memory          Maximum memory used
+-T, --temp            Location and prefix for temporary files 
+                      required if using -p, otherwise defaults to output
+-o, --output          File for sorted output
+-p, --pipe            Write to standard output
 ~~~
+
+This will create a new BUS file where the BUS records are sorted by barcode first, UMI second, and equivalence class third.
 
 
 ### correct
-BUS files can be barcode error corrected with respect to a technology-specific whitelist of barcodes using `bustools correct`.
+BUS files can be barcode error corrected with respect to a technology-specific "on list" of barcodes using `bustools correct`.
 
 ~~~
 > bustools correct
@@ -92,9 +102,10 @@ Usage: bustools correct [options] bus-files
 
 Options: 
 -o, --output          File for corrected bus output
--w, --whitelist       File of whitelisted barcodes to correct to
+-w, --onlist          File of on-listed barcodes to correct to
 -p, --pipe            Write to standard output
 ~~~
+
 
 ### count
 BUS files can be converted into a barcode-feature matrix, where the feature can be TCCs (Transcript Compatibility Counts) or genes using `bustools count`.
@@ -109,7 +120,9 @@ Options:
 -e, --ecmap           File for mapping equivalence classes to transcripts
 -t, --txnames         File with names of transcripts
 --genecounts          Aggregate counts to genes only
+--cm                  Count multiplicites instead of UMIs
 ~~~
+
 
 ### inspect
 A report summarizing the contents of a sorted BUS file can be output either to standard out or to a JSON file for further analysis using `bustools inspect`.
@@ -121,11 +134,11 @@ Usage: bustools inspect [options] sorted-bus-file
 Options: 
 -o, --output          File for JSON output (optional)
 -e, --ecmap           File for mapping equivalence classes to transcripts
--w, --whitelist       File of whitelisted barcodes to correct to
+-w, --onlist          File of on-listed barcodes to correct to
 -p, --pipe            Write to standard output
 ~~~
 
-`--ecmap` and `--whitelist` are optional parameters; `bustools inspect` is much faster without them, especially without the former.
+`--ecmap` and `--onlist` are optional parameters; `bustools inspect` is much faster without them, especially without the former.
 
 Sample output (to stdout):
 ~~~
@@ -151,56 +164,38 @@ Number of reads with singleton target: 1233940
 
 Estimated number of new targets at 2x seuqencing depth: 6168
 
-Number of barcodes in agreement with whitelist: 92889 (57.211752%)
-Number of reads with barcode in agreement with whitelist: 3281671 (95.623992%)
+Number of barcodes in agreement with on-list: 92889 (57.211752%)
+Number of reads with barcode in agreement with on-list: 3281671 (95.623992%)
 ~~~
 
-### linker
-`bustools linker` removes specified section of barcode in BUS files.
+### allowlist
+`bustools allowlist` generates an on-list based on the barcodes in a sorted BUS file.
 
 ~~~
-Usage: bustools linker [options] bus-files
+Usage: bustools allowlist [options] sorted-bus-file
 
 Options: 
--s, --start           Start coordinate for section of barcode to remove (0-indexed, inclusive)
--e, --end             End coordinate for section of barcode to remove (0-indexed, exclusive)
--p, --pipe            Write to standard output
+-o, --output        File for the on-list
+-f, --threshold     Minimum number of times a barcode must appear to be included in on-list
 ~~~
 
-If `--start` is -1, the removed section begins at beginning of barcode. Likewise, if `--end` is -1, the removed section ends at the end of the barcode. BUS files should contain barcodes of the same length.
+`--threshold` is a (highly) optional parameter. If not provided, `bustools allowlist` will determine a threshold based on the first 200 to 100,200 records.
 
-### project
-The `kallisto bus` command maps reads to a set of transcripts. `bustools project` takes as input kallisto's (sorted) output and a transcript to gene map (tr2g file), and outputs a BUS file, a matrix.ec file, and a list of genes, which collectively map each read to a set of genes.
+
+### capture
+`bustools capture` can separate BUS files into multiple files according to the capture criteria.
 
 ~~~
-Usage: bustools project [options] sorted-bus-file
+Usage: bustools capture [options] bus-files
 
 Options: 
--o, --output          File for project bug output and list of genes (no extension)
--g, --genemap         File for mapping transcripts to genes
+-o, --output          Directory for output 
+-c, --capture         List of transcripts to capture
 -e, --ecmap           File for mapping equivalence classes to transcripts
 -t, --txnames         File with names of transcripts
--p, --pipe            Write to standard output
 ~~~
 
-### sort
 
-Raw BUS output from pseudoalignment programs may be unsorted. To simply and accelerate downstream processing BUS files can be sorted using `bustools sort`
-
-~~~
-> bustools sort 
-Usage: bustools sort [options] bus-files
-
-Options: 
--t, --threads         Number of threads to use
--m, --memory          Maximum memory used
--T, --temp            Location and prefix for temporary files 
-                      required if using -p, otherwise defaults to output
--o, --output          File for sorted output
--p, --pipe            Write to standard output
-~~~
-
-This will create a new BUS file where the BUS records are sorted by barcode first, UMI second, and equivalence class third.
 
 ### text
 
@@ -214,15 +209,52 @@ Options:
 -o, --output          File for text output
 ~~~
 
-### whitelist
-`bustools whitelist` generates a whitelist based on the barcodes in a sorted BUS file.
+
+### fromtext
+
+Converts a plaintext tab-separated representation of a BUS file to a binary BUS file.
 
 ~~~
-Usage: bustools whitelist [options] sorted-bus-file
+> bustools text
+Usage: bustools text [options] bus-files
 
 Options: 
--o, --output        File for the whitelist
--f, --threshold     Minimum number of times a barcode must appear to be included in whitelist
+-o, --output          File for text output
 ~~~
 
-`--threshold` is a (highly) optional parameter. If not provided, `bustools whitelist` will determine a threshold based on the first 200 to 100,200 records.
+
+### compress
+
+Compresses a sorted BUS file.
+
+~~~
+> bustools compress
+Usage: bustools compress [options] sorted-bus-file
+Note: BUS file should be sorted by barcode-umi-ec
+
+Options: 
+-N, --chunk-size    Number of rows to compress as a single block
+-o, --output        File to write compressed output
+-p, --pipe          Write to standard output.
+~~~
+
+Reference for bustools compression:
+
+Einarsson, P and Melsted, Páll [BUSZ: compressed BUS files](https://doi.org/10.1093/bioinformatics/btad295), Bioinformatics, 2023.
+
+
+### decompress
+
+Decompresses (inflates) a compressed BUS file.
+
+~~~
+> bustools compress
+Usage: bustools compress [options] sorted-bus-file
+Note: BUS file should be sorted by barcode-umi-ec
+
+Options: 
+-o, --output        File to write decompressed output
+-p, --pipe          Write to standard output.
+~~~
+
+

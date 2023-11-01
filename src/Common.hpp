@@ -12,7 +12,7 @@
 #include "roaring.hh"
 #include "hash.hpp"
 
-#define BUSTOOLS_VERSION "0.43.0"
+#define BUSTOOLS_VERSION "0.43.1"
 
 #define u_map_ std::unordered_map
 enum CAPTURE_TYPE : char
@@ -80,12 +80,14 @@ struct Bustools_opt
   bool count_gen_hist = false;
   double count_downsampling_factor = 1.0;
   bool count_raw_counts = false;
+  bool sort_noflag = false;
 
   /* correct */
   std::string dump;
   bool dump_bool = false;
   bool split_correct = false;
   bool barcode_replacement = false;
+  bool parse_error = false;
 
   /* predict */
   std::string predict_input; //specified the same way as the output for count - count and histogram filenames will be created from this

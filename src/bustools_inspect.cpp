@@ -76,6 +76,8 @@ void bustools_inspect(Bustools_opt &opt) {
   }
   std::istream in(inbuf);
   parseHeader(in, h);
+  uint32_t bclen = h.bclen;
+  uint64_t len_mask = ((1ULL << (2*bclen)) - 1); // Only include n least significant bits where n=2*bclen
 
   /* Number of records. */
   size_t nr = 0;
@@ -133,7 +135,7 @@ void bustools_inspect(Bustools_opt &opt) {
 
     for (size_t i = 0; i < rc; i++) {
       if (curr_bc != p[i].barcode) {
-        if (whitelist.find(curr_bc) != whitelist.end()) {
+        if (whitelist.find(curr_bc & len_mask) != whitelist.end()) {
           reads_wl += readsPerBc_count;
         }
 
@@ -148,7 +150,7 @@ void bustools_inspect(Bustools_opt &opt) {
         umisPerBc.push_back(umisPerBc_count);
         umisPerBc_count = 1;
 
-        if (whitelist.find(p[i].barcode) != whitelist.end()) {
+        if (whitelist.find(p[i].barcode & len_mask) != whitelist.end()) {
           ++bc_wl;
         }
       } else if (curr_umi != p[i].UMI) {
@@ -198,7 +200,7 @@ void bustools_inspect(Bustools_opt &opt) {
   /* Done reading BUS file. */
 
   // Some stats have stragglers
-  if (whitelist.find(curr_bc) != whitelist.end()) {
+  if (whitelist.find(curr_bc & len_mask) != whitelist.end()) {
     reads_wl += readsPerBc_count;
   }
   umisPerBc.push_back(umisPerBc_count);
@@ -329,11 +331,11 @@ void bustools_inspect(Bustools_opt &opt) {
 
     if (opt.whitelist.size()) {
       of
-        << to_json("numBarcodesOnWhitelist", std::to_string(bc_wl), false) << std::endl
-        << to_json("percentageBarcodesOnWhitelist", std::to_string((double) bc_wl / bc_count * 100), false) << std::endl
+        << to_json("numBarcodesOnOnlist", std::to_string(bc_wl), false) << std::endl
+        << to_json("percentageBarcodesOnOnlist", std::to_string((double) bc_wl / bc_count * 100), false) << std::endl
 
-        << to_json("numReadsOnWhitelist", std::to_string(reads_wl), false) << std::endl
-        << to_json("percentageReadsOnWhitelist", std::to_string((double) reads_wl / reads * 100), false, false) << std::endl
+        << to_json("numReadsOnOnlist", std::to_string(reads_wl), false) << std::endl
+        << to_json("percentageReadsOnOnlist", std::to_string((double) reads_wl / reads * 100), false, false) << std::endl
 
         << std::flush;
     }
@@ -384,9 +386,9 @@ void bustools_inspect(Bustools_opt &opt) {
 
     if (opt.whitelist.size()) {
       std::cout
-        << "Number of barcodes in agreement with whitelist: " << std::to_string(bc_wl)
+        << "Number of barcodes in agreement with on-list: " << std::to_string(bc_wl)
           << " (" << std::to_string((double) bc_wl / bc_count * 100) << "%)" << std::endl
-        << "Number of reads with barcode in agreement with whitelist: " << std::to_string(reads_wl)
+        << "Number of reads with barcode in agreement with on-list: " << std::to_string(reads_wl)
           << " (" << std::to_string((double) reads_wl / reads * 100) << "%)" << std::endl
         << std::endl
 

@@ -97,7 +97,7 @@ std::vector<std::string> parseList(const std::string &s, const std::string &sep 
 void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt &opt)
 {
   
-  const char *opt_string = "t:o:m:T:cusp";
+  const char *opt_string = "t:o:m:T:cuspn";
   
   static struct option long_options[] = {
     {"threads", required_argument, 0, 't'},
@@ -105,6 +105,7 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt &opt)
     {"memory", required_argument, 0, 'm'},
     {"temp", required_argument, 0, 'T'},
     {"umi", no_argument, 0, 'u'},
+    {"no-flags", no_argument, 0, 'n'},
     {"count", no_argument, 0, 'c'},
     {"flags", no_argument, 0, 'F'},
     {"flags-bc", no_argument, 0, 'f'},
@@ -126,6 +127,9 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt &opt)
       break;
     case 'o':
       opt.output = optarg;
+      break;
+    case 'n':
+      opt.sort_noflag = true; // Not implemented (ideally, would want to have this remove the flag column while sorting)
       break;
     case 'm':
       s = optarg;
@@ -172,6 +176,9 @@ void parse_ProgramOptions_sort(int argc, char **argv, Bustools_opt &opt)
     case 'p':
       opt.stream_out = true;
       break;
+    case '?':
+      opt.parse_error = true;
+      break;
     default:
       break;
     }
@@ -213,6 +220,9 @@ void parse_ProgramOptions_merge(int argc, char **argv, Bustools_opt &opt)
     case 'e':
       opt.count_ecs = optarg;
       break;
+    case '?':
+      opt.parse_error = true;
+      break;
     default:
       break;
     }
@@ -244,6 +254,9 @@ void parse_ProgramOptions_mash(int argc, char **argv, Bustools_opt &opt)
     {
     case 'o':
       opt.output = optarg;
+      break;
+    case '?':
+      opt.parse_error = true;
       break;
     default:
       break;
@@ -312,6 +325,9 @@ void parse_ProgramOptions_capture(int argc, char **argv, Bustools_opt &opt)
     case 'p':
       opt.stream_out = true;
       break;
+    case '?':
+      opt.parse_error = true;
+      break;
     default:
       break;
     }
@@ -378,6 +394,9 @@ void parse_ProgramOptions_count(int argc, char **argv, Bustools_opt &opt)
       break;
     case 's':
       opt.count_split = optarg;
+      break;
+    case '?':
+      opt.parse_error = true;
       break;
     default:
       break;
@@ -446,6 +465,9 @@ void parse_ProgramOptions_umicorrect(int argc, char **argv, Bustools_opt& opt) {
     case 'e':
       opt.count_ecs = optarg;
       break;
+    case '?':
+      opt.parse_error = true;
+      break;
     default:
       break;
     }
@@ -479,6 +501,9 @@ void parse_ProgramOptions_predict(int argc, char **argv, Bustools_opt& opt) {
       break;
     case 't':
       opt.predict_t = atof(optarg);
+      break;
+    case '?':
+      opt.parse_error = true;
       break;
     default:
       break;
@@ -525,6 +550,9 @@ void parse_ProgramOptions_dump(int argc, char **argv, Bustools_opt &opt)
     case 'a':
       opt.text_showall = true;
       break;
+    case '?':
+      opt.parse_error = true;
+      break;
     default:
       break;
     }
@@ -564,6 +592,9 @@ void parse_ProgramOptions_fromtext(int argc, char **argv, Bustools_opt& opt) {
     case 'p':
       opt.stream_out = true;
       break;
+    case '?':
+      opt.parse_error = true;
+      break;
     default:
       break;
     }
@@ -584,6 +615,7 @@ void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt &opt)
   static struct option long_options[] = {
     {"output", required_argument, 0, 'o'},
     {"whitelist", required_argument, 0, 'w'},
+    {"onlist", required_argument, 0, 'w'},
     {"dump", required_argument, 0, 'd'},
     {"split", no_argument, 0, 's'},
     {"pipe", no_argument, 0, 'p'},
@@ -615,6 +647,9 @@ void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt &opt)
       break;
     case 'r':
       opt.barcode_replacement = true;
+      break;
+    case '?':
+      opt.parse_error = true;
       break;
     default:
       break;
@@ -658,12 +693,15 @@ void parse_ProgramOptions_whitelist(int argc, char **argv, Bustools_opt &opt)
     case 'f':
       opt.threshold = atoi(optarg);
       break;
+    case '?':
+      opt.parse_error = true;
+      break;
     default:
       break;
     }
   }
   
-  /* All other argumuments are (sorted) BUS files. */
+  /* All other arguments are (sorted) BUS files. */
   while (optind < argc)
     opt.files.push_back(argv[optind++]);
   
@@ -725,12 +763,15 @@ void parse_ProgramOptions_project(int argc, char **argv, Bustools_opt &opt)
     case 'p':
       opt.stream_out = true;
       break;
+    case '?':
+      opt.parse_error = true;
+      break;
     default:
       break;
     }
   }
   
-  /* All other argumuments are (sorted) BUS files. */
+  /* All other arguments are (sorted) BUS files. */
   while (optind < argc)
     opt.files.push_back(argv[optind++]);
   
@@ -750,6 +791,7 @@ void parse_ProgramOptions_inspect(int argc, char **argv, Bustools_opt &opt)
     {"output", required_argument, 0, 'o'},
     {"ecmap", required_argument, 0, 'e'},
     {"whitelist", required_argument, 0, 'w'},
+    {"onlist", required_argument, 0, 'w'},
     {"pipe", no_argument, 0, 'p'},
     {0, 0, 0, 0}};
   
@@ -771,12 +813,15 @@ void parse_ProgramOptions_inspect(int argc, char **argv, Bustools_opt &opt)
     case 'p':
       opt.stream_out = true;
       break;
+    case '?':
+      opt.parse_error = true;
+      break;
     default:
       break;
     }
   }
   
-  /* All other argumuments are (sorted) BUS files. */
+  /* All other arguments are (sorted) BUS files. */
   while (optind < argc)
     opt.files.push_back(argv[optind++]);
   
@@ -817,12 +862,15 @@ void parse_ProgramOptions_linker(int argc, char **argv, Bustools_opt &opt)
     case 'p':
       opt.stream_out = true;
       break;
+    case '?':
+      opt.parse_error = true;
+      break;
     default:
       break;
     }
   }
   
-  /* All other argumuments are (sorted) BUS files. */
+  /* All other arguments are (sorted) BUS files. */
   while (optind < argc)
     opt.files.push_back(argv[optind++]);
   
@@ -863,6 +911,9 @@ void parse_ProgramOptions_collapse(int argc, char** argv, Bustools_opt& opt) {
       break;
     case 'e':
       opt.count_ecs = optarg;
+      break;
+    case '?':
+      opt.parse_error = true;
       break;
     default:
       break;
@@ -912,6 +963,9 @@ void parse_ProgramOptions_clusterhist(int argc, char** argv, Bustools_opt& opt) 
     case 'c':
       opt.cluster_input_file = optarg;
       break;
+    case '?':
+      opt.parse_error = true;
+      break;
     default:
       break;
     }
@@ -955,12 +1009,15 @@ void parse_ProgramOptions_extract(int argc, char **argv, Bustools_opt &opt)
     case 'p':
       opt.stream_out = true;
       break;
+    case '?':
+      opt.parse_error = true;
+      break;
     default:
       break;
     }
   }
   
-  /* All other argumuments are (sorted) BUS files. */
+  /* All other arguments are (sorted) BUS files. */
   while (optind < argc)
     opt.files.push_back(argv[optind++]);
   
@@ -1001,6 +1058,9 @@ bool parse_ProgramOptions_inflate(int argc, char **argv, Bustools_opt &opt)
       break;
     case 'h':
       print_usage = true;
+      break;
+    case '?':
+      opt.parse_error = true;
       break;
     default:
       break;
@@ -1082,6 +1142,9 @@ bool parse_ProgramOptions_compress(int argc, char **argv, Bustools_opt &opt)
     case 'h':
       print_usage = true;
       break;
+    case '?':
+      opt.parse_error = true;
+      break;
     default:
       break;
     }
@@ -1101,7 +1164,11 @@ bool check_ProgramOptions_sort(Bustools_opt &opt)
 {
   
   bool ret = true;
-  
+
+  if (opt.parse_error) {
+    ret = false;
+  }
+
   size_t max_threads = std::thread::hardware_concurrency();
   
   if (opt.threads <= 0)
@@ -1228,7 +1295,11 @@ bool check_ProgramOptions_sort(Bustools_opt &opt)
 bool check_ProgramOptions_merge(Bustools_opt &opt)
 {
   bool ret = true;
-  
+
+  if (opt.parse_error) {
+    ret = false;
+  }
+
   // check for output directory
   if (!opt.stream_out)
   {
@@ -1317,7 +1388,11 @@ bool check_ProgramOptions_merge(Bustools_opt &opt)
 bool check_ProgramOptions_mash(Bustools_opt &opt)
 {
   bool ret = true;
-  
+
+  if (opt.parse_error) {
+    ret = false;
+  }
+
   if (opt.output.empty())
   {
     std::cerr << "Error: missing output directory" << std::endl;
@@ -1386,7 +1461,11 @@ bool check_ProgramOptions_mash(Bustools_opt &opt)
 bool check_ProgramOptions_dump(Bustools_opt &opt)
 {
   bool ret = true;
-  
+
+  if (opt.parse_error) {
+    ret = false;
+  }
+
   if (!opt.stream_out)
   {
     if (opt.output.empty())
@@ -1424,7 +1503,11 @@ bool check_ProgramOptions_dump(Bustools_opt &opt)
 bool check_ProgramOptions_fromtext(Bustools_opt& opt) 
 {
   bool ret = true;
-  
+
+  if (opt.parse_error) {
+    ret = false;
+  }
+
   if (!opt.stream_out) 
   {
     if (opt.output.empty()) 
@@ -1463,7 +1546,11 @@ bool check_ProgramOptions_fromtext(Bustools_opt& opt)
 bool check_ProgramOptions_capture(Bustools_opt &opt)
 {
   bool ret = true;
-  
+
+  if (opt.parse_error) {
+    ret = false;
+  }
+
   if (opt.filter)
   {
     // check if output directory exists or if we can create it
@@ -1575,7 +1662,11 @@ bool check_ProgramOptions_capture(Bustools_opt &opt)
 bool check_ProgramOptions_correct(Bustools_opt &opt)
 {
   bool ret = true;
-  
+
+  if (opt.parse_error) {
+    ret = false;
+  }
+
   if (!opt.stream_out)
   {
     if (opt.output.empty())
@@ -1638,6 +1729,10 @@ bool check_ProgramOptions_correct(Bustools_opt &opt)
 bool check_ProgramOptions_count(Bustools_opt &opt)
 {
   bool ret = true;
+
+  if (opt.parse_error) {
+      ret = false;
+  }
   
   // check for output directory
   if (opt.output.empty()) {
@@ -1767,7 +1862,11 @@ bool check_ProgramOptions_count(Bustools_opt &opt)
 
 bool check_ProgramOptions_predict(Bustools_opt& opt) {
   bool ret = true;
-  
+
+  if (opt.parse_error) {
+    ret = false;
+  }
+
   // check for output directory
   if (opt.output.empty()) {
     std::cerr << "Error: Missing output directory" << std::endl;
@@ -1838,7 +1937,11 @@ bool check_ProgramOptions_predict(Bustools_opt& opt) {
 
 bool check_ProgramOptions_umicorrect(Bustools_opt& opt) {
   bool ret = true;
-  
+
+  if (opt.parse_error) {
+    ret = false;
+  }
+
   if (!opt.stream_out) {
     if (opt.output.empty()) {
       std::cerr << "Error: missing output file" << std::endl;
@@ -1899,7 +2002,11 @@ bool check_ProgramOptions_umicorrect(Bustools_opt& opt) {
 bool check_ProgramOptions_whitelist(Bustools_opt &opt)
 {
   bool ret = true;
-  
+
+  if (opt.parse_error) {
+    ret = false;
+  }
+
   if (opt.output.empty())
   {
     std::cerr << "Error: missing output file" << std::endl;
@@ -1948,7 +2055,11 @@ bool check_ProgramOptions_whitelist(Bustools_opt &opt)
 bool check_ProgramOptions_project(Bustools_opt &opt)
 {
   bool ret = true;
-  
+
+  if (opt.parse_error) {
+    ret = false;
+  }
+
   if (opt.output.empty())
   {
     std::cerr << "Error: Missing output file" << std::endl;
@@ -2060,7 +2171,11 @@ bool check_ProgramOptions_project(Bustools_opt &opt)
 bool check_ProgramOptions_inspect(Bustools_opt &opt)
 {
   bool ret = true;
-  
+
+  if (opt.parse_error) {
+    ret = false;
+  }
+
   if (opt.output.size() && !checkOutputFileValid(opt.output))
   {
     std::cerr << "Error: unable to open output file" << std::endl;
@@ -2116,7 +2231,11 @@ bool check_ProgramOptions_inspect(Bustools_opt &opt)
 bool check_ProgramOptions_linker(Bustools_opt &opt)
 {
   bool ret = true;
-  
+
+  if (opt.parse_error) {
+    ret = false;
+  }
+
   if (!opt.stream_out)
   {
     if (opt.output.empty())
@@ -2156,7 +2275,11 @@ bool check_ProgramOptions_linker(Bustools_opt &opt)
 
 bool check_ProgramOptions_collapse(Bustools_opt& opt) {
   bool ret = true;
-  
+
+  if (opt.parse_error) {
+    ret = false;
+  }
+
   // check for output directory
   if (opt.output.empty()) {
     std::cerr << "Error: Missing output directory" << std::endl;
@@ -2237,7 +2360,11 @@ bool check_ProgramOptions_collapse(Bustools_opt& opt) {
 
 bool check_ProgramOptions_clusterhist(Bustools_opt& opt) {
   bool ret = true;
-  
+
+  if (opt.parse_error) {
+    ret = false;
+  }
+
   // check for output directory
   if (opt.output.empty()) {
     std::cerr << "Error: Missing output directory" << std::endl;
@@ -2335,7 +2462,11 @@ bool check_ProgramOptions_clusterhist(Bustools_opt& opt) {
 bool check_ProgramOptions_extract(Bustools_opt &opt)
 {
   bool ret = true;
-  
+
+  if (opt.parse_error) {
+    ret = false;
+  }
+
   if (opt.output.empty())
   {
     std::cerr << "Error: missing output directory" << std::endl;
@@ -2426,8 +2557,11 @@ bool check_ProgramOptions_extract(Bustools_opt &opt)
 
 bool check_ProgramOptions_inflate(Bustools_opt &opt)
 {
-
   bool ret = true;
+
+  if (opt.parse_error) {
+    ret = false;
+  }
 
   if (!opt.stream_out)
   {
@@ -2470,6 +2604,10 @@ bool check_ProgramOptions_inflate(Bustools_opt &opt)
 bool check_ProgramOptions_compress(Bustools_opt &opt)
 {
   bool ret = true;
+
+  if (opt.parse_error) {
+    ret = false;
+  }
 
   if (!opt.stream_out)
   {
@@ -2522,7 +2660,7 @@ void Bustools_Usage()
             << "umicorrect      Error correct the UMIs in a BUS file" << std::endl
             << "count           Generate count matrices from a BUS file" << std::endl
             << "inspect         Produce a report summarizing a BUS file" << std::endl
-            << "whitelist       Generate a whitelist from a BUS file" << std::endl
+            << "allowlist       Generate an on-list from a BUS file" << std::endl
             << "project         Project a BUS file to gene sets" << std::endl
             << "capture         Capture records from a BUS file" << std::endl
             << "merge           Merge bus files from same experiment" << std::endl
@@ -2547,7 +2685,7 @@ void Bustools_sort_Usage()
   std::cout << "Usage: bustools sort [options] bus-files" << std::endl
             << std::endl
             << "Options: " << std::endl
-            << "Default behavior (with no flag) is to sort by barcode, UMI, ec, then flag" << std::endl
+            << "Default behavior is to sort by barcode, UMI, ec, then flag" << std::endl
             << "-t, --threads         Number of threads to use" << std::endl
             << "-m, --memory          Maximum memory used" << std::endl
             << "-T, --temp            Location and prefix for temporary files " << std::endl
@@ -2558,6 +2696,7 @@ void Bustools_sort_Usage()
             << "    --count           Sort by multiplicity, barcode, UMI, then ec" << std::endl
             << "    --flags           Sort by flag, ec, barcode, then UMI" << std::endl
             << "    --flags-bc        Sort by flag, barcode, UMI, then ec" << std::endl
+            << "    --no-flags        Ignore and reset the flag while sorting" << std::endl
             << std::endl;
 }
 
@@ -2630,7 +2769,7 @@ void Bustools_correct_Usage()
             << std::endl
             << "Options: " << std::endl
             << "-o, --output          File for corrected bus output" << std::endl
-            << "-w, --whitelist       File of on-list barcodes to correct to" << std::endl
+            << "-w, --onlist          File of on-list barcodes to correct to" << std::endl
             << "-p, --pipe            Write to standard output" << std::endl
             << "-d, --dump            Dump uncorrected to corrected barcodes (optional)" << std::endl
             << "-r, --replace         The file of on-list barcodes is a barcode replacement file" << std::endl
@@ -2649,7 +2788,7 @@ void Bustools_count_Usage()
             << "    --genecounts      Aggregate counts to genes only" << std::endl
             << "    --umi-gene        Perform gene-level collapsing of UMIs" << std::endl
             << "    --em              Estimate gene abundances using EM algorithm" << std::endl
-            << "    --cm              Count multiplicites instead of UMIs" << std::endl
+            << "    --cm              Count multiplicities instead of UMIs" << std::endl
             << "-s, --split           Split output matrix in two (plus ambiguous) based on transcripts supplied in this file" << std::endl
             << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl
             << "    --hist            Output copy per UMI histograms for all genes" << std::endl 
@@ -2680,11 +2819,11 @@ void Bustools_umicorrect_Usage()
 
 void Bustools_whitelist_Usage()
 {
-  std::cout << "Usage: bustools whitelist [options] sorted-bus-file" << std::endl
+  std::cout << "Usage: bustools allowlist [options] sorted-bus-file" << std::endl
             << std::endl
             << "Options: " << std::endl
-            << "-o, --output        File for the whitelist" << std::endl
-            << "-f, --threshold     Minimum number of times a barcode must appear to be included in whitelist" << std::endl
+            << "-o, --output        File for the on-list" << std::endl
+            << "-f, --threshold     Minimum number of times a barcode must appear to be included in on-list" << std::endl
             << std::endl;
 }
 
@@ -2713,7 +2852,7 @@ void Bustools_inspect_Usage()
             << "Options: " << std::endl
             << "-o, --output          File for JSON output (optional)" << std::endl
             << "-e, --ecmap           File for mapping equivalence classes to transcripts" << std::endl
-            << "-w, --whitelist       File of whitelisted barcodes to correct to" << std::endl
+            << "-w, --onlist          File of on-list barcodes to correct to" << std::endl
             << "-p, --pipe            Write to standard output" << std::endl
             << std::endl;
 }
@@ -3025,7 +3164,7 @@ int main(int argc, char **argv)
         exit(1);
       }
     }
-    else if (cmd == "whitelist")
+    else if (cmd == "whitelist" || cmd == "allowlist")
     {
       if (disp_help)
       {

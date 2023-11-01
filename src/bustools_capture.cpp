@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <limits>
 
 #include "Common.hpp"
 #include "BUSData.h"
@@ -13,6 +14,7 @@ void bustools_capture(Bustools_opt &opt) {
   std::unordered_set<uint64_t> captures;
   std::vector<std::vector<int32_t>> ecmap;
   u_map_<std::vector<int32_t>, int32_t, SortedVectorHasher> ecmapinv;
+  bool capture_prefixes = false;
 
   if (opt.type == CAPTURE_TX) {
     // parse ecmap and capture list
@@ -35,6 +37,9 @@ void bustools_capture(Bustools_opt &opt) {
     std::cerr << "done" << std::endl;
   } else if (opt.type == CAPTURE_UMI || opt.type == CAPTURE_BC) {
     parseBcUmiCaptureList(opt.capture, captures);
+    if (opt.type == CAPTURE_BC && captures.count(std::numeric_limits<uint64_t>::max()) > 0) {
+      capture_prefixes = true;
+    }
   } else if (opt.type == CAPTURE_F) {
     parseFlagsCaptureList(opt.capture, captures);
   } else { // Should never happen
@@ -61,7 +66,6 @@ void bustools_capture(Bustools_opt &opt) {
 
   size_t nr = 0, nw = 0;
   size_t N = 100000;
-  uint32_t bclen = 0;
   BUSData* p = new BUSData[N];
   BUSData bd;
 
@@ -77,6 +81,8 @@ void bustools_capture(Bustools_opt &opt) {
     }
     std::istream in(inbuf);          
     parseHeader(in, h);
+    if (h.bclen == 32) capture_prefixes = false;
+    uint64_t len_mask = ((1ULL << (2*h.bclen)) - 1);
 
     if (!outheader_written) {
       writeHeader(o, h);
@@ -107,7 +113,15 @@ void bustools_capture(Bustools_opt &opt) {
           }
 
         } else if (opt.type == CAPTURE_BC) {
-          capt = captures.count(bd.barcode) > 0;
+          if (capture_prefixes) {
+            uint64_t bitmask = (1ULL << (2*(32-h.bclen))) - 1;
+            uint64_t potential_prefix_barcode = (bd.barcode >> (2*h.bclen)) & bitmask;
+            // Now we have the sequence preceding the actual cell barcode, let's find it in the captures set
+            capt = captures.count((static_cast<uint64_t>(1) << 63) | potential_prefix_barcode) > 0; // If prefix exists in the "capture prefix" set
+            if (!capt) capt = captures.count(bd.barcode & len_mask) > 0; // If not, then check the barcode as-is
+          } else {
+            capt = captures.count(bd.barcode & len_mask) > 0;
+          }
         } else if (opt.type == CAPTURE_UMI) {
           capt = captures.count(bd.UMI) > 0;
         } else if (opt.type == CAPTURE_F) {
