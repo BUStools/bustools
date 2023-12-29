@@ -26,7 +26,7 @@ void bustools_count(Bustools_opt &opt) {
   std::vector<int32_t> tx_split; // Store transcript names for split
   std::vector<int32_t> tx_split_lookup; // Map transcript IDs to mtx status
   bool count_split = !opt.count_split.empty();
-  int count_mtx_priority = !opt.count_gene_multimapping && count_split ? 1 : 0; // 1 = when something in tx_split overlaps something not in tx_split, prioritize the latter (useful for dealing in cases when introns of one gene overlap exons of another gene [we prioritize the exons]
+  int count_mtx_priority = (!opt.count_gene_multimapping || opt.count_collapse) && count_split ? 1 : 0; // 1 = when something in tx_split overlaps something not in tx_split, prioritize the latter (useful for dealing in cases when introns of one gene overlap exons of another gene [we prioritize the exons]
   parseTranscripts(opt.count_txp, txnames);
   std::vector<int32_t> genemap(txnames.size(), -1);
   u_map_<std::string, int32_t> genenames;
@@ -89,9 +89,9 @@ void bustools_count(Bustools_opt &opt) {
         // Essentially, we are removing all tx's that belong to (or not belong to) tx_split in the equivalence classes
         // This handles instances in which a read maps to exon of one gene but intron of another (likely overlapping) gene to avoid discarding the record
         // This is done at read-level (not UMI-level) so if one UMI maps to one gene's exon but another UMI maps to the other gene's intron, we still discard it
-        if (count_mtx_priority == 1 && !found)
+        if (count_mtx_priority == 1 && found)
           new_ec.erase(std::remove(new_ec.begin(), new_ec.end(), tx), new_ec.end());
-        else if (count_mtx_priority == 2 && found)
+        else if (count_mtx_priority == 2 && !found)
           new_ec.erase(std::remove(new_ec.begin(), new_ec.end(), tx), new_ec.end());
       }
     }

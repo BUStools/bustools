@@ -2661,17 +2661,18 @@ void Bustools_Usage()
             << "count           Generate count matrices from a BUS file" << std::endl
             << "inspect         Produce a report summarizing a BUS file" << std::endl
             << "allowlist       Generate an on-list from a BUS file" << std::endl
-            << "project         Project a BUS file to gene sets" << std::endl
+            //<< "project         Project a BUS file to gene sets" << std::endl
             << "capture         Capture records from a BUS file" << std::endl
-            << "merge           Merge bus files from same experiment" << std::endl
+            //<< "merge           Merge bus files from same experiment" << std::endl
             << "text            Convert a binary BUS file to a tab-delimited text file" << std::endl
+            << "fromtext        Convert a tab-delimited text file to a binary BUS file" << std::endl
             << "extract         Extract FASTQ reads correspnding to reads in BUS file" << std::endl
-            << "predict         Correct the count matrix using prediction of unseen species" << std::endl
-            << "collapse        Turn BUS files into a BUG file" << std::endl
-            << "clusterhist     Create UMI histograms per cluster" << std::endl
-            << "linker          Remove section of barcodes in BUS files" << std::endl
+            //<< "predict         Correct the count matrix using prediction of unseen species" << std::endl
+            //<< "collapse        Turn BUS files into a BUG file" << std::endl
+            //<< "clusterhist     Create UMI histograms per cluster" << std::endl
+            //<< "linker          Remove section of barcodes in BUS files" << std::endl
             << "compress        Compress a BUS file" << std::endl
-            << "inflate         Decompress a BUSZ (compressed BUS) file" << std::endl
+            << "decompress      Decompress a BUSZ (compressed BUS) file" << std::endl
             << "version         Prints version number" << std::endl
             << "cite            Prints citation information" << std::endl
             << std::endl
@@ -2787,13 +2788,13 @@ void Bustools_count_Usage()
             << "-t, --txnames         File with names of transcripts" << std::endl
             << "    --genecounts      Aggregate counts to genes only" << std::endl
             << "    --umi-gene        Perform gene-level collapsing of UMIs" << std::endl
-            << "    --em              Estimate gene abundances using EM algorithm" << std::endl
+            //<< "    --em              Estimate gene abundances using EM algorithm" << std::endl
             << "    --cm              Count multiplicities instead of UMIs" << std::endl
             << "-s, --split           Split output matrix in two (plus ambiguous) based on transcripts supplied in this file" << std::endl
             << "-m, --multimapping    Include bus records that pseudoalign to multiple genes" << std::endl
-            << "    --hist            Output copy per UMI histograms for all genes" << std::endl 
-            << "-d  --downsample      Specify a factor between 0 and 1 specifying how much to downsample" << std::endl 
-            << "    --rawcounts       The count matrix will contain raw counts instead of UMI counts" << std::endl 
+            //<< "    --hist            Output copy per UMI histograms for all genes" << std::endl 
+            //<< "-d  --downsample      Specify a factor between 0 and 1 specifying how much to downsample" << std::endl 
+            //<< "    --rawcounts       The count matrix will contain raw counts instead of UMI counts" << std::endl 
             << std::endl;
 }
 
@@ -3164,7 +3165,7 @@ int main(int argc, char **argv)
         exit(1);
       }
     }
-    else if (cmd == "whitelist" || cmd == "allowlist")
+    else if (cmd == "whitelist" || cmd == "allowlist" || cmd == "onlist")
     {
       if (disp_help)
       {
