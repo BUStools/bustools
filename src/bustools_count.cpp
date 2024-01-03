@@ -91,8 +91,6 @@ void bustools_count(Bustools_opt &opt) {
         // This is done at read-level (not UMI-level) so if one UMI maps to one gene's exon but another UMI maps to the other gene's intron, we still discard it
         if (count_mtx_priority == 1 && found)
           new_ec.erase(std::remove(new_ec.begin(), new_ec.end(), tx), new_ec.end());
-        else if (count_mtx_priority == 2 && !found)
-          new_ec.erase(std::remove(new_ec.begin(), new_ec.end(), tx), new_ec.end());
       }
     }
     if (count_mtx_priority != 0)
