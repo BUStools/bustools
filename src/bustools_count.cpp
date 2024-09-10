@@ -31,7 +31,7 @@ void bustools_count(Bustools_opt &opt) {
   std::vector<int32_t> genemap(txnames.size(), -1);
   u_map_<std::string, int32_t> genenames;
   if (!parseGenes(opt.count_genes, txnames, genemap, genenames)) {
-    std::cerr << "Warning: Some transcripts exist in the transcripts file but not in the transcript-to-gene mapping file; this will likely cause errors." << std::endl;
+    std::cerr << "Warning: Some transcripts exist in the transcripts file but not in the transcript-to-gene mapping file (or vice versa); this may cause errors." << std::endl;
   }
   
   parseECs(opt.count_ecs, h);
