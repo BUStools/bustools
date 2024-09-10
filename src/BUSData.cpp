@@ -6,6 +6,7 @@
 #include <sstream>
 #include <iostream>
 #include <limits>
+#include <unordered_set>
 
 uint64_t stringToBinary(const std::string &s, uint32_t &flag) {
   return stringToBinary(s.c_str(), s.size(), flag);
@@ -361,14 +362,17 @@ bool parseGenes(const std::string &filename, const u_map_<std::string, int32_t> 
 
   std::string line, t;
   line.reserve(10000);
+  bool ret = true;
 
   int i = 0;
+  std::unordered_set<std::string> txs_set; // Set of transcripts found in t2g file
   while (std::getline(inf,line)) {
     std::stringstream ss(line);
     std::string txp, gene;
     ss >> txp >> gene;
     auto it = txnames.find(txp);
     if (it != txnames.end()) {
+      txs_set.insert(txp);
       auto i = it->second;
       auto git = genenames.find(gene);
       auto gi = -1;
@@ -379,10 +383,14 @@ bool parseGenes(const std::string &filename, const u_map_<std::string, int32_t> 
         gi = git->second;
       }
       genemap[i] = gi;
+    } else {
+      ret = false;
     }
   }
 
-  return true;
+  if (txs_set.size() != txnames.size()) ret = false; // number of transcripts in t2g file and transcripts file don't match up
+
+  return ret;
 }
 
 bool parseGenesList(const std::string& filename, std::vector<std::string>& geneNames) {

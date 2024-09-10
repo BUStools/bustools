@@ -57,7 +57,11 @@ void bustools_inspect(Bustools_opt &opt) {
     std::string inp;
     uint32_t flag; // Unused
     while (std::getline(wl, inp)) {
-      whitelist.insert(stringToBinary(inp, flag));
+      std::string str = inp;
+      str.erase(std::remove_if(str.begin(), str.end(), [](unsigned char c) {
+        return c == ' ' || c == '\t'; // Remove spaces and tabs (e.g. if we have split barcodes in our list)
+      }), str.end());
+      whitelist.insert(stringToBinary(str, flag));
     }
     wl.close();
   }

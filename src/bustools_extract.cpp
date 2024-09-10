@@ -103,10 +103,16 @@ void bustools_extract(const Bustools_opt &opt) {
         
         memcpy(buf + bufLen, seq[i]->name.s, seq[i]->name.l);
         bufLen += seq[i]->name.l;
-        
-        memcpy(buf + bufLen, seq[i]->comment.s, seq[i]->comment.l);
-        bufLen += seq[i]->comment.l;
-        
+
+        // Only add space and comment if the comment is not empty
+        if (seq[i]->comment.l > 0) {
+            // Add space between name and comment
+            buf[bufLen++] = ' ';
+
+            memcpy(buf + bufLen, seq[i]->comment.s, seq[i]->comment.l);
+            bufLen += seq[i]->comment.l;
+        }
+
         buf[bufLen++] = '\n';
 
         memcpy(buf + bufLen, seq[i]->seq.s, seq[i]->seq.l);
@@ -114,13 +120,6 @@ void bustools_extract(const Bustools_opt &opt) {
         
         buf[bufLen++] = '\n';
         buf[bufLen++] = '+';
-
-        memcpy(buf + bufLen, seq[i]->name.s, seq[i]->name.l);
-        bufLen += seq[i]->name.l;
-        
-        memcpy(buf + bufLen, seq[i]->comment.s, seq[i]->comment.l);
-        bufLen += seq[i]->comment.l;
-        
         buf[bufLen++] = '\n';
 
         memcpy(buf + bufLen, seq[i]->qual.s, seq[i]->qual.l);
