@@ -18,7 +18,7 @@ inline bool open_fastqs(
   
   for (int i = 0; i < opt.nFastqs; ++i) {
     gzclose(outFastq[i]);
-    outFastq[i] = gzopen(std::string(opt.output + "/" + std::to_string(iFastq + 1) + ".fastq.gz").c_str(), "w");
+    outFastq[i] = gzopen(std::string(opt.output + "/" + std::to_string(iFastq + 1) + ".fastq.gz").c_str(), "w1");
     gzclose(inFastq[i]);
     inFastq[i] = gzopen(opt.fastq[iFastq].c_str(), "r");
   
@@ -26,10 +26,7 @@ inline bool open_fastqs(
       kseq_destroy(seq[i]);
     }
     seq[i] = kseq_init(inFastq[i]);
-    if (kseq_read(seq[i]) < 0) {
-      return false;
-    }
-    
+        
     ++iFastq;
   }
   return true;
@@ -116,7 +113,55 @@ void bustools_extract(const Bustools_opt &opt) {
   tail = rc==0;
 
   while (true) {
-    // read in the sequence    
+    // fill the next read
+
+    for (int si = 0; si < seq.size(); ++si) {
+      const auto &s = seq[si];
+      int err_kseq_read = kseq_read(s);
+      if (err_kseq_read == -1) { // Reached EOF
+        if (si != 0) {
+          std::cerr << "Error: truncated FASTQ" << std::endl;
+          goto end_extract;
+        } else {
+          // let's make sure that all the files are also EOF
+          for (int sii = 1; sii < seq.size(); ++sii) {
+            int err_kseq_read2 = kseq_read(seq[sii]);
+            if (err_kseq_read2 != -1) {
+              std::cerr << "Error: truncated FASTQ" << std::endl;
+              goto end_extract;
+            }
+          }
+        }
+        // check if we are done with all files
+        if (iFastq == opt.fastq.size()) { // Done with all files
+          finished = true;
+          break;
+        } else {
+          if (!open_fastqs(outFastq, inFastq, seq, opt, iFastq)) {
+            std::cerr << "Error: cannot read FASTQ " << opt.fastq[iFastq] << std::endl;
+            goto end_extract;
+          }
+
+          // read the first read 
+          err_kseq_read = kseq_read(seq[si]);
+          if (err_kseq_read == -1) {
+            finished = true;
+            break;
+          }
+        }
+      }
+      
+      if (err_kseq_read == -2) {
+        std::cerr << "Error: truncated FASTQ" << std::endl;
+        goto end_extract;
+      }
+    } 
+
+    if (finished) {
+      break;
+    }
+
+    // inclusion, check if the current read matches the next unproccessed flag   
     if (opt.extract_include && iRead == p[iFlag].flags) {
       if (!write_seq_to_file(seq)) {
         std::cerr << "Error writing to FASTQ" << std::endl;
@@ -124,7 +169,7 @@ void bustools_extract(const Bustools_opt &opt) {
       }
     }
   
-
+    // exclusion, make sure the current read does not match the next unproccessed flag or that we are in tail mode
     if (opt.extract_exclude && (iRead < p[iFlag].flags || tail)) {
       if (!write_seq_to_file(seq)) {
         std::cerr << "Error writing to FASTQ" << std::endl;
@@ -132,6 +177,7 @@ void bustools_extract(const Bustools_opt &opt) {
       }
     }
 
+    // if we have not exhausted the 
     if (!tail && iRead == p[iFlag].flags) {
       // read the next flag from the next bus record
       iFlag++;
@@ -140,28 +186,12 @@ void bustools_extract(const Bustools_opt &opt) {
         // read the next batch of bus
         in.read((char *) p, N * sizeof(BUSData));
         rc = in.gcount() / sizeof(BUSData);
+        nr += rc;
         iFlag = 0;
         tail = rc==0;
       } 
     }
-    // fill the next read
-    for (const auto &s : seq) {
-      int err_kseq_read = kseq_read(s);
-      if (err_kseq_read == -1) { // Reached EOF
-        // check if we are done with all files
-        if (iFastq == opt.fastq.size()) { // Done with all files
-          finished = true;
-        } else {
-          if (!open_fastqs(outFastq, inFastq, seq, opt, iFastq)) {
-            std::cerr << "Error: cannot read FASTQ " << opt.fastq[iFastq] << std::endl;
-            goto end_extract;
-          }
-        }
-      } else if (err_kseq_read == -2) {
-        std::cerr << "Error: truncated FASTQ" << std::endl;
-        goto end_extract;
-      }
-    } 
+    
     ++iRead;
 
     if (finished) {
