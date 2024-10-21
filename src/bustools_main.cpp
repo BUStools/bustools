@@ -989,6 +989,8 @@ void parse_ProgramOptions_extract(int argc, char **argv, Bustools_opt &opt)
     {"fastq", required_argument, 0, 'f'},
     {"nFastqs", required_argument, 0, 'N'},
     {"pipe", no_argument, 0, 'p'},
+    {"exclude", no_argument, 0, 'x'},
+    {"include", no_argument, 0, 'i'},
     {0, 0, 0, 0}};
   
   int option_index = 0, c;
@@ -1011,6 +1013,13 @@ void parse_ProgramOptions_extract(int argc, char **argv, Bustools_opt &opt)
       break;
     case '?':
       opt.parse_error = true;
+      break;
+    case 'x':
+      opt.extract_exclude = true;
+      opt.extract_include = false;
+      break;
+    case 'i':
+      opt.extract_include = true;
       break;
     default:
       break;
@@ -2551,6 +2560,12 @@ bool check_ProgramOptions_extract(Bustools_opt &opt)
       ret = false;
     }
   }
+
+  if (opt.extract_exclude && opt.extract_include)
+  {
+    std::cerr << "Error: cannot specify both --exclude and --include" << std::endl;
+    ret = false;
+  }
   
   return ret;
 }
@@ -2904,6 +2919,8 @@ void Bustools_extract_Usage()
             << "-o, --output          Output directory for FASTQ files" << std::endl
             << "-f, --fastq           FASTQ file(s) from which to extract reads (comma-separated list)" << std::endl
             << "-N, --nFastqs         Number of FASTQ file(s) per run" << std::endl
+            << "-x, --exclude         Exclude reads in the BUS file from the specified FASTQ file(s)" << std::endl
+            << "-i, --include         Include reads in the BUS file from the specified FASTQ file(s)" << std::endl
             << std::endl;
 }
 

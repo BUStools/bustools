@@ -113,6 +113,10 @@ struct Bustools_opt
   bool text_dumppad = false;
   bool text_showall = false;
 
+  /* extract */
+  bool extract_exclude = false;
+  bool extract_include = true;
+
   /* linker */
   int start, end;
 
