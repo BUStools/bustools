@@ -12,7 +12,7 @@
 #include "roaring.hh"
 #include "hash.hpp"
 
-#define BUSTOOLS_VERSION "0.44.0"
+#define BUSTOOLS_VERSION "0.44.1"
 
 #define u_map_ std::unordered_map
 enum CAPTURE_TYPE : char
@@ -112,6 +112,10 @@ struct Bustools_opt
   bool text_dumpflags = false;
   bool text_dumppad = false;
   bool text_showall = false;
+
+  /* extract */
+  bool extract_exclude = false;
+  bool extract_include = true;
 
   /* linker */
   int start, end;

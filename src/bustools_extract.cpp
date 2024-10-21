@@ -18,7 +18,7 @@ inline bool open_fastqs(
   
   for (int i = 0; i < opt.nFastqs; ++i) {
     gzclose(outFastq[i]);
-    outFastq[i] = gzopen(std::string(opt.output + "/" + std::to_string(iFastq + 1) + ".fastq.gz").c_str(), "w");
+    outFastq[i] = gzopen(std::string(opt.output + "/" + std::to_string(iFastq + 1) + ".fastq.gz").c_str(), "w1");
     gzclose(inFastq[i]);
     inFastq[i] = gzopen(opt.fastq[iFastq].c_str(), "r");
   
@@ -26,10 +26,7 @@ inline bool open_fastqs(
       kseq_destroy(seq[i]);
     }
     seq[i] = kseq_init(inFastq[i]);
-    if (kseq_read(seq[i]) < 0) {
-      return false;
-    }
-    
+        
     ++iFastq;
   }
   return true;
@@ -59,46 +56,11 @@ void bustools_extract(const Bustools_opt &opt) {
   std::vector<kseq_t *> seq(opt.nFastqs, nullptr);
   uint32_t iRead = 0;
   size_t iFastq = 0;
-  if (!open_fastqs(outFastq, inFastq, seq, opt, iFastq)) {
-    std::cerr << "Error reading FASTQ " << opt.fastq[iFastq] << std::endl;
-    goto end_extract;
-  }
+  uint32_t lastFlag = 0;
 
-  while (true) {
-    in.read((char *) p, N * sizeof(BUSData));
-    size_t rc = in.gcount() / sizeof(BUSData);
-    if (rc == 0) {
-      break;
-    }
-    nr += rc;
-    for (size_t i = 0; i < rc; ++i) {
-      while (iRead < p[i].flags) {
-        for (const auto &s : seq) {
-          int err_kseq_read = kseq_read(s);
-          if (err_kseq_read == -1) { // Reached EOF
-            if (iFastq == opt.fastq.size()) { // Done with all files
-              std::cerr << "Warning: number of reads in FASTQs was less than number of reads in BUS file" << std::endl;
-              goto end_extract;
-            } else {
-              if (!open_fastqs(outFastq, inFastq, seq, opt, iFastq)) {
-                std::cerr << "Error: cannot read FASTQ " << opt.fastq[iFastq] << std::endl;
-                goto end_extract;
-              }
-            }
-          } else if (err_kseq_read == -2) {
-            std::cerr << "Error: truncated FASTQ" << std::endl;
-            goto end_extract;
-          }
-        }
-        ++iRead;
-      }
 
-      if (iRead > p[i].flags) {
-        std::cerr << "BUS file not sorted by flag" << std::endl;
-        goto end_extract;
-      }
-
-      for (int i = 0; i < opt.nFastqs; ++i) {
+  auto write_seq_to_file = [&opt, &buf, &outFastq] (std::vector<kseq_t *> &seq) {
+    for (int i = 0; i < opt.nFastqs; ++i) {
         int bufLen = 1; // Already have @ character in buffer
         
         memcpy(buf + bufLen, seq[i]->name.s, seq[i]->name.l);
@@ -127,13 +89,123 @@ void bustools_extract(const Bustools_opt &opt) {
         
         buf[bufLen++] = '\n';
 
-        if (gzwrite(outFastq[i], buf, bufLen) != bufLen) {
-          std::cerr << "Error writing to FASTQ" << std::endl;
-          goto end_extract;
+        if (gzwrite(outFastq[i], buf, bufLen) != bufLen) {          
+          return false;
         }
       }
-    }
+      return true;
+  };
+
+  bool tail = false;
+  bool finished = false;
+  size_t iFlag = 0;
+  size_t rc = 0;
+  
+  if (!open_fastqs(outFastq, inFastq, seq, opt, iFastq)) {
+    std::cerr << "Error reading FASTQ " << opt.fastq[iFastq] << std::endl;
+    goto end_extract;
   }
+
+  // fill in the first N BUS records
+  in.read((char *) p, N * sizeof(BUSData));
+  rc = in.gcount() / sizeof(BUSData);  
+  nr += rc;
+  tail = rc==0;
+
+  while (true) {
+    // fill the next read
+
+    for (int si = 0; si < seq.size(); ++si) {
+      const auto &s = seq[si];
+      int err_kseq_read = kseq_read(s);
+      if (err_kseq_read == -1) { // Reached EOF
+        if (si != 0) {
+          std::cerr << "Error: truncated FASTQ" << std::endl;
+          goto end_extract;
+        } else {
+          // let's make sure that all the files are also EOF
+          for (int sii = 1; sii < seq.size(); ++sii) {
+            int err_kseq_read2 = kseq_read(seq[sii]);
+            if (err_kseq_read2 != -1) {
+              std::cerr << "Error: truncated FASTQ" << std::endl;
+              goto end_extract;
+            }
+          }
+        }
+        // check if we are done with all files
+        if (iFastq == opt.fastq.size()) { // Done with all files
+          finished = true;
+          break;
+        } else {
+          if (!open_fastqs(outFastq, inFastq, seq, opt, iFastq)) {
+            std::cerr << "Error: cannot read FASTQ " << opt.fastq[iFastq] << std::endl;
+            goto end_extract;
+          }
+
+          // read the first read 
+          err_kseq_read = kseq_read(seq[si]);
+          if (err_kseq_read == -1) {
+            finished = true;
+            break;
+          }
+        }
+      }
+      
+      if (err_kseq_read == -2) {
+        std::cerr << "Error: truncated FASTQ" << std::endl;
+        goto end_extract;
+      }
+    } 
+
+    if (finished) {
+      break;
+    }
+
+    // inclusion, check if the current read matches the next unproccessed flag   
+    if (opt.extract_include && iRead == p[iFlag].flags) {
+      if (!write_seq_to_file(seq)) {
+        std::cerr << "Error writing to FASTQ" << std::endl;
+        goto end_extract;
+      }
+    }
+  
+    // exclusion, make sure the current read does not match the next unproccessed flag or that we are in tail mode
+    if (opt.extract_exclude && (iRead < p[iFlag].flags || tail)) {
+      if (!write_seq_to_file(seq)) {
+        std::cerr << "Error writing to FASTQ" << std::endl;
+        goto end_extract;
+      }
+    }
+
+    // if we have not exhausted the 
+    if (!tail && iRead == p[iFlag].flags) {
+      // read the next flag from the next bus record
+      iFlag++;
+      
+      if (iFlag == rc)  {
+        // read the next batch of bus
+        in.read((char *) p, N * sizeof(BUSData));
+        rc = in.gcount() / sizeof(BUSData);
+        nr += rc;
+        iFlag = 0;
+        tail = rc==0;
+      } 
+    }
+    
+    ++iRead;
+
+    if (finished) {
+      if (iFlag < rc) {
+        std::cerr << "Warning: number of reads in FASTQs was less than number of reads in BUS file" << std::endl;
+        goto end_extract;
+      }
+      break;
+    }
+
+    
+  }
+
+  
 
   std::cerr << "Read in " << nr << " BUS records" << std::endl;
 

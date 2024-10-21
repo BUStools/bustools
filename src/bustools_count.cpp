@@ -170,7 +170,7 @@ void bustools_count(Bustools_opt &opt) {
       // v[i..j-1] share the same UMI
       ecs.resize(0);
       for (size_t k = i; k < j; k++) {
-        ecs.push_back(v[k].ec);
+        if (k == i || v[k].ec != v[k-1].ec) ecs.push_back(v[k].ec);
       }
       
       if (opt.umi_gene_collapse) {
@@ -295,7 +295,7 @@ void bustools_count(Bustools_opt &opt) {
       ecs.resize(0);
       uint32_t counts = 0;
       for (size_t k = i; k < j; k++) {
-        ecs.push_back(v[k].ec);
+        if (k == i || v[k].ec != v[k-1].ec) ecs.push_back(v[k].ec);
         counts += v[k].count;
       }
 
