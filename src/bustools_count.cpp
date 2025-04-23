@@ -646,6 +646,14 @@ void bustools_count(Bustools_opt &opt) {
   delete[] p; p = nullptr;
 
   if (!opt.count_collapse) {
+    for (const auto& pair : txnames) { // Create (single-element) equivalence classes for transcripts without one
+	int32_t val = pair.second;
+	std::vector<int32_t> key;
+	key.push_back(val);
+	if (ecmapinv.find(key) == ecmapinv.end()) {
+	  ecmap.push_back(key);
+	}
+    }
     n_cols = ecmap.size();
   } else {
     n_cols = genenames.size();
