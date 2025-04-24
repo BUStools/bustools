@@ -866,6 +866,10 @@ void bustools_correct(Bustools_opt &opt) {
             stat_white_++;
             correction |= b_;
           } else {
+            if (opt.no_correct) { // Option to skip correction and keep only barcodes in the list
+              stat_uncorr_++;
+              break;
+            }
             auto lower_mask = lower_upper_mask_vec[j].first;
             auto upper_mask = lower_upper_mask_vec[j].second;
             auto bc2 = bc2_vec[j];

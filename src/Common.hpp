@@ -88,6 +88,7 @@ struct Bustools_opt
   bool split_correct = false;
   bool barcode_replacement = false;
   bool parse_error = false;
+  bool no_correct = false;
 
   /* predict */
   std::string predict_input; //specified the same way as the output for count - count and histogram filenames will be created from this
