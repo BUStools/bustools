@@ -610,7 +610,8 @@ void parse_ProgramOptions_fromtext(int argc, char **argv, Bustools_opt& opt) {
 
 void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt &opt)
 {
-  
+ 
+  int nocorrect_flag = 0; 
   const char *opt_string = "o:w:d:spr";
   static struct option long_options[] = {
     {"output", required_argument, 0, 'o'},
@@ -620,6 +621,7 @@ void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt &opt)
     {"split", no_argument, 0, 's'},
     {"pipe", no_argument, 0, 'p'},
     {"replace", no_argument, 0, 'r'},
+    {"nocorrect", no_argument, &nocorrect_flag, 1},
     {0, 0, 0, 0}};
   
   int option_index = 0, c;
@@ -667,6 +669,9 @@ void parse_ProgramOptions_correct(int argc, char **argv, Bustools_opt &opt)
   if (opt.files.size() == 1 && opt.files[0] == "-")
   {
     opt.stream_in = true;
+  }
+  if (nocorrect_flag) {
+    opt.no_correct = true;
   }
 }
 
@@ -2789,6 +2794,7 @@ void Bustools_correct_Usage()
             << "-p, --pipe            Write to standard output" << std::endl
             << "-d, --dump            Dump uncorrected to corrected barcodes (optional)" << std::endl
             << "-r, --replace         The file of on-list barcodes is a barcode replacement file" << std::endl
+            << "    --nocorrect       Skip barcode error correction and only keep perfect matches to on-list" << std::endl
             << std::endl;
 }
 
