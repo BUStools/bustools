@@ -257,7 +257,7 @@ void bustools_count(Bustools_opt &opt) {
           break;
         }
       }
-      double val = j-i;
+      size_t val = j-i;
       auto which_mtx = intersect_ecs_with_subset_txs(column_v[i], ecmap, tx_split_lookup);
       auto& of_ = which_mtx == COUNT_DEFAULT ? of : (which_mtx == COUNT_SPLIT ? of_2 : of_A);
       auto& n_entries_ = which_mtx == COUNT_DEFAULT ? n_entries : (which_mtx == COUNT_SPLIT ? n_entries_2 : n_entries_A);
@@ -582,7 +582,7 @@ void bustools_count(Bustools_opt &opt) {
       auto which_mtx = intersect_ecs_with_subset_txs(column_vp[i].first, ecmap, tx_split_lookup);
       auto& of_ = which_mtx == COUNT_DEFAULT ? of : (which_mtx == COUNT_SPLIT ? of_2 : of_A);
       auto& n_entries_ = which_mtx == COUNT_DEFAULT ? n_entries : (which_mtx == COUNT_SPLIT ? n_entries_2 : n_entries_A);
-      of_ << n_rows << " " << (column_vp[i].first+1) << " " << val << "\n";
+      of_ << n_rows << " " << (column_vp[i].first+1) << " " << std::to_string(static_cast<size_t>(val)) << "\n";
       n_entries_++;
       i = j; // increment
     }
